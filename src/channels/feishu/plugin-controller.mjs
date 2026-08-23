@@ -1,4 +1,5 @@
 import { RegistrationManager } from './registration-manager.mjs';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
 export const FEISHU_SECRET_REF = 'DSH_FEISHU_APP_SECRET';
 
@@ -74,7 +75,7 @@ export class DshFeishuController {
       if (!resolved?.value) {
         this.#lastError = {
           code: 'missing_credentials',
-          message: '机器人凭据缺失，请重新扫码接入。',
+          message: defaultTranslator('feishu.provision.credentialsMissing'),
         };
         return this.status();
       }
@@ -84,7 +85,7 @@ export class DshFeishuController {
       } catch {
         this.#lastError = {
           code: 'connection_failed',
-          message: '机器人暂时无法连接飞书，请重试。',
+          message: defaultTranslator('feishu.provision.cannotReach'),
         };
       }
       return this.status();
@@ -97,8 +98,8 @@ export class DshFeishuController {
       source: 'deepseek-harness',
       createOnly: true,
       appPreset: {
-        name: '{user} 的北汇星河 AI 助手',
-        desc: '连接飞书与 DeepSeek Harness，在聊天中使用企业 AI 助手。',
+        name: defaultTranslator('feishu.provision.appName', { user: '{user}' }),
+        desc: defaultTranslator('feishu.provision.appDescription'),
       },
       addons: {
         preset: false,
@@ -122,7 +123,7 @@ export class DshFeishuController {
       if (!config || !resolved?.value) {
         this.#lastError = {
           code: 'missing_credentials',
-          message: '没有可用的机器人凭据，请重新扫码接入。',
+          message: defaultTranslator('feishu.provision.noCredentials'),
         };
         return this.status();
       }
@@ -132,7 +133,7 @@ export class DshFeishuController {
       } catch {
         this.#lastError = {
           code: 'connection_failed',
-          message: '机器人暂时无法连接飞书，请重试。',
+          message: defaultTranslator('feishu.provision.cannotReach'),
         };
       }
       return this.status();
@@ -218,7 +219,7 @@ export class DshFeishuController {
     } catch (error) {
       this.#lastError = {
         code: 'connection_failed',
-        message: '机器人已经创建，但长连接未就绪，请点击重试。',
+        message: defaultTranslator('feishu.provision.createdNotReady'),
       };
       throw error;
     }

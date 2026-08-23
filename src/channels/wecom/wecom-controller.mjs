@@ -238,7 +238,7 @@ export class WecomController {
         await this.#startRuntime(config, secret);
         this.#errors.delete(botId);
       } catch (error) {
-        this.#errors.set(botId, safeError('connection-failed', '企业微信连接仍未就绪，请稍后重试。'));
+        this.#errors.set(botId, safeError('connection-failed', this.#t('status.stillNotReady', { channel: CHANNEL_LABEL })));
         throw error;
       } finally {
         this.#touch();
@@ -253,7 +253,7 @@ export class WecomController {
     return this.#withBotTransition(botId, async () => {
       const runtime = this.#runtimes.get(botId);
       if (!runtime?.status?.ready || typeof runtime.sendConnectionTest !== 'function') {
-        throw connectionTestTargetUnavailable('企业微信机器人');
+        throw connectionTestTargetUnavailable(this.#t('bot.wecomDefaultName'), this.#t);
       }
       return runtime.sendConnectionTest(connectionTestMessage(
         this.#t('bot.cardLabel', { name: this.#t('bot.wecomDefaultName'), id: maskWecomBotId(config.remoteBotId) }),
