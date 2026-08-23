@@ -20,7 +20,7 @@ import {
 import { TelegramHarnessBridge } from '../../../src/channels/telegram/telegram-bridge.mjs';
 import {
   TelegramRuntime,
-  TELEGRAM_COMMAND_MENU,
+  telegramCommandMenu,
   normalizeTelegramUpdate,
   telegramInboundAllowed,
 } from '../../../src/channels/telegram/telegram-runtime.mjs';
@@ -166,18 +166,18 @@ test('Telegram API registers the command menu and commands-type menu button', as
       return jsonResponse({ ok: true, result: true });
     },
   });
-  await api.setMyCommands({ commands: TELEGRAM_COMMAND_MENU });
+  await api.setMyCommands({ commands: telegramCommandMenu('en') });
   await api.setChatMenuButton();
   assert.equal(calls.length, 2);
   assert.deepEqual(
-    TELEGRAM_COMMAND_MENU.filter(({ command }) => command === 'presetlist' || command === 'preset'),
+    telegramCommandMenu('en').filter(({ command }) => ['presetlist', 'preset'].includes(command)),
     [
-      { command: 'presetlist', description: '列出可用 Agent Preset' },
-      { command: 'preset', description: '查看或设置新会话 Agent Preset' },
+      { command: 'presetlist', description: tr('command.presetlist.description') },
+      { command: 'preset', description: tr('command.preset.description') },
     ],
   );
   assert.match(calls[0].url.pathname, /setMyCommands$/);
-  assert.deepEqual(calls[0].body, { commands: TELEGRAM_COMMAND_MENU });
+  assert.deepEqual(calls[0].body, { commands: telegramCommandMenu('en') });
   assert.match(calls[1].url.pathname, /setChatMenuButton$/);
   assert.deepEqual(calls[1].body, { menu_button: COMMANDS_MENU_BUTTON });
 
@@ -926,8 +926,12 @@ test('Telegram runtime validates webhook state and starts a cancellable long pol
   const fakeApi = {
     getMe: async () => ({ id: 123456789, is_bot: true }),
     getWebhookInfo: async () => ({ url: '' }),
-    setMyCommands: async ({ commands }) => {
-      calls.push({ method: 'setMyCommands', commands });
+    setMyCommands: async ({ commands, languageCode }) => {
+      calls.push({
+        method: 'setMyCommands',
+        commands,
+        ...(languageCode ? { languageCode } : {}),
+      });
       return true;
     },
     setChatMenuButton: async ({ menuButton }) => {
@@ -958,9 +962,16 @@ test('Telegram runtime validates webhook state and starts a cancellable long pol
   assert.equal(runtime.status.connectionState, 'connected');
   await runtime.stop();
   assert.equal(runtime.status.ready, false);
-  assert.deepEqual(calls[0], { method: 'setMyCommands', commands: TELEGRAM_COMMAND_MENU });
-  assert.deepEqual(calls[1], { method: 'setChatMenuButton', menuButton: COMMANDS_MENU_BUTTON });
-  assert.deepEqual(calls[2], { method: 'getUpdates', offset: -1, timeout: 0 });
+  // The default menu is registered first, then one per catalogue language so
+  // Telegram can show each user the menu matching their client language.
+  assert.deepEqual(calls[0], { method: 'setMyCommands', commands: telegramCommandMenu(undefined) });
+  const perLanguage = calls
+    .filter((call) => call.method === 'setMyCommands' && call.languageCode)
+    .map((call) => call.languageCode);
+  assert.deepEqual(perLanguage, ['en', 'zh']);
+  const remaining = calls.filter((call) => call.method !== 'setMyCommands');
+  assert.deepEqual(remaining[0], { method: 'setChatMenuButton', menuButton: COMMANDS_MENU_BUTTON });
+  assert.deepEqual(remaining[1], { method: 'getUpdates', offset: -1, timeout: 0 });
   await rm(directory, { recursive: true, force: true });
 });
 

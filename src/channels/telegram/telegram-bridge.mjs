@@ -1,9 +1,10 @@
+import { defaultTranslator } from '../../i18n/index.mjs';
 import { TextHarnessBridge, createTextBridgeStatus } from '../shared/text-harness-bridge.mjs';
 
 export const TELEGRAM_DESCRIPTOR = Object.freeze({
   key: 'telegram',
   label: 'Telegram',
-  connectionLabel: ' Bot API 长轮询',
+  connectionLabel: defaultTranslator('telegram.connectionLabel'),
 });
 
 export class TelegramHarnessBridge extends TextHarnessBridge {

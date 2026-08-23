@@ -1,4 +1,5 @@
 import { fetchImageBuffer } from '../shared/image-prompt.mjs';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
 const DEFAULT_BASE_URL = 'https://api.telegram.org/';
 const TELEGRAM_FILE_HOSTS = Object.freeze(['api.telegram.org']);
@@ -288,7 +289,7 @@ export async function inspectTelegramToken(token, options = {}) {
   if (!bot?.id || bot?.is_bot !== true) throw new Error('Telegram token does not belong to a bot');
   return {
     platformId: String(bot.id),
-    name: cleanString([bot.first_name, bot.last_name].filter(Boolean).join(' ')) ?? 'Telegram机器人',
+    name: cleanString([bot.first_name, bot.last_name].filter(Boolean).join(' ')) ?? defaultTranslator('telegram.defaultBotName'),
     username: cleanString(bot.username),
   };
 }

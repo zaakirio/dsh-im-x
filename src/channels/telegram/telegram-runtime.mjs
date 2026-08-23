@@ -5,23 +5,38 @@ import {
   TELEGRAM_ACCESS_MODES,
   normalizeTelegramAccessPolicy,
 } from './config-store.mjs';
+import { commandMenu } from '../shared/bot-commands.mjs';
+import { AVAILABLE_LOCALES, createTranslator, defaultTranslator } from '../../i18n/index.mjs';
 
-export const TELEGRAM_COMMAND_MENU = Object.freeze([
-  { command: 'new', description: '开启一个全新会话' },
-  { command: 'compact', description: '压缩当前会话的较早上下文' },
-  { command: 'workspace', description: '切换工作区' },
-  { command: 'workspacelist', description: '列出工作区绝对路径' },
-  { command: 'sessionlist', description: '列出会话 ID 和标题' },
-  { command: 'session', description: '将当前聊天绑定到指定会话' },
-  { command: 'models', description: '按序号列出所有可用模型' },
-  { command: 'model', description: '查看或切换当前会话模型' },
-  { command: 'presetlist', description: '列出可用 Agent Preset' },
-  { command: 'preset', description: '查看或设置新会话 Agent Preset' },
-  { command: 'stop', description: '停止当前任务' },
-  { command: 'steer', description: '纠偏当前任务' },
-  { command: 'status', description: '检查连接状态' },
-  { command: 'help', description: '显示帮助' },
-]);
+/**
+ * Telegram's own command menu, in the bot's locale.
+ *
+ * Descriptions come from the shared command registry so this can never drift
+ * from what /help lists.
+ */
+export function telegramCommandMenu(locale) {
+  return commandMenu(createTranslator(locale));
+}
+
+/**
+ * Telegram accepts one command menu per language and shows each user the one
+ * matching their client language, so every catalogue locale is registered.
+ * `languageCode` wants a bare language subtag, not a full tag.
+ */
+async function registerCommandMenus(api, locale, signal) {
+  await api.setMyCommands({ commands: telegramCommandMenu(locale), signal });
+  const seen = new Set();
+  for (const tag of AVAILABLE_LOCALES) {
+    const languageCode = tag.split('-', 1)[0];
+    if (seen.has(languageCode)) continue;
+    seen.add(languageCode);
+    await api.setMyCommands({
+      commands: telegramCommandMenu(tag),
+      languageCode,
+      signal,
+    });
+  }
+}
 
 function escaped(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -126,6 +141,10 @@ export function normalizeTelegramUpdate(update, { botId, username, loadFile = as
       ? String(chatId) : `${chatId}:${messageThreadId}`,
     content: withoutBotMention(message.text ?? message.caption ?? '', username),
     images: image ? [image] : [],
+    // The sender's client language, used when the bot locale is left on auto.
+    locale: typeof message.from?.language_code === 'string'
+      ? message.from.language_code
+      : undefined,
     addressed,
     replyTarget: {
       chatId,
@@ -243,6 +262,7 @@ export class TelegramRuntime {
   #logger;
   #replyTimeoutMs;
   #createApi;
+  #locale;
   #accessMode;
   #allowedPrivateUserIds;
   #status = createTelegramRuntimeStatus();
@@ -260,6 +280,7 @@ export class TelegramRuntime {
     logger = console,
     replyTimeoutMs = 600_000,
     createApi = (options) => new TelegramApi(options),
+    locale,
   }) {
     if (!config || !token || !harness || !state) {
       throw new TypeError('TelegramRuntime requires config, token, Harness, and state');
@@ -271,6 +292,7 @@ export class TelegramRuntime {
     this.#logger = logger;
     this.#replyTimeoutMs = replyTimeoutMs;
     this.#createApi = createApi;
+    this.#locale = locale;
     const accessPolicy = normalizeTelegramAccessPolicy(config);
     this.#accessMode = accessPolicy.accessMode;
     this.#allowedPrivateUserIds = new Set(accessPolicy.allowedUsers);
@@ -317,12 +339,12 @@ export class TelegramRuntime {
       }
       const webhook = await api.getWebhookInfo({ signal: controller.signal });
       if (typeof webhook?.url === 'string' && webhook.url) {
-        const error = new Error('该 Telegram 机器人已配置 Webhook，请先在原服务中移除 Webhook 后重试。');
+        const error = new Error(defaultTranslator('telegram.webhookConfigured'));
         error.code = 'webhook-configured';
         throw error;
       }
       try {
-        await api.setMyCommands({ commands: TELEGRAM_COMMAND_MENU, signal: controller.signal });
+        await registerCommandMenus(api, this.#locale, controller.signal);
         await api.setChatMenuButton({ menuButton: COMMANDS_MENU_BUTTON, signal: controller.signal });
       } catch (error) {
         this.#logger.warn?.(
@@ -339,6 +361,7 @@ export class TelegramRuntime {
         logger: this.#logger,
         replyTimeoutMs: this.#replyTimeoutMs,
         signal: controller.signal,
+        locale: this.#locale,
       });
 
       let cursor = this.#state.cursor();

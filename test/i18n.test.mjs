@@ -7,7 +7,13 @@ import {
   LOCALE_NAMES,
   createTranslator,
   isAvailableLocale,
+  negotiate,
 } from '../src/i18n/index.mjs';
+import {
+  AUTO_LOCALE,
+  resolveConversationLocale,
+  runLanguageCommand,
+} from '../src/channels/shared/conversation-locale.mjs';
 import { localeFallbackChain, negotiateLocale } from '../src/i18n/locale-tags.mjs';
 import { createTranslatorFactory } from '../src/i18n/translator.mjs';
 
@@ -153,4 +159,83 @@ test('a missing key falls back through the chain before returning the key', () =
 test('t.has reports catalogue coverage without rendering', () => {
   const t = createTranslator('en');
   assert.equal(t.has('definitely.not.a.key'), false);
+});
+
+test('a conversation locale resolves override, then bot setting, then channel hint', () => {
+  // Regression guard: the negotiation helper needs the set of catalogues it is
+  // choosing from. Passing none silently matched nothing, which disabled every
+  // auto-detected locale without failing anything.
+  assert.equal(resolveConversationLocale({ hint: 'zh-hans' }), 'zh-CN');
+  assert.equal(resolveConversationLocale({ hint: 'en-GB' }), 'en');
+  assert.equal(resolveConversationLocale({ configured: AUTO_LOCALE, hint: 'zh-CN' }), 'zh-CN');
+
+  // An operator who pinned a language outranks a visiting user's client.
+  assert.equal(resolveConversationLocale({ configured: 'en', hint: 'zh-hans' }), 'en');
+  assert.equal(resolveConversationLocale({ configured: 'zh-CN', hint: 'en' }), 'zh-CN');
+
+  // A /lang override is the most specific thing the user said, so it wins.
+  assert.equal(resolveConversationLocale({ override: 'zh-CN', configured: 'en', hint: 'en' }), 'zh-CN');
+  // An override naming a locale this build lacks is ignored, not honoured.
+  assert.equal(resolveConversationLocale({ override: 'ja', configured: 'zh-CN' }), 'zh-CN');
+
+  assert.equal(resolveConversationLocale({}), 'en');
+  assert.equal(resolveConversationLocale(), 'en');
+});
+
+test('negotiate is bound to the registered catalogues', () => {
+  assert.equal(negotiate('zh-hans'), 'zh-CN');
+  assert.equal(negotiate('en-AU'), 'en');
+  assert.equal(negotiate('ja'), null);
+});
+
+test('/lang reports, sets, and clears a conversation language', async () => {
+  const stored = new Map();
+  const state = {
+    localeFor: (key) => stored.get(key) ?? null,
+    setLocale: async (key, locale) => { stored.set(key, locale); },
+    clearLocale: async (key) => { stored.delete(key); },
+  };
+  const t = createTranslator('en');
+
+  assert.equal(await runLanguageCommand('hello', state, 'direct:1', { t }), null);
+
+  const shown = await runLanguageCommand('/lang', state, 'direct:1', { t });
+  assert.ok(shown.message.includes('English'));
+  assert.ok(shown.message.includes('zh-CN'));
+
+  const set = await runLanguageCommand('/lang zh-CN', state, 'direct:1', { t });
+  assert.equal(stored.get('direct:1'), 'zh-CN');
+  // The confirmation arrives in the language just selected.
+  assert.equal(set.message, createTranslator('zh-CN')('language.changed', {
+    locale: 'zh-CN',
+    name: '简体中文',
+  }));
+
+  const unknown = await runLanguageCommand('/lang klingon', state, 'direct:1', { t });
+  assert.ok(unknown.message.includes(t('language.unknown', { requested: 'klingon' })));
+  assert.equal(stored.get('direct:1'), 'zh-CN', 'an unknown language changes nothing');
+
+  await runLanguageCommand('/lang auto', state, 'direct:1', { t });
+  assert.equal(stored.has('direct:1'), false);
+});
+
+test('a conversation locale override survives only while its catalogue exists', async () => {
+  const { ConversationStateStore } = await import('../src/channels/shared/conversation-state-store.mjs');
+  const { mkdtemp, writeFile } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+
+  const directory = await mkdtemp(join(tmpdir(), 'dsh-im-x-locale-'));
+  const path = join(directory, 'state.json');
+  await writeFile(path, JSON.stringify({
+    version: 1,
+    sessions: {},
+    locales: { 'direct:keep': 'zh-CN', 'direct:drop': 'ja' },
+    seenMessageIds: [],
+    cursor: null,
+  }));
+
+  const store = await new ConversationStateStore(path).load();
+  assert.equal(store.localeFor('direct:keep'), 'zh-CN');
+  assert.equal(store.localeFor('direct:drop'), null, 'a missing catalogue must not pin a chat');
 });

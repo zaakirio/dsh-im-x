@@ -1,3 +1,5 @@
+import { defaultTranslator } from '../../i18n/index.mjs';
+
 export function splitMessageText(value, limit) {
   const text = typeof value === 'string' ? value.trim() : '';
   if (!text) return [];
@@ -15,7 +17,7 @@ export function splitMessageText(value, limit) {
 }
 
 export function createEditableMessageStream({
-  initialText = '正在处理…',
+  initialText = defaultTranslator('bridge.processing'),
   limit,
   updateIntervalMs = 800,
   create,
@@ -77,7 +79,7 @@ export function createEditableMessageStream({
       pending = null;
       await inFlight?.catch(() => undefined);
       const chunks = splitMessageText(text, limit);
-      const first = chunks[0] ?? '处理完成。';
+      const first = chunks[0] ?? defaultTranslator('stream.processingDone');
       if (first !== lastSent) await edit(messageId, first);
       lastSent = first;
       for (const chunk of chunks.slice(1)) {

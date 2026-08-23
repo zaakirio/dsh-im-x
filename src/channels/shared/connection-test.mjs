@@ -1,3 +1,5 @@
+import { defaultTranslator } from '../../i18n/index.mjs';
+
 const targets = new WeakMap();
 
 export const CONNECTION_TEST_STATE_IDENTITY = Symbol('dsh-im.connection-test-state-identity');
@@ -25,13 +27,15 @@ export function connectionTestTarget(state) {
   return target ? structuredClone(target) : null;
 }
 
-export function connectionTestMessage(botName, channelLabel = '机器人') {
-  const name = cleanText(botName) ?? channelLabel;
-  return `✅ DeepSeek Harness 连接测试成功\n这条消息由插件页面中的“${name}”机器人卡片发出。`;
+export function connectionTestMessage(botName, channelLabel, t = defaultTranslator) {
+  const name = cleanText(botName) ?? channelLabel ?? t('connection.defaultChannelLabel');
+  return t('connection.testSuccess', { name });
 }
 
-export function connectionTestTargetUnavailable(channelLabel = '机器人') {
-  const error = new Error(`${channelLabel}尚未收到可用于测试的私聊消息。`);
+export function connectionTestTargetUnavailable(channelLabel, t = defaultTranslator) {
+  const error = new Error(t('connection.noTestTarget', {
+    channel: channelLabel ?? t('connection.defaultChannelLabel'),
+  }));
   error.code = 'test-target-unavailable';
   return error;
 }

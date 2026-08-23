@@ -3,6 +3,7 @@ import {
   maskPlatformId,
   TokenBotConfigStore,
 } from '../shared/token-config-store.mjs';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
 const IDENTITY_OPTIONS = Object.freeze({
   botPrefix: 'telegram',
@@ -66,7 +67,7 @@ export function deriveTelegramBotIdentity(platformId) {
 }
 
 export function maskTelegramBotId(platformId) {
-  return maskPlatformId(platformId, 'Telegram机器人');
+  return maskPlatformId(platformId, defaultTranslator('telegram.defaultBotName'));
 }
 
 export class TelegramConfigStore extends TokenBotConfigStore {

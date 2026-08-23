@@ -1,9 +1,9 @@
 import { createTranslatorFactory } from './translator.mjs';
-import { DEFAULT_LOCALE } from './locale-tags.mjs';
+import { DEFAULT_LOCALE, negotiateLocale } from './locale-tags.mjs';
 import { EN } from './locales/en.mjs';
 import { ZH_CN } from './locales/zh-CN.mjs';
 
-export { DEFAULT_LOCALE, negotiateLocale } from './locale-tags.mjs';
+export { DEFAULT_LOCALE } from './locale-tags.mjs';
 
 /**
  * Registered catalogues. Adding a language means adding a locale module here;
@@ -25,6 +25,15 @@ export const LOCALE_NAMES = Object.freeze({
   en: 'English',
   'zh-CN': '简体中文',
 });
+
+/**
+ * Normalizes a channel-supplied locale hint against the registered
+ * catalogues. Prefer this over the raw locale-tags helper, which requires the
+ * available set to be passed in.
+ */
+export function negotiate(hint) {
+  return negotiateLocale(hint, AVAILABLE_LOCALES);
+}
 
 /** True when `value` is exactly a tag that has a registered catalogue. */
 export function isAvailableLocale(value) {

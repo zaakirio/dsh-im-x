@@ -429,4 +429,12 @@ export const EN = Object.freeze({
   'feishu.watch.notWatched': 'That session is not in the watch list. Reply /watchlist to look.',
   'feishu.watch.removed': 'Stopped watching "{title}".',
   'feishu.watch.removeFailed': 'Removing failed: {reason}',
+  // --- Connection test and stream scaffolding ---------------------------
+  'connection.defaultChannelLabel': 'bot',
+  'connection.testSuccess': '✅ DeepSeek Harness connection test succeeded\nThis message was sent by the "{name}" bot card on the plugin page.',
+  'connection.noTestTarget': '{channel} has not received a direct message that can be used for a test yet.',
+  'stream.processingDone': 'Done.',
+  'telegram.webhookConfigured': 'This Telegram bot already has a webhook configured. Remove the webhook in that service first, then try again.',
+  'telegram.defaultBotName': 'Telegram bot',
+  'telegram.connectionLabel': ' Bot API long polling',
 });

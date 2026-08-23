@@ -5,7 +5,7 @@ import {
   createTranslator,
   defaultTranslator,
   isAvailableLocale,
-  negotiateLocale,
+  negotiate,
 } from '../../i18n/index.mjs';
 
 /** Bot setting meaning "follow whatever locale the channel reports". */
@@ -26,12 +26,12 @@ export function resolveConversationLocale({ override, configured, hint } = {}) {
   if (isAvailableLocale(override)) return override;
 
   const explicit = configured && configured !== AUTO_LOCALE
-    ? negotiateLocale(configured)
+    ? negotiate(configured)
     : null;
   if (explicit) return explicit;
 
   if (!configured || configured === AUTO_LOCALE) {
-    const detected = negotiateLocale(hint);
+    const detected = negotiate(hint);
     if (detected) return detected;
   }
   return DEFAULT_LOCALE;
@@ -109,7 +109,7 @@ export async function runLanguageCommand(text, state, key, {
     };
   }
 
-  const requested = negotiateLocale(argument);
+  const requested = negotiate(argument);
   if (!requested) {
     return {
       message: [

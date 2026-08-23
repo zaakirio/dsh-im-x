@@ -408,4 +408,12 @@ export const ZH_CN = Object.freeze({
   'feishu.watch.notWatched': '关注列表里没有这个会话，回复 /watchlist 查看。',
   'feishu.watch.removed': '已取消关注「{title}」。',
   'feishu.watch.removeFailed': '取消失败：{reason}',
+  // --- Connection test and stream scaffolding ---------------------------
+  'connection.defaultChannelLabel': '机器人',
+  'connection.testSuccess': '✅ DeepSeek Harness 连接测试成功\n这条消息由插件页面中的“{name}”机器人卡片发出。',
+  'connection.noTestTarget': '{channel}尚未收到可用于测试的私聊消息。',
+  'stream.processingDone': '处理完成。',
+  'telegram.webhookConfigured': '该 Telegram 机器人已配置 Webhook，请先在原服务中移除 Webhook 后重试。',
+  'telegram.defaultBotName': 'Telegram机器人',
+  'telegram.connectionLabel': ' Bot API 长轮询',
 });

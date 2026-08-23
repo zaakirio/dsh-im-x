@@ -4,6 +4,7 @@ import { isAbsolute } from 'node:path';
 
 import { adoptRegisteredWorkspaceSession } from './harness-session-binding.mjs';
 import { outboundArtifactRegistry } from './semantic/artifact.mjs';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
 // Every channel plugin runs in the same Host process. Sharing ownership by
 // Harness origin prevents two channel-specific clients bound to one Session
@@ -405,9 +406,9 @@ export class HarnessReplyTracker {
       }
 
       if (event.type === 'tool/call') {
-        update = { type: 'tool', name: event.data?.name ?? '工具' };
+        update = { type: 'tool', name: event.data?.name ?? defaultTranslator('bridge.toolFallback') };
       } else if (event.type === 'tool/result') {
-        update = { type: 'status', text: '正在整理结果…' };
+        update = { type: 'status', text: defaultTranslator('bridge.finalizing') };
       }
     }
     return update;
