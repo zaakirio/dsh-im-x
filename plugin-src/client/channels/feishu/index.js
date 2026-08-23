@@ -25,6 +25,7 @@ import {
 import { useWorkspaceSnapshotFence } from "../../workspace-snapshot-fence.js";
 import { BotStatusMeta, ChannelListHeading } from "../../channel-card-meta.js";
 import { installFeishuStyles } from "./styles.js";
+import { t } from '../../i18n.js';
 
 export const name = "feishu-settings";
 export const inject = ["slots", "connection"];
@@ -121,9 +122,9 @@ function Heading({ totals, onAdd, onCredential, credentialOpen, adding, busy, ad
           disabled: adding || busy,
           ref: addButtonRef,
           "aria-busy": busy ? "true" : undefined,
-          "aria-label": "扫码接入飞书机器人",
+          "aria-label": t('ui.feishu.connectFeishuBotByQrCode'),
           icon: h(QrActionIcon),
-        }, adding ? "正在接入" : "扫码接入机器人"),
+        }, adding ? t('ui.dingtalk.connecting') : t('ui.dingtalk.scanQrCode')),
         h(Button, {
           kind: "credential",
           size: "small",
@@ -131,14 +132,14 @@ function Heading({ totals, onAdd, onCredential, credentialOpen, adding, busy, ad
           onClick: onCredential,
           disabled: adding || busy,
           "aria-pressed": credentialOpen,
-          "aria-label": "使用 App ID 和 App Secret 绑定飞书机器人",
+          "aria-label": t('ui.feishu.connectAFeishuBotWithApp'),
           icon: h(CredentialActionIcon),
-        }, credentialOpen ? "收起凭据" : "手动接入")),
+        }, credentialOpen ? t('ui.dingtalk.hideCredentials') : t('ui.dingtalk.manualSetup'))),
       hasBots
         ? h("div", {
             className: "bxf-totalBadge dim-onlineBadge",
-            "aria-label": `已接入 ${totals.configured} 个机器人，其中 ${totals.connected} 个在线`,
-          }, h("span", null, `${totals.connected} / ${totals.configured} 在线`))
+            "aria-label": t('ui.common.botsOnline', { connected: totals.connected, configured: totals.configured }),
+          }, h("span", null, t('ui.common.onlineCount', { connected: totals.connected, configured: totals.configured })))
         : null,
     ),
   );
@@ -148,10 +149,10 @@ function LoadingView() {
   return h("div", {
     className: "bxf-card dim-surfaceCard dim-loadingView",
     "aria-busy": "true",
-    "aria-label": "正在读取飞书机器人列表",
+    "aria-label": t('ui.feishu.loadingFeishuBots'),
   },
     h("div", { className: "dim-spinner", "aria-hidden": "true" }),
-    h("span", null, "正在读取飞书连接状态…"),
+    h("span", null, t('ui.feishu.loadingFeishuConnectionStatus')),
   );
 }
 
@@ -160,14 +161,14 @@ function EmptyView({ onStart, busy }) {
     h("div", { className: "bxf-cardBody bxf-intro dim-surfaceBody dim-emptyView" },
       h("div", { className: "bxf-introCopy dim-emptyCopy" },
         h("div", { className: "bxf-stateLabel dim-stateLabel" },
-          h("span", { className: "bxf-dot dim-stateDot" }), h("span", null, "尚未接入机器人")),
-        h("h3", null, "扫码，创建第一个飞书入口"),
-        h("p", null, "无需手动填写 App ID。以后还可以继续添加机器人，分别服务不同团队或飞书租户。"),
+          h("span", { className: "bxf-dot dim-stateDot" }), h("span", null, t('ui.feishu.noBotConnectedYet'))),
+        h("h3", null, t('ui.feishu.scanToCreateYourFirstFeishu')),
+        h("p", null, t('ui.feishu.noAppIdIsRequiredYou')),
         h("div", { className: "bxf-actions dim-viewActions" },
           h(Button, {
             kind: "primary", onClick: onStart,
             disabled: busy, "aria-busy": busy ? "true" : undefined,
-          }, busy ? "正在生成二维码…" : "生成飞书二维码")),
+          }, busy ? t('ui.dingtalk.generatingQrCode') : t('ui.feishu.generateFeishuQrCode'))),
       ),
       h("div", { className: "bxf-markStage dim-emptyBrand", "aria-hidden": "true" }, h(BrandMark)),
     ),
@@ -211,7 +212,7 @@ function QrPane({ provision, now, onRefresh, onCancel, busy }) {
   const progress = Math.min(1, remaining / Math.max(1, provision.durationMs ?? remaining));
   const repairing = isCallbackRepair(provision);
   const grantingGroupMessages = isGroupMessagePermission(provision);
-  const botName = provision.botName ?? "此机器人";
+  const botName = provision.botName ?? t('ui.feishu.thisBot');
 
   React.useEffect(() => setImageFailed(false), [qrSource]);
 
@@ -223,25 +224,25 @@ function QrPane({ provision, now, onRefresh, onCancel, busy }) {
               ? h("img", {
                 src: qrSource,
                 alt: repairing
-                  ? `用于修复${botName}卡片按钮的一次性授权二维码`
+                  ? t('ui.feishu.repairQrAlt', { name: botName })
                   : grantingGroupMessages
-                    ? `用于为${botName}开通群消息权限的一次性授权二维码`
-                    : "用于新增 DeepSeek Harness 飞书机器人的一次性授权二维码",
+                    ? t('ui.feishu.groupQrAlt', { name: botName })
+                    : t('ui.feishu.oneTimeAuthorizationQrCodeFor'),
                 onError: () => setImageFailed(true),
               })
             : h("div", { className: "bxf-qrFallback dim-qrFallback" },
-                h("div", null, h(QrIcon), h("span", null, "二维码未就绪，请打开授权链接"))),
+                h("div", null, h(QrIcon), h("span", null, t('ui.feishu.theQrCodeIsNotReady')))),
           expired
             ? h("div", { className: "bxf-expiredOverlay dim-qrExpired", role: "status" },
-                h("div", null, "二维码已失效", h("br"), "请刷新后重新扫码"))
+                h("div", null, t('ui.dingtalk.qrCodeExpired'), h("br"), t('ui.feishu.refreshAndScanAgain')))
             : null,
         ),
         h("div", {
           className: "bxf-countdown dim-countdown",
-          "aria-label": expired ? "二维码已失效" : `二维码剩余 ${formatRemaining(remaining)}`,
+          "aria-label": expired ? t('ui.dingtalk.qrCodeExpired') : t('ui.common.qrRemaining', { remaining: formatRemaining(remaining) }),
         },
           h("div", { className: "bxf-countdownTop dim-countdownTop", "aria-hidden": "true" },
-            h("span", null, expired ? "等待刷新" : "二维码有效时间"),
+            h("span", null, expired ? t('ui.feishu.waitingToRefresh') : t('ui.dingtalk.qrCodeExpiresIn')),
             h("strong", null, formatRemaining(remaining))),
           h("div", { className: "bxf-progress dim-progress", "aria-hidden": "true" },
             h("span", { style: { "--bxf-progress": `${Math.round(progress * 100)}%` } })),
@@ -251,51 +252,51 @@ function QrPane({ provision, now, onRefresh, onCancel, busy }) {
         h("div", { className: "bxf-stateLabel dim-stateLabel" },
           h("span", { className: "bxf-dot dim-stateDot", "data-tone": "warning" }),
           h("span", null, repairing
-            ? `正在修复「${botName}」`
+            ? t('ui.feishu.repairingBot', { name: botName })
             : grantingGroupMessages
-              ? `正在为「${botName}」开通群消息权限`
-              : "正在添加新机器人")),
+              ? t('ui.feishu.grantingGroupPermission', { name: botName })
+              : t('ui.feishu.addingANewBot'))),
         h("h3", null, expired
-          ? "刷新二维码后继续"
+          ? t('ui.feishu.refreshTheQrCodeToContinue')
           : repairing
-            ? "使用飞书扫码修复卡片按钮"
+            ? t('ui.feishu.scanWithFeishuToRepairCard')
             : grantingGroupMessages
-              ? "使用飞书确认群消息权限"
-              : "使用飞书扫码创建机器人"),
+              ? t('ui.feishu.confirmGroupMessagePermissionWithFeishu')
+              : t('ui.feishu.scanWithFeishuToCreateA')),
         h("p", null, repairing
-          ? "扫码会更新现有飞书应用，只增量补充卡片按钮回调；不会创建新应用。确认后此机器人会短暂重连，其他机器人不受影响。"
+          ? t('ui.feishu.scanningUpdatesTheExistingFeishuApp')
           : grantingGroupMessages
-            ? "扫码会更新现有飞书应用，只增量开通“获取群组中所有消息”权限；不会创建新应用。确认后会自动启用“响应所有群消息”，其他机器人不受影响。"
-            : "扫码只会新增一个机器人，已接入的机器人会继续正常收发消息。"),
+            ? t('ui.feishu.scanningUpdatesTheExistingFeishuApp2')
+            : t('ui.feishu.scanningAddsOneBotExistingBots')),
         h("ol", { className: "bxf-steps dim-steps" },
-          h("li", null, "打开飞书移动端，使用扫一扫读取二维码"),
+          h("li", null, t('ui.feishu.openFeishuOnYourPhoneAnd')),
           h("li", null, repairing
-            ? "核对现有应用名称，并确认只新增卡片回调"
+            ? t('ui.feishu.reviewTheExistingAppNameAnd')
             : grantingGroupMessages
-              ? "核对现有应用，并确认“获取群组中所有消息”权限"
-              : "核对应用名称与权限范围，并确认创建"),
+              ? t('ui.feishu.reviewTheExistingAppAndConfirm')
+              : t('ui.feishu.reviewTheAppNameAndPermissions')),
           h("li", null, repairing
-            ? "保持本页打开，等待卡片按钮修复完成"
+            ? t('ui.feishu.keepThisPageOpenUntilCard')
             : grantingGroupMessages
-              ? "保持本页打开，等待权限生效并自动切换响应方式"
-              : "保持本页打开，等待新机器人的长连接就绪")),
+              ? t('ui.feishu.keepThisPageOpenWhileThe')
+              : t('ui.feishu.keepThisPageOpenUntilThe'))),
         h("div", { className: "bxf-actions dim-viewActions" },
           expired
             ? h(Button, {
                 kind: "primary", onClick: onRefresh, disabled: busy,
-              }, busy ? "刷新中…" : "刷新二维码")
+              }, busy ? t('ui.feishu.refreshing') : t('ui.feishu.refreshQrCode'))
             : href
               ? h("a", {
                   className: "bxf-button bxf-link", "data-kind": "secondary",
                   href, target: "_blank", rel: "noopener noreferrer",
-                }, h("span", null, "在飞书中打开"))
+                }, h("span", null, t('ui.feishu.openInFeishu')))
               : null,
           !expired
-            ? h(Button, { onClick: onRefresh, disabled: busy }, "换一个二维码")
+            ? h(Button, { onClick: onRefresh, disabled: busy }, t('ui.dingtalk.getAnotherQrCode'))
             : null,
           h(Button, { onClick: onCancel, disabled: busy }, repairing
-            ? "取消修复"
-            : grantingGroupMessages ? "取消授权" : "取消添加")),
+            ? t('ui.feishu.cancelRepair')
+            : grantingGroupMessages ? t('ui.feishu.cancelAuthorization') : t('ui.feishu.cancel'))),
       ),
     ),
   );
@@ -312,29 +313,29 @@ function ProvisionProgress({ phase, provision, onCancel, busy }) {
     h("div", { className: "dim-spinner", "aria-hidden": "true" }),
     h("h3", null, connecting
       ? repairing
-        ? "已确认，正在完成卡片按钮修复"
+        ? t('ui.feishu.confirmedFinishingCardButtonRepair')
         : grantingGroupMessages
-          ? "已确认，正在启用全部消息模式"
-          : "已确认，正在连接新机器人"
+          ? t('ui.feishu.confirmedEnablingAllMessageMode')
+          : t('ui.feishu.confirmedConnectingTheNewBot')
       : repairing
-        ? "正在准备修复二维码"
-        : grantingGroupMessages ? "正在准备权限授权二维码" : "正在准备授权二维码"),
+        ? t('ui.feishu.preparingTheRepairQrCode')
+        : grantingGroupMessages ? t('ui.feishu.preparingPermissionAuthorizationQrCode') : t('ui.feishu.preparingAuthorizationQrCode')),
     h("p", null, connecting
       ? repairing
-        ? "配置已提交，正在验证卡片按钮回调并重连此机器人；此阶段无法取消，其他机器人不会中断。"
+        ? t('ui.feishu.theUpdateWasSubmittedVerifyingThe')
         : grantingGroupMessages
-          ? "权限配置已提交，正在保存设置并重连此机器人；此阶段无法取消，其他机器人不会中断。"
-          : "正在安全保存凭据并检查新机器人的消息通道，其他机器人不会中断。"
+          ? t('ui.feishu.thePermissionUpdateWasSubmittedSaving')
+          : t('ui.feishu.savingCredentialsAndCheckingTheNew')
       : repairing
-        ? "正在为现有飞书应用申请一次性更新二维码，请稍候。"
+        ? t('ui.feishu.requestingAOneTimeUpdateQr')
         : grantingGroupMessages
-          ? "正在为现有飞书应用申请群消息权限二维码，请稍候。"
-          : "正在向飞书申请一次性授权二维码，请稍候。"),
+          ? t('ui.feishu.requestingAGroupMessagePermissionQr')
+          : t('ui.feishu.requestingAOneTimeAuthorizationQr')),
     connecting && onCancel
       ? h("div", { className: "bxf-actions dim-viewActions", style: { justifyContent: "center" } },
           h(Button, { onClick: onCancel, disabled: busy }, repairing
-            ? "取消修复"
-            : grantingGroupMessages ? "取消授权" : "取消添加"))
+            ? t('ui.feishu.cancelRepair')
+            : grantingGroupMessages ? t('ui.feishu.cancelAuthorization') : t('ui.feishu.cancel')))
       : null,
   );
 }
@@ -346,45 +347,45 @@ function ProvisionError({ error, provision, onRetry, onCancel, busy }) {
     h("div", { className: "bxf-inlineError dim-inlineError", role: "alert" },
       h("div", null,
         h("h3", null, repairing
-          ? "卡片按钮没有修复完成"
-          : grantingGroupMessages ? "群消息权限没有开通完成" : "新机器人没有添加完成"),
+          ? t('ui.feishu.cardButtonRepairDidNotFinish')
+          : grantingGroupMessages ? t('ui.feishu.groupMessagePermissionWasNotGranted') : t('ui.feishu.theNewBotWasNotAdded')),
         h("p", null, error.message),
         error.code ? h("span", { className: "bxf-errorCode" }, error.code) : null,
         h("div", { className: "bxf-actions dim-viewActions" },
           h(Button, { kind: "primary", onClick: onRetry, disabled: busy },
-            busy ? "重试中…" : "重新生成二维码"),
-          h(Button, { onClick: onCancel, disabled: busy }, "关闭")),
+            busy ? t('ui.feishu.retrying') : t('ui.dingtalk.generateANewQrCode2')),
+          h(Button, { onClick: onCancel, disabled: busy }, t('ui.dingtalk.close'))),
       ),
     ),
   );
 }
 
 const HEALTH_LABELS = {
-  connected: "运行正常",
-  connecting: "正在连接",
-  offline: "连接中断",
-  error: "需要处理",
+  connected: t('ui.dingtalk.connected'),
+  connecting: t('ui.dingtalk.connecting2'),
+  offline: t('ui.feishu.disconnected'),
+  error: t('ui.feishu.needsAttention'),
 };
 
 function formatCheckedTime(timestamp) {
-  if (!timestamp) return "尚未检查";
+  if (!timestamp) return t('ui.dingtalk.notCheckedYet');
   try {
     return new Intl.DateTimeFormat("zh-CN", {
       hour: "2-digit", minute: "2-digit", second: "2-digit",
     }).format(new Date(timestamp));
   } catch {
-    return "刚刚";
+    return t('ui.dingtalk.justNow');
   }
 }
 
 function connectionTestNotice(value) {
   if (value?.testMessage?.sent === true) {
-    return '测试消息已发送，请到飞书会话中确认。';
+    return t('ui.feishu.testMessageSentCheckTheFeishu');
   }
   if (value?.testMessage?.code === 'test-target-unavailable') {
-    return '连接检查完成。机器人尚未收到可用于测试的私聊消息。';
+    return t('ui.dingtalk.connectionCheckCompletedTheBotHas');
   }
-  return value?.testMessage ? '连接检查完成，但测试消息发送失败。' : null;
+  return value?.testMessage ? t('ui.feishu.connectionCheckCompletedButTheTest') : null;
 }
 
 function RemoveConfirmation({ bot, busy, onConfirm, onCancel }) {
@@ -407,13 +408,13 @@ function RemoveConfirmation({ bot, busy, onConfirm, onCancel }) {
       }
     },
   },
-    h("h4", { id: titleId }, `从 DeepSeek Harness 移除“${bot.bot.name}”？`),
+    h("h4", { id: titleId }, t('ui.common.removeConfirm', { name: bot.bot.name })),
     h("p", { id: descriptionId },
-      "此操作会停止这个机器人的连接，并删除保存在本机的接入配置和凭据。飞书开放平台中的应用不会被自动删除，其他机器人也不受影响。"),
+      t('ui.feishu.thisStopsTheBotConnectionAnd')),
     h("div", { className: "bxf-actions dim-viewActions" },
-      h(Button, { ref: cancelRef, onClick: onCancel, disabled: busy }, "保留机器人"),
+      h(Button, { ref: cancelRef, onClick: onCancel, disabled: busy }, t('ui.dingtalk.keepBot')),
       h(Button, { kind: "danger", onClick: onConfirm, disabled: busy },
-        busy ? "正在移除…" : "确认移除接入")),
+        busy ? t('ui.dingtalk.removing') : t('ui.dingtalk.removeConnection'))),
   );
 }
 
@@ -438,7 +439,7 @@ function GroupResponseModeEditor({
     try {
       await onSave?.(next);
     } catch (cause) {
-      setError(cause?.message ?? "群聊响应方式修改失败，请重试。");
+      setError(cause?.message ?? t('ui.feishu.couldNotUpdateTheGroupResponse'));
     } finally {
       setSaving(false);
     }
@@ -451,7 +452,7 @@ function GroupResponseModeEditor({
     try {
       await onAuthorize?.();
     } catch (cause) {
-      setError(cause?.message ?? "群消息权限授权失败，请重试。");
+      setError(cause?.message ?? t('ui.feishu.couldNotAuthorizeGroupMessagePermission'));
     } finally {
       setAuthorizing(false);
     }
@@ -459,29 +460,29 @@ function GroupResponseModeEditor({
 
   return h("div", { className: "bxf-responseMode dim-responseMode" },
     h("div", { className: "bxf-responseModeHeader dim-responseModeHeader" },
-      h("span", null, "群聊响应方式"),
+      h("span", null, t('ui.feishu.groupResponseMode')),
       saving || authorizing
         ? h("span", { className: "bxf-responseModeStatus dim-responseModeStatus" },
-            saving ? "保存中…" : "正在准备授权…")
+            saving ? t('ui.agentPreset.saving') : t('ui.feishu.preparingAuthorization'))
         : null),
     h("select", {
       className: "bxf-responseModeSelect dim-responseModeSelect",
       value: current,
       disabled: disabled || saving,
-      "aria-label": "群聊响应方式",
+      "aria-label": t('ui.feishu.groupResponseMode'),
       onChange: (event) => { void change(event); },
     },
-      h("option", { value: "mention" }, "仅在 @机器人时响应（推荐）"),
-      h("option", { value: "all" }, "响应所有群消息"),
+      h("option", { value: "mention" }, t('ui.feishu.onlyRespondWhenMentionedRecommended')),
+      h("option", { value: "all" }, t('ui.feishu.respondToAllGroupMessages')),
     ),
     h("small", { className: "bxf-responseModeHelp dim-responseModeHelp" },
       current === "mention"
         ? permissionGranted
-          ? "私聊始终响应；群聊仅处理明确 @当前机器人的消息。群消息权限已开通，再次切换无需授权。"
-          : "私聊始终响应；群聊仅处理明确 @当前机器人的消息。选择全部消息后会打开飞书官方授权流程。"
+          ? t('ui.feishu.directMessagesAlwaysWorkGroupChats')
+          : t('ui.feishu.directMessagesAlwaysWorkGroupChats2')
         : permissionGranted
-          ? "已开通“获取群组中所有消息”权限（im:message.group_msg）；机器人会处理群聊中的所有可见消息。"
-          : "尚未确认“获取群组中所有消息”权限，请完成飞书授权。"),
+          ? t('ui.feishu.theReadAllMessagesInAssociated')
+          : t('ui.feishu.theReadAllMessagesInAssociated2')),
     current === "all"
       ? h("div", { className: "bxf-responseModePermissionAction dim-responseModePermissionAction" },
           h(Button, {
@@ -489,9 +490,9 @@ function GroupResponseModeEditor({
             size: "small",
             disabled: disabled || authorizationDisabled || saving || authorizing,
             "aria-busy": authorizing ? "true" : undefined,
-            "aria-label": permissionGranted ? "重新授权群消息权限" : "授权群消息权限",
+            "aria-label": permissionGranted ? t('ui.feishu.reauthorizeGroupMessagePermission') : t('ui.feishu.authorizeGroupMessagePermission'),
             onClick: () => { void authorize(); },
-          }, authorizing ? "正在准备…" : permissionGranted ? "重新授权" : "去授权"))
+          }, authorizing ? t('ui.feishu.preparing') : permissionGranted ? t('ui.feishu.reauthorize') : t('ui.feishu.authorize')))
       : null,
     error ? h("p", {
       className: "bxf-responseModeError dim-responseModeError",
@@ -548,13 +549,13 @@ export function BotCard({
             h(FeishuLogoGlyph, { size: 34 })),
           h("div", { className: "bxf-botName dim-botName" },
             h("h3", { id: titleId, title: bot.name }, bot.name),
-            h("p", { title: bot.appIdMasked }, bot.appIdMasked ?? "应用标识已安全保存")),
+            h("p", { title: bot.appIdMasked }, bot.appIdMasked ?? t('ui.feishu.appIdentifierStoredSecurely'))),
         ),
         h(BotStatusMeta, {
           className: "bxf-healthPill",
           dotClassName: "bxf-dot",
           tone,
-          stateLabel: HEALTH_LABELS[stateForDisplay] ?? "状态未知",
+          stateLabel: HEALTH_LABELS[stateForDisplay] ?? t('ui.feishu.unknownStatus'),
           lastCheckedAt: health.lastCheckedAt,
           formatCheckedTime,
           healthState: stateForDisplay,
@@ -581,7 +582,7 @@ export function BotCard({
       provisionContent
         ? h("section", {
             className: "bxf-botProvision dim-botProvision",
-            "aria-label": `${bot.name}的飞书授权流程`,
+            "aria-label": t('ui.feishu.authFlow', { name: bot.name }),
             "data-provision-for": connection.botId,
             ref: provisionRef,
             tabIndex: -1,
@@ -593,20 +594,22 @@ export function BotCard({
             h(Button, {
               className: "dim-cardAction", onClick: onReconnect,
               disabled: Boolean(busy), "aria-busy": busy === "reconnect" ? "true" : undefined,
-              "aria-label": `${connected ? "检查连接" : "重试连接"}${bot.name}`,
-            }, busy === "reconnect" ? (connected ? "检查中…" : "正在连接…") : connected ? "检查连接" : "重试连接"),
+              "aria-label": connected
+                ? t('ui.feishu.checkConnectionOf', { name: bot.name })
+                : t('ui.feishu.retryConnectionOf', { name: bot.name }),
+            }, busy === "reconnect" ? (connected ? t('ui.dingtalk.checking') : t('ui.feishu.connecting')) : connected ? t('ui.dingtalk.checkConnection') : t('ui.dingtalk.reconnect')),
             h(Button, {
               className: "bxf-repairButton dim-cardAction",
               onClick: onRepairCallback,
               disabled: Boolean(busy) || repairDisabled,
               "aria-busy": busy === "callback-repair" ? "true" : undefined,
-              "aria-label": `修复${bot.name}的卡片按钮`,
-            }, busy === "callback-repair" ? "等待扫码…" : "修复卡片按钮"),
+              "aria-label": t('ui.feishu.repairCardButtonsOf', { name: bot.name }),
+            }, busy === "callback-repair" ? t('ui.feishu.waitingForScan') : t('ui.feishu.repairCardButtons')),
             h(Button, {
               className: "dim-cardAction", kind: "danger", onClick: onRequestRemove,
               disabled: Boolean(busy), ref: removeButtonRef,
-              "aria-label": `从 DeepSeek Harness 移除${bot.name}`,
-            }, "移除接入")),
+              "aria-label": t('ui.feishu.removeFromHarness', { name: bot.name }),
+            }, t('ui.dingtalk.removeConnection2'))),
           summary ? h("div", { className: "bxf-healthSummary dim-cardSummary", "data-error": actionError || connection.error ? "true" : undefined },
             summary) : null,
           testNotice ? h("div", {
@@ -631,8 +634,8 @@ function BotList(props) {
     h(ChannelListHeading, {
       className: "bxf-listHeading",
       id: "bxf-bot-list-title",
-      title: "已接入的机器人",
-      connectionLabel: "长连接",
+      title: t('ui.feishu.connectedBots'),
+      connectionLabel: t('ui.feishu.persistentConnection'),
     }),
     h("ul", { className: "bxf-botList dim-botList", role: "list" },
       props.bots.map((bot) => h("li", { key: bot.botId },
@@ -670,12 +673,12 @@ function PageError({ error, onRetry, busy }) {
   return h("div", { className: "bxf-card dim-surfaceCard" },
     h("div", { className: "bxf-error dim-inlineError", role: "alert" },
       h("div", null,
-        h("h3", null, "无法读取飞书机器人"),
+        h("h3", null, t('ui.feishu.couldNotLoadFeishuBots')),
         h("p", null, error.message),
         error.code ? h("span", { className: "bxf-errorCode" }, error.code) : null,
         h("div", { className: "bxf-actions dim-viewActions" },
           h(Button, { kind: "primary", onClick: onRetry, disabled: busy },
-            busy ? "重试中…" : "重新读取"))),
+            busy ? t('ui.feishu.retrying') : t('ui.dingtalk.reload')))),
     ),
   );
 }
@@ -890,8 +893,8 @@ export function FeishuSettingsTab({ rpcCall }) {
       if (targetedUpdate
         && (provision.operation !== operation || provision.botId !== botId)) {
         throw new Error(grantingGroupMessages
-          ? "飞书服务返回了不匹配的群消息权限二维码"
-          : "飞书服务返回了不匹配的卡片修复二维码");
+          ? t('ui.feishu.feishuReturnedAGroupMessagePermission')
+          : t('ui.feishu.feishuReturnedARepairQrCode'));
       }
       const timestamp = Date.now();
       setNow(timestamp);
@@ -906,10 +909,10 @@ export function FeishuSettingsTab({ rpcCall }) {
         },
       }));
       announce(repairing
-        ? `${botName ?? "机器人"}的修复二维码已生成，请使用飞书扫码。`
+        ? t('ui.feishu.repairQrReady', { name: botName ?? t('ui.common.defaultBotName') })
         : grantingGroupMessages
-          ? `${botName ?? "机器人"}的群消息权限二维码已生成，请使用飞书确认。`
-          : "授权二维码已生成，请使用飞书扫码。");
+          ? t('ui.feishu.groupQrReady', { name: botName ?? t('ui.common.defaultBotName') })
+          : t('ui.feishu.authorizationQrCodeGeneratedScanIt'));
     } catch (error) {
       setModel((current) => ({
         ...current,
@@ -946,7 +949,7 @@ export function FeishuSettingsTab({ rpcCall }) {
         mergeSnapshot(snapshot);
       }
       setCredentialOpen(false);
-      announce("飞书机器人凭据已绑定。");
+      announce(t('ui.feishu.feishuBotCredentialsConnected'));
     } catch (error) {
       setCredentialError(presentError(error));
     } finally {
@@ -973,7 +976,7 @@ export function FeishuSettingsTab({ rpcCall }) {
       if (targetedUpdate && result) {
         if (result.operation !== activeProvision.operation
           || result.botId !== activeProvision.botId) {
-          throw new Error("飞书服务返回了不匹配的注册进度");
+          throw new Error(t('ui.feishu.feishuReturnedRegistrationProgressForA'));
         }
         if (result.status === "connecting") {
           setModel((current) => current.provisioning?.attemptId === attemptId
@@ -989,16 +992,16 @@ export function FeishuSettingsTab({ rpcCall }) {
               }
             : current);
           announce(grantingGroupMessages
-            ? "权限配置已提交，正在启用全部消息模式并重连此机器人；此阶段无法取消，其他机器人不会中断。"
-            : "配置已提交，正在验证卡片按钮回调并重连此机器人；此阶段无法取消，其他机器人不会中断。");
+            ? t('ui.feishu.thePermissionUpdateWasSubmittedEnabling')
+            : t('ui.feishu.theUpdateWasSubmittedVerifyingThe'));
           return;
         }
         if (result.status === "connected") {
-          const targetBotName = targetBot?.bot.name ?? activeProvision.botName ?? "机器人";
+          const targetBotName = targetBot?.bot.name ?? activeProvision.botName ?? t('ui.common.defaultBotName');
           setModel((current) => ({ ...current, provisioning: null }));
           announce(grantingGroupMessages
-            ? `${targetBotName}已开通群消息权限，并启用“响应所有群消息”。`
-            : `${targetBotName}的卡片按钮已修复。`);
+            ? t('ui.feishu.groupPermissionGranted', { name: targetBotName })
+            : t('ui.feishu.cardButtonsRepaired', { name: targetBotName }));
           if (activeProvision.botId) setFocusBotId(activeProvision.botId);
           await loadStatus({ silent: true, restoreProvisioning: false });
           return;
@@ -1006,8 +1009,8 @@ export function FeishuSettingsTab({ rpcCall }) {
       }
       setModel((current) => ({ ...current, provisioning: null }));
       announce(repairing
-        ? "已取消卡片按钮修复。"
-        : grantingGroupMessages ? "已取消群消息权限授权。" : "已取消添加机器人。");
+        ? t('ui.feishu.cardButtonRepairWasCancelled')
+        : grantingGroupMessages ? t('ui.feishu.groupMessagePermissionAuthorizationWasCancelled') : t('ui.feishu.addingTheBotWasCancelled'));
       await loadStatus({ silent: true, restoreProvisioning: false });
       scheduleAnimationFrame(() => {
         if (targetedUpdate && activeProvision.botId) {
@@ -1068,17 +1071,17 @@ export function FeishuSettingsTab({ rpcCall }) {
         ));
         if (result.operation !== provision.operation
           || (isTargetedAppUpdate(provision) && result.botId !== provision.botId)) {
-          throw new Error("飞书服务返回了不匹配的注册进度");
+          throw new Error(t('ui.feishu.feishuReturnedRegistrationProgressForA'));
         }
         if (result.status === "connected") {
           const snapshot = await loadStatus({ signal: controller.signal, silent: true, restoreProvisioning: false });
           const targetBot = snapshot?.bots.find((bot) => bot.botId === result.botId);
           if (!snapshot) {
             throw new Error(isCallbackRepair(provision)
-              ? "卡片按钮已更新，但暂时无法确认机器人连接状态"
+              ? t('ui.feishu.theCardCallbackWasUpdatedBut')
               : isGroupMessagePermission(provision)
-                ? "群消息权限已更新，但暂时无法确认机器人连接状态"
-                : "机器人已经创建，但暂时无法确认连接状态");
+                ? t('ui.feishu.theGroupMessagePermissionWasUpdated')
+                : t('ui.feishu.theBotWasCreatedButIts'));
           }
           if (!targetBot?.connected) {
             setModel((current) => current.provisioning?.attemptId === provision.attemptId
@@ -1088,22 +1091,22 @@ export function FeishuSettingsTab({ rpcCall }) {
           }
           setModel((current) => ({ ...current, provisioning: null }));
           announce(isCallbackRepair(provision)
-            ? `${targetBot.bot.name}的卡片按钮已修复。`
+            ? t('ui.feishu.cardButtonsRepaired', { name: targetBot.bot.name })
             : isGroupMessagePermission(provision)
-              ? `${targetBot.bot.name}已开通群消息权限，并启用“响应所有群消息”。`
+              ? t('ui.feishu.groupPermissionGranted', { name: targetBot.bot.name })
               : targetBot
-                ? `${targetBot.bot.name}已连接，可以在飞书中开始聊天。`
-                : "新飞书机器人已连接，可以开始聊天。");
+                ? t('ui.feishu.connectedReady', { name: targetBot.bot.name })
+                : t('ui.feishu.theNewFeishuBotIsConnected'));
           if (result.botId) setFocusBotId(result.botId);
           return;
         }
         if (result.status === "failed") {
           const error = new Error(result.message
             ?? (isCallbackRepair(provision)
-              ? "飞书卡片按钮修复失败"
+              ? t('ui.feishu.couldNotRepairTheFeishuCard')
               : isGroupMessagePermission(provision)
-                ? "飞书群消息权限开通失败"
-                : "飞书应用创建失败"));
+                ? t('ui.feishu.couldNotGrantTheFeishuGroup')
+                : t('ui.feishu.couldNotCreateTheFeishuApp')));
           error.code = "FEISHU_PROVISION_FAILED";
           throw error;
         }
@@ -1198,7 +1201,7 @@ export function FeishuSettingsTab({ rpcCall }) {
       const refreshed = snapshot.bots.find((item) => item.botId === botId);
       if (!refreshed?.connected) {
         const error = new Error(
-          refreshed?.error?.message ?? refreshed?.health.summary ?? "机器人仍未连接",
+          refreshed?.error?.message ?? refreshed?.health.summary ?? t('ui.feishu.theBotIsStillOffline'),
         );
         error.code = refreshed?.error?.code ?? "FEISHU_BOT_OFFLINE";
         throw error;
@@ -1208,10 +1211,10 @@ export function FeishuSettingsTab({ rpcCall }) {
         setTestNoticesByBot((current) => ({ ...current, [botId]: testNotice }));
       }
       announce(testNotice ?? (connection.connected
-        ? `${bot.name}连接检查完成。`
-        : `${bot.name}已重新连接。`));
+        ? t('ui.feishu.connectionCheckDone', { name: bot.name })
+        : t('ui.feishu.reconnected', { name: bot.name })));
     } catch (error) {
-      const failure = new Error("连接检查失败，请稍后重试。");
+      const failure = new Error(t('ui.dingtalk.connectionCheckFailedTryAgainLater'));
       failure.code = error?.code;
       setBotError(botId, failure);
       announce(failure.message);
@@ -1265,7 +1268,7 @@ export function FeishuSettingsTab({ rpcCall }) {
   const authorizeGroupMessages = React.useCallback(async (connection) => {
     const { botId } = connection;
     if (model.provisioning) {
-      throw new Error("请先完成当前飞书授权操作，再开通群消息权限。");
+      throw new Error(t('ui.feishu.finishTheCurrentFeishuAuthorizationBefore'));
     }
     setRemoveTargetId(null);
     setBotError(botId, null);
@@ -1336,11 +1339,11 @@ export function FeishuSettingsTab({ rpcCall }) {
       if (mountedRef.current && workspaceFence.canCommitMutation(snapshotVersion)) {
         mergeSnapshot(snapshot);
       }
-      announce(`${bot.name}已从此 DeepSeek Harness 移除；飞书开放平台中的应用未被删除。`);
+      announce(t('ui.feishu.removedNotice', { name: bot.name }));
       scheduleAnimationFrame(() => addButtonRef.current?.focus(), "focus");
     } catch (error) {
       setBotError(botId, error);
-      announce(`${bot.name}移除失败，请重试。`);
+      announce(t('ui.feishu.removeFailed', { name: bot.name }));
     } finally {
       const shouldRefresh = workspaceFence.endMutation();
       if (shouldRefresh && mountedRef.current) void loadStatus({ silent: true });
@@ -1352,7 +1355,7 @@ export function FeishuSettingsTab({ rpcCall }) {
   const targetedProvisioning = isTargetedAppUpdate(provision);
   const provisionBot = provision?.botId
     ? model.bots.find((bot) => bot.botId === provision.botId)
-      ?? { botId: provision.botId, bot: { name: provision.botName ?? "此机器人" } }
+      ?? { botId: provision.botId, bot: { name: provision.botName ?? t('ui.feishu.thisBot') } }
     : undefined;
   const restartProvisioning = ({ replace = false } = {}) => startProvisioning({
     replace,
@@ -1398,11 +1401,11 @@ export function FeishuSettingsTab({ rpcCall }) {
 
   const credentialContent = credentialOpen
     ? h(CredentialBindingPanel, {
-        channel: "飞书",
+        channel: t('ui.feishu.feishu'),
         identityLabel: "App ID",
-        identityPlaceholder: "填写飞书开放平台 App ID",
+        identityPlaceholder: t('ui.feishu.enterTheFeishuOpenPlatformApp'),
         secretLabel: "App Secret",
-        secretPlaceholder: "填写飞书开放平台 App Secret",
+        secretPlaceholder: t('ui.feishu.enterTheFeishuOpenPlatformApp2'),
         busy: credentialBusy,
         error: credentialError,
         onSubmit: bindCredentials,
@@ -1421,7 +1424,7 @@ export function FeishuSettingsTab({ rpcCall }) {
 
   return h(AgentPresetCatalogContext.Provider, {
     value: model.agentPresetCatalog ?? EMPTY_AGENT_PRESET_CATALOG,
-  }, h("section", { className: "bxf-page dim-channelPage", "aria-label": "飞书机器人设置" },
+  }, h("section", { className: "bxf-page dim-channelPage", "aria-label": t('ui.feishu.feishuBotSettings') },
     h(Heading, {
       totals: model.totals,
       onAdd: () => void startProvisioning(),
@@ -1437,14 +1440,14 @@ export function FeishuSettingsTab({ rpcCall }) {
     model.statusError
       ? h("div", { className: "bxf-statusNotice dim-statusNotice", role: "status" },
           h(AlertIcon, { size: 16 }),
-          h("span", null, `状态自动刷新失败：${model.statusError.message}`),
-          h(Button, { size: "small", onClick: () => void loadStatus({ silent: true }), disabled: pageBusy }, "立即重试"))
+          h("span", null, t('ui.common.statusAutoRefreshFailed', { reason: model.statusError.message })),
+          h(Button, { size: "small", onClick: () => void loadStatus({ silent: true }), disabled: pageBusy }, t('ui.feishu.retryNow')))
       : null,
     model.phase === "loading"
       ? h(LoadingView)
       : model.phase === "error"
         ? h(PageError, {
-            error: model.pageError ?? { message: "无法读取连接状态" },
+            error: model.pageError ?? { message: t('ui.feishu.couldNotLoadConnectionStatus') },
             onRetry: () => void loadStatus(),
             busy: pageBusy,
           })
@@ -1496,7 +1499,7 @@ export function apply(ctx) {
         name: "settings.plugins.tab",
         id: "feishu",
         order: 20,
-        label: "飞书",
+        label: t('ui.feishu.feishu'),
         inject: () => ({ rpcCall }),
       },
       FeishuSettingsTab,

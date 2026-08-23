@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { WeixinLogoGlyph } from '../../channel-logos.js';
 import { QrActionIcon } from '../../credential-binding.js';
-import { h } from '../../i18n.js';
+import { h, t } from '../../i18n.js';
 import {
   WEIXIN_ENDPOINTS,
   WEIXIN_RPC_CHANNEL,
@@ -24,6 +24,8 @@ import {
 import { useWorkspaceSnapshotFence } from '../../workspace-snapshot-fence.js';
 import { BotStatusMeta, ChannelListHeading } from '../../channel-card-meta.js';
 import { installWeixinStyles } from './styles.js';
+
+const CHANNEL_LABEL = 'WeChat';
 
 export const name = 'weixin-settings';
 export const inject = ['slots', 'connection'];
@@ -50,11 +52,11 @@ function Heading({ totals, adding, busy, onAdd, addButtonRef }) {
         onClick: onAdd,
         disabled: adding || busy,
         ref: addButtonRef,
-        'aria-label': '扫码接入微信机器人',
-      }, h(QrActionIcon), adding ? '正在接入' : '扫码接入机器人'),
+        'aria-label': t('ui.weixin.connectWechatBotByQrCode'),
+      }, h(QrActionIcon), adding ? t('ui.dingtalk.connecting') : t('ui.dingtalk.scanQrCode')),
       totals.configured > 0
         ? h('div', { className: 'dxw-badge dim-onlineBadge' },
-            h('span', null, `${totals.connected} / ${totals.configured} 在线`))
+            h('span', null, t('ui.common.onlineCount', { connected: totals.connected, configured: totals.configured })))
         : null,
     ),
   );
@@ -63,7 +65,7 @@ function Heading({ totals, adding, busy, onAdd, addButtonRef }) {
 function LoadingView() {
   return h('div', { className: 'dxw-card dxw-loading dim-surfaceCard dim-loadingView', 'aria-busy': 'true' },
     h('div', { className: 'dxw-spinner dim-spinner' }),
-    h('span', null, '正在读取微信连接状态…'));
+    h('span', null, t('ui.weixin.loadingWechatConnectionStatus')));
 }
 
 function EmptyView({ onStart, busy }) {
@@ -71,12 +73,12 @@ function EmptyView({ onStart, busy }) {
     h('div', { className: 'dxw-cardBody dxw-empty dim-surfaceBody dim-emptyView' },
       h('div', { className: 'dim-emptyCopy' },
         h('div', { className: 'dxw-stateLabel dim-stateLabel' },
-          h('span', { className: 'dxw-dot dim-stateDot' }), h('span', null, '尚未绑定微信')),
-        h('h3', null, '扫一次码，就能在微信里使用 Harness'),
-        h('p', null, '二维码由腾讯微信 iLink 服务签发。用手机微信扫描并确认后，账号凭据会直接写入 Harness Host，浏览器不会收到 bot_token。'),
+          h('span', { className: 'dxw-dot dim-stateDot' }), h('span', null, t('ui.weixin.noWechatAccountConnectedYet'))),
+        h('h3', null, t('ui.weixin.scanOnceToUseHarnessIn')),
+        h('p', null, t('ui.weixin.theQrCodeIsIssuedBy')),
         h('div', { className: 'dxw-actions dim-viewActions' },
           h(Button, { kind: 'primary', onClick: onStart, disabled: busy },
-            busy ? '正在生成二维码…' : '生成微信二维码')),
+            busy ? t('ui.dingtalk.generatingQrCode') : t('ui.weixin.generateWechatQrCode'))),
       ),
       h('div', { className: 'dxw-logo dim-emptyBrand', 'aria-hidden': 'true' }, h(WeixinLogoGlyph, { size: 64 })),
     ));
@@ -99,36 +101,36 @@ function QrPanel({ provision, now, busy, onRefresh, onCancel }) {
           source && !imageFailed
             ? h('img', {
                 src: source,
-                alt: '用于把微信机器人绑定到 DeepSeek Harness 的一次性二维码',
+                alt: t('ui.weixin.oneTimeQrCodeForConnecting'),
                 onError: () => setImageFailed(true),
               })
-            : h('div', { className: 'dxw-qrFallback dim-qrFallback' }, '二维码图片未就绪，请使用备用链接。'),
-          expired ? h('div', { className: 'dxw-expired dim-qrExpired' }, '二维码已过期\n请重新生成') : null,
+            : h('div', { className: 'dxw-qrFallback dim-qrFallback' }, t('ui.weixin.theQrCodeIsNotReady')),
+          expired ? h('div', { className: 'dxw-expired dim-qrExpired' }, t('ui.common.qrExpiredRegenerate')) : null,
         ),
         h('div', { className: 'dxw-countdown dim-countdown' },
-          h('div', { className: 'dim-countdownTop' }, h('span', null, '二维码有效时间'), h('strong', null, formatRemaining(remaining))),
+          h('div', { className: 'dim-countdownTop' }, h('span', null, t('ui.dingtalk.qrCodeExpiresIn')), h('strong', null, formatRemaining(remaining))),
           h('div', { className: 'dxw-progress dim-progress', 'aria-hidden': 'true' },
             h('span', { style: { '--dxw-progress': `${progress}%` } })),
         )),
       h('div', { className: 'dxw-qrCopy dim-qrCopy' },
         h('div', { className: 'dxw-stateLabel dim-stateLabel' },
           h('span', { className: 'dxw-dot dim-stateDot', 'data-tone': provision.status === 'scanned' ? 'success' : 'warning' }),
-          h('span', null, provision.status === 'scanned' ? '已扫码，请在手机上确认' : '等待微信扫码')),
-        h('h3', null, expired ? '二维码已失效' : '使用手机微信扫描二维码'),
-        h('p', null, '请在手机上核对并确认授权。部分账号会额外显示一个配对数字，页面会在需要时提示输入。'),
+          h('span', null, provision.status === 'scanned' ? t('ui.weixin.scannedConfirmOnYourPhone') : t('ui.weixin.waitingForWechatScan'))),
+        h('h3', null, expired ? t('ui.dingtalk.qrCodeExpired') : t('ui.weixin.scanWithWechatOnYourPhone')),
+        h('p', null, t('ui.weixin.reviewAndConfirmAuthorizationOnYour')),
         h('ol', { className: 'dxw-steps dim-steps' },
-          h('li', null, '打开手机微信并扫描左侧二维码'),
-          h('li', null, '在微信中确认连接该机器人'),
-          h('li', null, '保持本页打开，等待消息长轮询变为在线')),
+          h('li', null, t('ui.weixin.openWechatOnYourPhoneAnd')),
+          h('li', null, t('ui.weixin.confirmTheBotConnectionInWechat')),
+          h('li', null, t('ui.weixin.keepThisPageOpenUntilLong'))),
         h('div', { className: 'dxw-actions dim-viewActions' },
           expired
-            ? h(Button, { kind: 'primary', onClick: onRefresh, disabled: busy }, '重新生成二维码')
+            ? h(Button, { kind: 'primary', onClick: onRefresh, disabled: busy }, t('ui.dingtalk.generateANewQrCode2'))
             : null,
           href ? h('a', {
             className: 'dxw-button', href, target: '_blank', rel: 'noopener noreferrer',
-          }, '打开备用链接') : null,
-          !expired ? h(Button, { onClick: onRefresh, disabled: busy }, '换一个二维码') : null,
-          h(Button, { onClick: onCancel, disabled: busy }, '取消')),
+          }, t('ui.weixin.openAlternateLink')) : null,
+          !expired ? h(Button, { onClick: onRefresh, disabled: busy }, t('ui.dingtalk.getAnotherQrCode')) : null,
+          h(Button, { onClick: onCancel, disabled: busy }, t('ui.dingtalk.cancel'))),
       ),
     ));
 }
@@ -146,9 +148,9 @@ function VerificationPanel({ provision, busy, onSubmit, onCancel }) {
       },
     },
     h('div', { className: 'dxw-stateLabel' },
-      h('span', { className: 'dxw-dot', 'data-tone': 'warning' }), h('span', null, '需要配对码')),
-    h('h3', null, '输入手机微信显示的数字'),
-    h('p', null, '这是微信附加的安全确认步骤。配对码只用于本次扫码轮询，不会写入配置或日志。'),
+      h('span', { className: 'dxw-dot', 'data-tone': 'warning' }), h('span', null, t('ui.weixin.pairingCodeRequired'))),
+    h('h3', null, t('ui.weixin.enterTheNumberShownInWechat')),
+    h('p', null, t('ui.weixin.thisIsAnAdditionalWechatConfirmation')),
     h('div', { className: 'dxw-codeRow' },
       h('input', {
         className: 'dxw-input',
@@ -156,7 +158,7 @@ function VerificationPanel({ provision, busy, onSubmit, onCancel }) {
         inputMode: 'numeric',
         autoComplete: 'one-time-code',
         maxLength: 8,
-        'aria-label': '微信配对码',
+        'aria-label': t('ui.weixin.wechatPairingCode'),
         onChange: (event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 8)),
         autoFocus: true,
       }),
@@ -165,39 +167,39 @@ function VerificationPanel({ provision, busy, onSubmit, onCancel }) {
         className: 'dxw-button',
         'data-kind': 'primary',
         disabled: !valid || busy,
-      }, busy ? '正在验证…' : '继续连接')),
-    h(Button, { onClick: onCancel, disabled: busy }, '取消绑定')));
+      }, busy ? t('ui.weixin.verifying') : t('ui.weixin.continueConnecting'))),
+    h(Button, { onClick: onCancel, disabled: busy }, t('ui.weixin.cancelSetup'))));
 }
 
 function ProgressPanel({ scanned, onCancel, busy }) {
   return h('div', { className: 'dxw-card dxw-loading dim-surfaceCard dim-loadingView', 'aria-busy': 'true' },
     h('div', { className: 'dxw-spinner dim-spinner' }),
-    h('h3', null, scanned ? '微信已确认，正在启动消息连接' : '正在准备微信二维码'),
-    h('p', null, scanned ? '正在保存凭据并验证 Harness 与微信长轮询。' : '正在联系腾讯微信 iLink 服务。'),
+    h('h3', null, scanned ? t('ui.weixin.confirmedInWechatStartingTheMessage') : t('ui.weixin.preparingWechatQrCode')),
+    h('p', null, scanned ? t('ui.weixin.savingCredentialsAndVerifyingTheWechat') : t('ui.weixin.contactingTheWechatIlinkService')),
     onCancel ? h('div', { className: 'dxw-actions dim-viewActions', style: { justifyContent: 'center', marginTop: 14 } },
-      h(Button, { onClick: onCancel, disabled: busy }, '取消')) : null);
+      h(Button, { onClick: onCancel, disabled: busy }, t('ui.dingtalk.cancel'))) : null);
 }
 
 function ProvisionError({ provision, busy, onRetry, onClose }) {
-  const error = provision.error ?? { code: 'WEIXIN_PROVISION_FAILED', message: '微信绑定没有完成' };
+  const error = provision.error ?? { code: 'WEIXIN_PROVISION_FAILED', message: t('ui.weixin.wechatSetupDidNotComplete') };
   return h('div', { className: 'dxw-card dim-surfaceCard' },
     h('div', { className: 'dxw-error dim-inlineError', role: 'alert' },
-      h('h3', null, provision.status === 'expired' ? '二维码已过期' : '微信没有绑定完成'),
+      h('h3', null, provision.status === 'expired' ? t('ui.dingtalk.qrCodeExpired2') : t('ui.common.notBound', { channel: CHANNEL_LABEL })),
       h('p', null, error.message),
       h('span', { className: 'dxw-errorCode' }, error.code),
       h('div', { className: 'dxw-actions dim-viewActions' },
-        h(Button, { kind: 'primary', onClick: onRetry, disabled: busy }, '重新生成二维码'),
-        h(Button, { onClick: onClose, disabled: busy }, '关闭'))));
+        h(Button, { kind: 'primary', onClick: onRetry, disabled: busy }, t('ui.dingtalk.generateANewQrCode2')),
+        h(Button, { onClick: onClose, disabled: busy }, t('ui.dingtalk.close')))));
 }
 
 function checkedTime(timestamp) {
-  if (!timestamp) return '尚未检查';
+  if (!timestamp) return t('ui.dingtalk.notCheckedYet');
   try {
     return new Intl.DateTimeFormat('zh-CN', {
       hour: '2-digit', minute: '2-digit', second: '2-digit',
     }).format(new Date(timestamp));
   } catch {
-    return '刚刚';
+    return t('ui.dingtalk.justNow');
   }
 }
 
@@ -226,7 +228,7 @@ export function AccountCard({
           className: 'dxw-health',
           dotClassName: 'dxw-dot',
           tone,
-          stateLabel: account.connected ? '运行正常' : state === 'connecting' ? '正在连接' : '连接未就绪',
+          stateLabel: account.connected ? t('ui.dingtalk.connected') : state === 'connecting' ? t('ui.dingtalk.connecting2') : t('ui.dingtalk.notConnected'),
           lastCheckedAt: account.health.lastCheckedAt,
           formatCheckedTime: checkedTime,
         })),
@@ -244,25 +246,25 @@ export function AccountCard({
         h('div', { className: 'dim-cardFooterLayout' },
           h('div', { className: 'dxw-actions dim-cardActions' },
             h(Button, { className: 'dim-cardAction', onClick: onReconnect, disabled: Boolean(busy) },
-              busy === 'reconnect' ? '检查中…' : account.connected ? '检查连接' : '重试连接'),
-            h(Button, { className: 'dim-cardAction', kind: 'danger', onClick: onRequestRemove, disabled: Boolean(busy) }, '移除接入')),
+              busy === 'reconnect' ? t('ui.dingtalk.checking') : account.connected ? t('ui.dingtalk.checkConnection') : t('ui.dingtalk.reconnect')),
+            h(Button, { className: 'dim-cardAction', kind: 'danger', onClick: onRequestRemove, disabled: Boolean(busy) }, t('ui.dingtalk.removeConnection2'))),
           summary ? h('div', { className: 'dxw-summary dim-cardSummary' }, summary) : null,
           account.lastMessageError ? h('div', {
             className: 'dxw-summary dim-cardSummary',
             role: 'status',
-          }, `最近一条消息处理失败：${account.lastMessageError.message}`) : null,
+          }, t('ui.common.lastMessageFailed', { reason: account.lastMessageError.message })) : null,
           feedback ? h('div', {
             className: 'dxw-summary dim-cardFeedback',
             role: 'status',
             'aria-live': 'polite',
           }, feedback) : null))),
     removing ? h('div', { className: 'dxw-confirm dim-confirm', role: 'alertdialog' },
-      h('strong', null, '从此 Harness 移除这个微信账号？'),
-      h('p', null, '这会停止消息连接，并删除本机保存的 bot_token、账号配置和会话映射。其他微信账号不受影响。'),
+      h('strong', null, t('ui.weixin.removeThisWechatAccountFromHarness')),
+      h('p', null, t('ui.weixin.thisStopsTheMessageConnectionAnd')),
       h('div', { className: 'dxw-actions dim-viewActions' },
-        h(Button, { onClick: onCancelRemove, disabled: busy === 'delete' }, '保留账号'),
+        h(Button, { onClick: onCancelRemove, disabled: busy === 'delete' }, t('ui.weixin.keepAccount')),
         h(Button, { kind: 'danger', onClick: onConfirmRemove, disabled: busy === 'delete' },
-          busy === 'delete' ? '正在移除…' : '确认移除')))
+          busy === 'delete' ? t('ui.dingtalk.removing') : t('ui.weixin.remove'))))
       : null);
 }
 
@@ -270,8 +272,8 @@ function AccountList(props) {
   return h('section', { className: 'dim-listSection' },
     h(ChannelListHeading, {
       className: 'dxw-listHeading',
-      title: '已接入的微信账号',
-      connectionLabel: 'iLink 长轮询',
+      title: t('ui.weixin.connectedWechatAccounts'),
+      connectionLabel: t('ui.weixin.ilinkLongPolling'),
     }),
     h('ul', { className: 'dxw-list dim-botList' }, props.bots.map((account) => h('li', { key: account.botId },
       h(AccountCard, {
@@ -414,7 +416,7 @@ export function WeixinSettingsTab({ rpcCall }) {
       const started = normalizeProvisioning(await invoke(WEIXIN_ENDPOINTS.beginProvisioning, { locale: 'zh-CN' }));
       setNow(Date.now());
       setProvision({ ...started, durationMs: Math.max(1, started.expiresAt - Date.now()) });
-      announce('微信二维码已生成，请使用手机微信扫描。');
+      announce(t('ui.weixin.wechatQrCodeGeneratedScanIt'));
     } catch (error) {
       setProvision({
         status: 'failed',
@@ -433,7 +435,7 @@ export function WeixinSettingsTab({ rpcCall }) {
         await invoke(WEIXIN_ENDPOINTS.cancelProvisioning, { attemptId: provision.attemptId });
       }
       setProvision(null);
-      announce('已取消微信绑定。');
+      announce(t('ui.weixin.wechatSetupWasCancelled'));
       scheduleAnimationFrame(() => addButtonRef.current?.focus(), 'focus');
     } catch (error) {
       setProvision((current) => ({ ...current, status: 'failed', error: presentError(error) }));
@@ -451,7 +453,7 @@ export function WeixinSettingsTab({ rpcCall }) {
         verifyCode,
       }));
       setProvision((current) => ({ ...current, ...next }));
-      announce('配对码已提交，正在等待微信确认。');
+      announce(t('ui.weixin.pairingCodeSubmittedWaitingForWechat'));
     } catch (error) {
       setProvision((current) => ({ ...current, status: 'failed', error: presentError(error) }));
     } finally {
@@ -492,8 +494,8 @@ export function WeixinSettingsTab({ rpcCall }) {
           }
           setProvision(null);
           announce(result.alreadyConnected
-            ? '这个微信账号已经绑定并保持在线。'
-            : '微信已绑定，可以开始向已绑定的机器人发消息。');
+            ? t('ui.weixin.thisWechatAccountIsConnectedAnd')
+            : t('ui.weixin.wechatIsConnectedAndReadyFor'));
           return;
         }
         setProvision((current) => current?.attemptId === attemptId
@@ -547,22 +549,22 @@ export function WeixinSettingsTab({ rpcCall }) {
       const refreshed = snapshot.bots.find((bot) => bot.botId === account.botId);
       let feedback;
       if (!refreshed?.connected) {
-        feedback = '微信仍未连接，插件会继续自动重试。';
+        feedback = t('ui.common.stillOffline', { channel: CHANNEL_LABEL });
       } else if (snapshot.testMessage?.sent) {
-        feedback = '微信连接检查完成，测试消息已发送。';
+        feedback = t('ui.weixin.wechatConnectionCheckCompletedAndThe');
       } else if (snapshot.testMessage?.code === 'test-target-unavailable') {
-        feedback = '连接检查完成。机器人尚未收到可用于测试的私聊消息。';
+        feedback = t('ui.dingtalk.connectionCheckCompletedTheBotHas');
       } else if (snapshot.testMessage) {
-        feedback = '微信连接检查完成，但测试消息发送失败。';
+        feedback = t('ui.weixin.wechatConnectionCheckCompletedButThe');
       } else {
-        feedback = '微信连接检查完成。';
+        feedback = t('ui.common.connectionCheckDone', { channel: CHANNEL_LABEL });
       }
       if (mountedRef.current) {
         setFeedbackByBot((current) => ({ ...current, [account.botId]: feedback }));
       }
       announce(feedback);
     } catch {
-      const feedback = '连接检查失败，请稍后重试。';
+      const feedback = t('ui.dingtalk.connectionCheckFailedTryAgainLater');
       if (mountedRef.current) {
         setFeedbackByBot((current) => ({ ...current, [account.botId]: feedback }));
       }
@@ -633,9 +635,9 @@ export function WeixinSettingsTab({ rpcCall }) {
         }));
       }
       setRemoveTarget(null);
-      announce('微信账号及本机凭据已移除。');
+      announce(t('ui.weixin.theWechatAccountAndLocalCredentials'));
     } catch (error) {
-      announce(`移除失败：${presentError(error).message}`);
+      announce(t('ui.common.removalFailedReason', { reason: presentError(error).message }));
     } finally {
       const shouldRefresh = workspaceFence.endMutation();
       if (shouldRefresh && mountedRef.current) void loadStatus({ silent: true });
@@ -672,7 +674,7 @@ export function WeixinSettingsTab({ rpcCall }) {
 
   return h(AgentPresetCatalogContext.Provider, {
     value: model.agentPresetCatalog ?? EMPTY_AGENT_PRESET_CATALOG,
-  }, h('section', { className: 'dxw-page dim-channelPage', 'aria-label': '微信设置' },
+  }, h('section', { className: 'dxw-page dim-channelPage', 'aria-label': t('ui.weixin.wechatSettings') },
     h(Heading, {
       totals: model.totals,
       adding: Boolean(provision),
@@ -682,16 +684,16 @@ export function WeixinSettingsTab({ rpcCall }) {
     }),
     h('div', { className: 'dxw-visuallyHidden', role: 'status', 'aria-live': 'polite' }, notice),
     model.error && model.phase === 'ready'
-      ? h('div', { className: 'dxw-statusNotice dim-statusNotice' }, `状态刷新失败：${model.error.message}`)
+      ? h('div', { className: 'dxw-statusNotice dim-statusNotice' }, t('ui.common.statusRefreshFailed', { reason: model.error.message }))
       : null,
     model.phase === 'loading'
       ? h(LoadingView)
       : model.phase === 'error'
         ? h('div', { className: 'dxw-card dim-surfaceCard' },
             h('div', { className: 'dxw-error dim-inlineError' },
-              h('h3', null, '无法读取微信状态'),
-              h('p', null, model.error?.message ?? '请稍后重试'),
-              h(Button, { onClick: () => void loadStatus() }, '重新读取')))
+              h('h3', null, t('ui.weixin.couldNotLoadWechatStatus')),
+              h('p', null, model.error?.message ?? t('ui.dingtalk.tryAgainLater')),
+              h(Button, { onClick: () => void loadStatus() }, t('ui.dingtalk.reload'))))
         : h(React.Fragment, null,
             provisionView,
             model.bots.length === 0 && !provision
@@ -722,7 +724,7 @@ export function apply(ctx) {
     name: 'settings.plugins.tab',
     id: 'weixin',
     order: 30,
-    label: '微信',
+    label: t('ui.weixin.wechat'),
     inject: () => ({ rpcCall }),
   }, WeixinSettingsTab));
 }

@@ -8,14 +8,19 @@ import {
   DiscordAccountCard,
   DiscordSettingsTab,
 } from '../../../plugin-src/client/channels/discord/index.js';
+import { t as uiText } from '../../../plugin-src/client/i18n.js';
+
+function escapeRe(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 test('Discord settings exposes a Bot Token action without a fake QR action', () => {
   const markup = renderToStaticMarkup(React.createElement(DiscordSettingsTab, {
     rpcCall: async () => ({ ok: true, value: { bots: [] } }),
   }));
-  assert.match(markup, /aria-label="使用 Bot Token 接入 Discord 机器人"/);
-  assert.match(markup, />手动接入</);
-  assert.doesNotMatch(markup, /扫码接入机器人|dim-scanButton/);
+  assert.match(markup, new RegExp(`aria-label="${escapeRe(uiText('ui.common.connectWithToken', { channel: 'Discord' }))}"`));
+  assert.match(markup, new RegExp(`>${escapeRe(uiText('ui.dingtalk.manualSetup'))}<`));
+  assert.doesNotMatch(markup, new RegExp(`${escapeRe(uiText('ui.dingtalk.scanQrCode'))}|dim-scanButton`));
 });
 
 test('Discord account card matches the unified compact card layout', () => {
@@ -35,9 +40,9 @@ test('Discord account card matches the unified compact card layout', () => {
   }));
   assert.match(markup, /data-im-channel-logo="discord"/);
   assert.match(markup, /@HarnessBot/);
-  assert.match(markup, /class="dim-botHealthGroup"[^]*class="dim-lastChecked"><span>最近检查<\/span>/);
-  assert.doesNotMatch(markup, /Gateway 长连接|消息通道|dim-botMetric/);
-  assert.match(markup, />检查连接</);
-  assert.match(markup, />移除接入</);
+  assert.match(markup, new RegExp(`class="dim-botHealthGroup"[^]*class="dim-lastChecked"><span>${escapeRe(uiText('ui.channelCardMeta.lastChecked'))}</span>`));
+  assert.doesNotMatch(markup, new RegExp(`${escapeRe(uiText('ui.discord.gatewayPersistentConnection2'))}|${escapeRe(uiText('ui.channelCardMeta.messageChannel'))}|dim-botMetric`));
+  assert.match(markup, new RegExp(`>${escapeRe(uiText('ui.dingtalk.checkConnection'))}<`));
+  assert.match(markup, new RegExp(`>${escapeRe(uiText('ui.dingtalk.removeConnection2'))}<`));
   assert.doesNotMatch(markup, /dim-cardSummary/);
 });

@@ -20,6 +20,12 @@ import {
 } from '../../../src/channels/office/protocol.mjs';
 import { createOfficeRpcHandler } from '../../../plugin-src/host/channels/office/rpc.mjs';
 import { OfficeSettingsTab } from '../../../plugin-src/client/channels/office/index.js';
+import { t as uiText } from '../../../plugin-src/client/i18n.js';
+import { defaultTranslator as runtimeText } from '../../../src/i18n/index.mjs';
+
+function escapeRe(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 const TOKEN = 'office-device-token-ABCDEFGHIJKLMNOPQRSTUVWXYZ-123456';
 
@@ -350,7 +356,11 @@ test('AI Office RPC validates configuration and keeps transport failures safe', 
   })).ok, true);
   assert.equal(calls.length, 1);
   assert.deepEqual(await handler(OFFICE_RPC_ENDPOINTS.test, {}), {
-    ok: false, error: { code: 'office-hook-unavailable', message: 'AI Office Hook 尚未上线或地址不正确。' },
+    ok: false,
+    error: {
+      code: 'office-hook-unavailable',
+      message: runtimeText('rpc.officeHookUnavailable'),
+    },
   });
 });
 
@@ -364,8 +374,8 @@ test('AI Office settings renders connection fields and fixed hook preview', () =
   assert.match(markup, /<input placeholder="https:\/\/office\.example\.com" value=""\/>/);
   assert.doesNotMatch(markup, /fission\.gridmind\.ai/);
   assert.match(markup, /Device Token/);
-  assert.match(markup, /Workspace 映射/);
-  assert.match(markup, /Base URL 无效/);
+  assert.match(markup, new RegExp(`${escapeRe(uiText('ui.office.workspaceMappings'))}`));
+  assert.match(markup, new RegExp(`${escapeRe(uiText('ui.office.invalidBaseUrl'))}`));
 });
 
 test('AI Office Job executor claims, reports, approves, and returns one Harness result', async () => {

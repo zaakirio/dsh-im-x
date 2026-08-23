@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { h } from './i18n.js';
+import { h, t } from './i18n.js';
 
 export const SET_AGENT_PRESET_ENDPOINT = 'bot.preset.set';
 
@@ -61,7 +61,7 @@ export function AgentPresetEditor({ agentPreset = '', disabled = false, onSave }
   const currentUnavailable = Boolean(current && !seen.has(current));
   if (currentUnavailable) items.push({ id: current, label: current, unavailable: true });
 
-  const inheritLabel = '跟随 Host 默认';
+  const inheritLabel = t('ui.agentPreset.followTheHostDefault');
 
   const change = async (event) => {
     const next = event.target.value;
@@ -71,7 +71,7 @@ export function AgentPresetEditor({ agentPreset = '', disabled = false, onSave }
     try {
       await onSave?.(next || null);
     } catch (cause) {
-      setError(cause?.message ?? 'Agent Preset 修改失败，请重试。');
+      setError(cause?.message ?? t('ui.agentPreset.couldNotUpdateTheAgentPreset'));
     } finally {
       setSaving(false);
     }
@@ -85,15 +85,15 @@ export function AgentPresetEditor({ agentPreset = '', disabled = false, onSave }
           h('button', {
             type: 'button',
             className: 'dim-presetHelpButton',
-            'aria-label': '查看 Agent Preset 说明',
+            'aria-label': t('ui.agentPreset.viewAgentPresetHelp'),
             'aria-describedby': helpId,
           }, h('span', { 'aria-hidden': 'true' }, '?')),
           h('span', {
             id: helpId,
             className: 'dim-presetTooltip',
             role: 'tooltip',
-          }, '只影响新建会话；若当前聊天已有会话，先发送 /new，再发送普通消息生效。'))),
-      saving ? h('span', { className: 'dim-presetStatus' }, '保存中…') : null),
+          }, t('ui.agentPreset.thisAffectsOnlyNewSessionsIf')))),
+      saving ? h('span', { className: 'dim-presetStatus' }, t('ui.agentPreset.saving')) : null),
     React.createElement('select', {
       className: 'dim-presetSelect',
       value: current,
@@ -106,14 +106,14 @@ export function AgentPresetEditor({ agentPreset = '', disabled = false, onSave }
         'option',
         { key: item.id, value: item.id },
         item.unavailable
-          ? [item.id, '（已不可用）']
+          ? [item.id, t('ui.agentPreset.unavailable')]
           : item.label && item.label !== item.id ? `${item.label}（${item.id}）` : item.id,
       )),
     ),
     error || currentUnavailable ? h(
       'p',
       { className: 'dim-presetError', role: error ? 'alert' : 'status' },
-      error ?? '当前 Agent Preset 已不可用，请选择其他 Preset 或跟随 Host 默认。',
+      error ?? t('ui.agentPreset.theCurrentAgentPresetIsUnavailable'),
     ) : null,
   );
 }

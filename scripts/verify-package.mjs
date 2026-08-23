@@ -86,7 +86,7 @@ if (!client.includes('id: "dsh-im-x"')) {
   throw new Error('client bundle does not register the dsh-im-x loader id');
 }
 if (!client.includes('id: "im"')
-  || !client.includes('label: () => t("IM\\u673A\\u5668\\u4EBA")')
+  || !/label: \(\) => \w+\("ui\.index\.imBots"\)/.test(client)
   || !client.includes('locale: IM_LOCALE_NAMESPACE')
   || !client.includes('IM_LOCALE_NAMESPACE = "dsh-im-x"')) {
   throw new Error('client bundle does not register the localized IM settings tab');

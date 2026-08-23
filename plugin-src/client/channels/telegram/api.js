@@ -1,3 +1,5 @@
+import { t } from '../../i18n.js';
+
 import { TOKEN_BOT_ENDPOINTS, createTokenChannelApi } from '../shared/token-api.js';
 
 export const TELEGRAM_RPC_CHANNEL = '/telegram';
@@ -6,7 +8,7 @@ export const TELEGRAM_ENDPOINTS = Object.freeze({
   setAccessPolicy: 'bot.access-policy.set',
 });
 
-const api = createTokenChannelApi('Telegram', ' Bot API 长轮询', {
+const api = createTokenChannelApi('Telegram', t('ui.telegram.botApiLongPolling'), {
   normalizeBotExtension: (value) => {
     const source = value?.accessPolicy;
     const accessMode = source?.accessMode === 'private-allowlist'

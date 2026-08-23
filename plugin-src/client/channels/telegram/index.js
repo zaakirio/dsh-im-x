@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { TelegramLogoGlyph } from '../../channel-logos.js';
 import { createTokenChannelSettings } from '../shared/token-channel.js';
-import { h } from '../../i18n.js';
+import { h, t } from '../../i18n.js';
 import {
   TELEGRAM_ENDPOINTS,
   telegramClientApi,
@@ -21,7 +21,7 @@ function policyFor(account) {
 function allowedUsersFromText(value) {
   const entries = value.split(/\r?\n/).map((entry) => entry.trim()).filter(Boolean);
   if (entries.some((entry) => !/^[1-9]\d{0,15}$/.test(entry))) {
-    throw new TypeError('User ID 必须是 1–16 位正整数，每行一个。');
+    throw new TypeError(t('ui.telegram.eachUserIdMustBeA'));
   }
   return [...new Set(entries)];
 }
@@ -45,10 +45,10 @@ export function TelegramAccessSettings({ account, busy = false, onSave }) {
     setError(null);
     try {
       const normalized = allowedUsersFromText(allowedUsers);
-      if (typeof onSave !== 'function') throw new Error('Telegram 访问设置暂不可用。');
+      if (typeof onSave !== 'function') throw new Error(t('ui.telegram.telegramAccessSettingsAreCurrentlyUnavailable'));
       await onSave({ accessMode, allowedUsers: normalized });
     } catch (caught) {
-      setError(caught?.message ?? 'Telegram 访问设置保存失败。');
+      setError(caught?.message ?? t('ui.telegram.couldNotSaveTelegramAccessSettings'));
     }
   };
 
@@ -57,15 +57,15 @@ export function TelegramAccessSettings({ account, busy = false, onSave }) {
   const emptyAllowlist = privateAllowlist && allowedUsers.trim() === '';
   return h('form', { className: 'dtg-access', onSubmit: save },
     h('div', { className: 'dtg-accessHeading' },
-      h('strong', null, '访问设置'),
+      h('strong', null, t('ui.telegram.accessSettings')),
       h('span', { className: 'dtg-accessStatus' },
         h('span', { className: 'dtg-accessBadge', 'data-mode': policy.accessMode },
-          savedPrivateAllowlist ? '已生效：安全模式' : '已生效：兼容模式'),
+          savedPrivateAllowlist ? t('ui.telegram.activeSafeMode') : t('ui.telegram.activeCompatibleMode')),
         h('span', { className: 'dtg-accessHelp' },
           h('button', {
             type: 'button',
             className: 'dtg-accessHelpButton',
-            'aria-label': '查看 Telegram 访问模式说明',
+            'aria-label': t('ui.telegram.viewTelegramAccessModeDetails'),
             'aria-describedby': accessHelpId,
           }, h('span', { 'aria-hidden': 'true' }, '?')),
           h('span', {
@@ -74,37 +74,37 @@ export function TelegramAccessSettings({ account, busy = false, onSave }) {
             role: 'tooltip',
           },
           h('span', { className: 'dtg-accessTooltipItem' },
-            h('strong', null, '兼容模式'),
-            h('span', null, '保持原有行为：私聊直接响应，群聊在被提及或回复时响应。')),
+            h('strong', null, t('ui.telegram.compatibleMode')),
+            h('span', null, t('ui.telegram.keepTheOriginalBehaviorRespondTo'))),
           h('span', { className: 'dtg-accessTooltipItem' },
-            h('strong', null, '安全模式'),
-            h('span', null, '群聊全部忽略，私聊仅允许白名单用户。')))))),
+            h('strong', null, t('ui.telegram.safeMode')),
+            h('span', null, t('ui.telegram.allGroupMessagesAreIgnoredOnly'))))))),
     h('label', { className: 'dtg-accessField' },
-      h('span', null, '模式'),
+      h('span', null, t('ui.telegram.mode')),
       h('select', {
         value: accessMode,
         disabled: busy,
-        'aria-label': 'Telegram 访问模式',
+        'aria-label': t('ui.telegram.telegramAccessMode'),
         onChange: (event) => { setAccessMode(event.target.value); setError(null); },
       },
-      h('option', { value: 'compatible' }, '兼容模式（默认）'),
-      h('option', { value: 'private-allowlist' }, '安全模式（私聊白名单）'))),
+      h('option', { value: 'compatible' }, t('ui.telegram.compatibleModeDefault')),
+      h('option', { value: 'private-allowlist' }, t('ui.telegram.safeModePrivateChatAllowlist')))),
     h('label', { className: 'dtg-accessField' },
-      h('span', null, '允许私聊的 Telegram User ID'),
+      h('span', null, t('ui.telegram.telegramUserIdsAllowedToSend')),
       h('textarea', {
         value: allowedUsers,
         disabled: busy || !privateAllowlist,
         rows: 3,
-        placeholder: '每行一个数字 User ID',
-        'aria-label': '允许私聊的 Telegram User ID',
+        placeholder: t('ui.telegram.oneNumericUserIdPerLine'),
+        'aria-label': t('ui.telegram.telegramUserIdsAllowedToSend'),
         onChange: (event) => { setAllowedUsers(event.target.value); setError(null); },
       }),
       h('small', null, privateAllowlist
-        ? '白名单仅属于当前机器人。'
-        : '兼容模式下暂不使用白名单，切换模式时会保留。')),
+        ? t('ui.telegram.thisAllowlistBelongsOnlyToThe')
+        : t('ui.telegram.compatibleModeDoesNotEnforceThe'))),
     emptyAllowlist
       ? h('p', { className: 'dtg-accessWarning', role: 'status' },
-          '白名单为空；保存后该机器人会拒绝所有入站消息。')
+          t('ui.telegram.theAllowlistIsEmptyThisBot'))
       : null,
     error ? h('p', { className: 'dtg-accessError', role: 'alert' }, error) : null,
     h('div', { className: 'dtg-accessActions' },
@@ -113,7 +113,7 @@ export function TelegramAccessSettings({ account, busy = false, onSave }) {
         className: 'ddt-button',
         'data-kind': 'secondary',
         disabled: busy,
-      }, busy ? '正在保存…' : '保存访问设置')));
+      }, busy ? t('ui.telegram.saving') : t('ui.telegram.saveAccessSettings'))));
 }
 
 const channel = createTokenChannelSettings({
@@ -124,10 +124,10 @@ const channel = createTokenChannelSettings({
   installStyles: installTelegramStyles,
   pageClass: 'dtg-page',
   avatarClass: 'dtg-avatar',
-  connectionLabel: 'Bot API 长轮询',
-  tokenPlaceholder: '填写 @BotFather 生成的 Bot Token',
-  emptyTitle: '接入 Telegram 机器人',
-  emptyDescription: '先通过 @BotFather 获取 Bot Token，再在这里完成接入。',
+  connectionLabel: t('ui.telegram.botApiLongPolling2'),
+  tokenPlaceholder: t('ui.telegram.enterTheBotTokenFromBotfather'),
+  emptyTitle: t('ui.telegram.connectATelegramBot'),
+  emptyDescription: t('ui.telegram.getABotTokenFromBotfather'),
   platformLabel: 'Telegram',
   AccountSettings: TelegramAccessSettings,
   accountSettingsEndpoint: TELEGRAM_ENDPOINTS.setAccessPolicy,

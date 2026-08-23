@@ -8,6 +8,7 @@ import {
   safeVerificationUrl,
   unwrapRpcResult,
 } from '../plugin-src/client/channels/weixin/api.js';
+import { t as uiText } from '../plugin-src/client/i18n.js';
 
 test('client normalizes the exact redacted Host account view', () => {
   const snapshot = normalizeSnapshot({
@@ -18,7 +19,7 @@ test('client normalizes the exact redacted Host account view', () => {
       state: 'connected',
       connected: true,
       configured: true,
-      bot: { name: '微信机器人', accountIdMasked: 'abc••••bot' },
+      bot: { name: uiText('ui.weixin.wechatBot'), accountIdMasked: 'abc••••bot' },
       health: { status: 'healthy', summary: '正常', lastCheckedAt: 123 },
       stats: { messagesReceived: 3, messagesReplied: 2 },
       token: 'host-secret-that-must-be-dropped',

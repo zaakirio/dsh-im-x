@@ -9,6 +9,7 @@ import {
   SET_AGENT_PRESET_ENDPOINT,
   validAgentPresetPayload,
 } from '../shared/agent-preset-rpc.mjs';
+import { defaultTranslator } from '../../../../src/i18n/index.mjs';
 
 export const SLACK_RPC_CHANNEL = '/slack';
 export const SLACK_ENDPOINTS = Object.freeze({
@@ -69,11 +70,11 @@ function payloadFailure(endpoint, payload) {
   }
   if (endpoint === SLACK_ENDPOINTS.setWorkspace) {
     return validWorkspacePayload(payload)
-      ? null : '请输入工作区绝对路径。';
+      ? null : defaultTranslator('rpc.workspaceRequired');
   }
   if (endpoint === SLACK_ENDPOINTS.setAgentPreset) {
     return validAgentPresetPayload(payload)
-      ? null : '请选择 Agent Preset。';
+      ? null : defaultTranslator('rpc.presetRequired');
   }
   return 'Unknown Slack endpoint.';
 }
@@ -92,18 +93,18 @@ function operationError(error) {
   const workspaceError = publicWorkspaceError(error);
   if (workspaceError) return workspaceError;
   if (error?.code === 'slack-invalid-bot-token') {
-    return { code: 'invalid-bot-token', message: 'Slack Bot Token 无效，请确认使用以 xoxb- 开头的令牌。' };
+    return { code: 'invalid-bot-token', message: defaultTranslator('rpc.slackInvalidBotToken') };
   }
   if (error?.code === 'slack-invalid-app-token') {
-    return { code: 'invalid-app-token', message: 'Slack App Token 无效，请确认使用以 xapp- 开头的令牌。' };
+    return { code: 'invalid-app-token', message: defaultTranslator('rpc.slackInvalidAppToken') };
   }
   if (error?.code === 'slack-missing-scope') {
-    return { code: 'missing-scope', message: 'Slack 应用权限不完整，请重新导入 Manifest 并安装到工作区。' };
+    return { code: 'missing-scope', message: defaultTranslator('rpc.slackMissingScope') };
   }
   if (error?.code === 'slack-socket-mode') {
     return { code: 'socket-mode-unavailable', message: error.message };
   }
-  return { code: 'slack-operation-failed', message: 'Slack 操作失败，请稍后重试。' };
+  return { code: 'slack-operation-failed', message: defaultTranslator('rpc.operationFailed', { channel: 'Slack' }) };
 }
 
 export function createSlackRpcHandler(controller) {

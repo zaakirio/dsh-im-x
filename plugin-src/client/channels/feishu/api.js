@@ -7,6 +7,9 @@
  */
 
 import { normalizeAgentPresetCatalog, normalizeAgentPresetId } from "../../agent-preset.js";
+import { t } from '../../i18n.js';
+
+const CHANNEL_LABEL = 'Feishu';
 
 export const FEISHU_RPC_CHANNEL = "/feishu";
 
@@ -100,10 +103,10 @@ function isTargetedAppUpdate(operation) {
 
 export function unwrapRpcResult(result) {
   if (!isRecord(result) || typeof result.ok !== "boolean") {
-    throw new Error("飞书服务返回了无法识别的响应");
+    throw new Error(t('ui.common.unrecognizedResponse', { channel: CHANNEL_LABEL }));
   }
   if (!result.ok) {
-    const message = optionalString(result.error?.message) ?? "飞书服务请求失败";
+    const message = optionalString(result.error?.message) ?? t('ui.common.serviceRequestFailed', { channel: CHANNEL_LABEL });
     const error = new Error(message);
     error.code = optionalString(result.error?.code) ?? "FEISHU_RPC_ERROR";
     throw error;
@@ -113,7 +116,7 @@ export function unwrapRpcResult(result) {
 
 export function normalizeProvisioning(value, now = Date.now()) {
   const source = isRecord(value?.provisioning) ? value.provisioning : value;
-  if (!isRecord(source)) throw new Error("飞书服务没有返回二维码信息");
+  if (!isRecord(source)) throw new Error(t('ui.feishu.feishuDidNotReturnQrCode'));
 
   const attemptId = optionalString(source.attemptId)
     ?? optionalString(source.provisioningId);
@@ -121,7 +124,7 @@ export function normalizeProvisioning(value, now = Date.now()) {
   const qrCodeDataUrl = optionalString(source.qrCodeDataUrl);
   const submitted = source.submitted === true;
   if (!attemptId || (!verificationUrl && !qrCodeDataUrl && !submitted)) {
-    throw new Error("飞书服务返回的二维码信息不完整");
+    throw new Error(t('ui.feishu.feishuReturnedIncompleteQrCodeInformation'));
   }
 
   const explicitExpiry = optionalTimestamp(source.expiresAt);
@@ -129,7 +132,7 @@ export function normalizeProvisioning(value, now = Date.now()) {
   const operation = normalizeRegistrationOperation(source.operation);
   const botId = optionalString(source.botId);
   if (isTargetedAppUpdate(operation) && !botId) {
-    throw new Error("飞书服务返回的应用更新信息缺少 botId");
+    throw new Error(t('ui.feishu.feishuAppUpdateStatusIsMissing'));
   }
   return {
     attemptId,
@@ -146,7 +149,7 @@ export function normalizeProvisioning(value, now = Date.now()) {
 function normalizeBot(value) {
   const source = isRecord(value) ? value : {};
   return {
-    name: optionalString(source.name) ?? "飞书机器人",
+    name: optionalString(source.name) ?? t('ui.feishu.feishuBot'),
     avatarUrl: optionalString(source.avatarUrl),
     appIdMasked: optionalString(source.appIdMasked),
     tenantName: optionalString(source.tenantName),
@@ -166,7 +169,7 @@ function normalizeHealth(value, connected = false) {
   return {
     status,
     summary: optionalString(source.summary)
-      ?? (connected ? "长连接运行正常" : "机器人尚未连接"),
+      ?? (connected ? t('ui.feishu.persistentConnectionIsHealthy') : t('ui.feishu.theBotIsNotConnectedYet')),
     lastCheckedAt: optionalTimestamp(source.lastCheckedAt),
     lastConnectedAt: optionalTimestamp(source.lastConnectedAt),
   };
@@ -191,9 +194,9 @@ function authoritativeState(value, connected) {
 
 /** Normalize one redacted bot connection. `connected` is authoritative. */
 export function normalizeBotConnection(value, fallbackBotId) {
-  if (!isRecord(value)) throw new Error("飞书服务返回了无效的机器人状态");
+  if (!isRecord(value)) throw new Error(t('ui.feishu.feishuReturnedAnInvalidBotStatus'));
   const botId = optionalString(value.botId) ?? optionalString(fallbackBotId);
-  if (!botId) throw new Error("飞书服务返回的机器人缺少 botId");
+  if (!botId) throw new Error(t('ui.feishu.theFeishuBotIsMissingBotid'));
   const connected = value.connected === true;
   return {
     botId,
@@ -215,7 +218,7 @@ export function normalizeBotConnection(value, fallbackBotId) {
  * browser/Host rolling upgrade does not strand an existing connection.
  */
 export function normalizeBotsSnapshot(value) {
-  if (!isRecord(value)) throw new Error("飞书服务没有返回连接状态");
+  if (!isRecord(value)) throw new Error(t('ui.feishu.feishuDidNotReturnConnectionStatus'));
 
   let sourceBots = Array.isArray(value.bots) ? value.bots : [];
   if (sourceBots.length === 0 && value.configured === true) {
@@ -264,7 +267,7 @@ export function normalizeBotsSnapshot(value) {
 
 /** Legacy single-bot normalizer retained for the compatibility surface. */
 export function normalizeConnectionSnapshot(value) {
-  if (!isRecord(value)) throw new Error("飞书服务没有返回连接状态");
+  if (!isRecord(value)) throw new Error(t('ui.feishu.feishuDidNotReturnConnectionStatus'));
   const connected = value.connected === true;
   const reportedState = CONNECTION_STATES.has(value.state)
     ? value.state
@@ -303,7 +306,7 @@ export function screenFromSnapshot(snapshot) {
         configured: snapshot.configured,
         bot: snapshot.bot,
         health: snapshot.health,
-        error: { message: snapshot.errorMessage ?? "飞书连接遇到问题", code: "FEISHU_CONNECTION_ERROR" },
+        error: { message: snapshot.errorMessage ?? t('ui.common.connectionProblem', { channel: CHANNEL_LABEL }), code: "FEISHU_CONNECTION_ERROR" },
         retry: snapshot.configured ? "test" : "begin",
       };
     default:
@@ -330,13 +333,13 @@ export async function reconnectBot(invoke, botId, signal) {
 }
 
 export function normalizePollResult(value) {
-  if (!isRecord(value)) throw new Error("飞书服务没有返回创建进度");
+  if (!isRecord(value)) throw new Error(t('ui.feishu.feishuDidNotReturnCreationProgress'));
   const status = POLL_STATES.has(value.status)
     ? value.status
     : POLL_STATES.has(value.state)
       ? value.state
       : undefined;
-  if (!status) throw new Error("飞书服务返回了未知的创建状态");
+  if (!status) throw new Error(t('ui.feishu.feishuReturnedAnUnknownCreationStatus'));
 
   const normalized = {
     status,
@@ -357,7 +360,7 @@ export function normalizePollResult(value) {
 
 /** Keep transport and Host details out of the user-facing alert. */
 export function presentError(error) {
-  const raw = optionalString(error?.message) ?? "操作失败，请稍后重试";
+  const raw = optionalString(error?.message) ?? t('ui.feishu.theOperationFailedTryAgainLater');
   const message = raw
     .replace(/(client[_-]?secret|app[_-]?secret|secret|token)\s*[:=]\s*[^\s,;]+/gi, "$1=••••••")
     .slice(0, 240);

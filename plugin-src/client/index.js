@@ -41,7 +41,7 @@ import { installWeixinStyles } from './channels/weixin/styles.js';
 import { WHATSAPP_RPC_CHANNEL } from './channels/whatsapp/api.js';
 import { WhatsappSettingsTab } from './channels/whatsapp/index.js';
 import { installWhatsappStyles } from './channels/whatsapp/styles.js';
-import { en, h, IM_LOCALE_NAMESPACE, setImTranslator, zh } from './i18n.js';
+import { IM_LOCALE_NAMESPACE, en, h, setImTranslator, t, zh } from './i18n.js';
 import { installImStyles } from './styles.js';
 import { WorkspaceDirectoryPickerContext } from './workspace-editor.js';
 
@@ -49,16 +49,16 @@ export const name = 'im-settings';
 export const inject = ['slots', 'connection', 'locale', 'workspaces'];
 
 const CHANNELS = Object.freeze([
-  { id: 'weixin', label: '微信' },
-  { id: 'feishu', label: '飞书' },
-  { id: 'dingtalk', label: '钉钉' },
-  { id: 'wecom', label: '企业微信' },
+  { id: 'weixin', label: t('ui.weixin.wechat') },
+  { id: 'feishu', label: t('ui.feishu.feishu') },
+  { id: 'dingtalk', label: t('ui.dingtalk.dingtalk') },
+  { id: 'wecom', label: t('ui.wecom.wecom') },
   { id: 'qq', label: 'QQ' },
   { id: 'slack', label: 'Slack' },
   { id: 'telegram', label: 'Telegram' },
   { id: 'discord', label: 'Discord' },
   { id: 'whatsapp', label: 'WhatsApp' },
-  { id: 'office', label: 'AI Office', note: '（实验功能）' },
+  { id: 'office', label: 'AI Office', note: t('ui.index.experimental') },
 ]);
 
 function WeixinLogo() {
@@ -139,11 +139,11 @@ export function IMSettingsTab({
   const githubTooltipId = React.useId();
   const active = CHANNELS.find((channel) => channel.id === selected) ?? CHANNELS[0];
   return h(WorkspaceDirectoryPickerContext.Provider, { value: workspaceDirectoryPicker },
-    h('section', { className: 'dim-page', 'aria-label': 'IM机器人设置' },
+    h('section', { className: 'dim-page', 'aria-label': t('ui.index.imBotSettings') },
     h('header', { className: 'dim-title' },
       h('div', { className: 'dim-brand' },
         h('strong', { className: 'dim-brandName' }, 'DSH-IM'),
-        h('p', null, '让 DeepSeek Harness 触手可及')),
+        h('p', null, t('ui.index.deepseekHarnessAlwaysWithinReach'))),
       h('span', { className: 'dim-githubAction' },
         h('a', {
           className: 'dim-githubLink',
@@ -159,10 +159,10 @@ export function IMSettingsTab({
           id: githubTooltipId,
           className: 'dim-githubTooltip',
           role: 'tooltip',
-        }, '帮助与反馈 · 前往 GitHub')),
+        }, t('ui.index.helpFeedbackOpenGithub'))),
     ),
     h('div', { className: 'dim-layout' },
-      h('nav', { className: 'dim-rail', role: 'tablist', 'aria-label': 'IM 渠道' },
+      h('nav', { className: 'dim-rail', role: 'tablist', 'aria-label': t('ui.index.imChannels') },
         CHANNELS.map((channel) => h('button', {
           key: channel.id,
           type: 'button',
@@ -212,8 +212,9 @@ export function apply(ctx) {
     () => ctx.locale.register(IM_LOCALE_NAMESPACE, { zh, en }),
     'im-settings: bilingual dictionaries',
   );
-  const t = ctx.locale.bind(IM_LOCALE_NAMESPACE);
-  setImTranslator(t);
+  // The host binding is only used to learn which language it chose; rendering
+  // goes through the shared catalogue so the page gets its fallbacks.
+  setImTranslator(ctx.locale.bind(IM_LOCALE_NAMESPACE));
 
   ctx.effect(() => {
     const disposers = [
@@ -262,7 +263,7 @@ export function apply(ctx) {
     name: 'settings.plugins.tab',
     id: 'im',
     order: 20,
-    label: () => t('IM机器人'),
+    label: () => t('ui.index.imBots'),
     locale: IM_LOCALE_NAMESPACE,
     inject: () => ({
       dingtalkRpcCall,

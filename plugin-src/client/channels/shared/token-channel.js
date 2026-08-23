@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { CredentialActionIcon, CredentialBindingPanel } from '../../credential-binding.js';
-import { h } from '../../i18n.js';
+import { h, t } from '../../i18n.js';
 import { installDingtalkStyles } from '../dingtalk/styles.js';
 import { WorkspaceEditor } from '../../workspace-editor.js';
 import {
@@ -26,22 +26,22 @@ const Button = React.forwardRef(function Button(
 });
 
 function checkedTime(value) {
-  if (!value) return '尚未检查';
+  if (!value) return t('ui.dingtalk.notCheckedYet');
   try {
     return new Intl.DateTimeFormat('zh-CN', {
       hour: '2-digit', minute: '2-digit', second: '2-digit',
     }).format(new Date(value));
   } catch {
-    return '刚刚';
+    return t('ui.dingtalk.justNow');
   }
 }
 
 function connectionTestNotice(value) {
-  if (value?.testMessage?.sent === true) return '测试消息已发送，请到对应机器人会话中确认。';
+  if (value?.testMessage?.sent === true) return t('ui.qq.testMessageSentCheckTheMatching');
   if (value?.testMessage?.code === 'test-target-unavailable') {
-    return '连接检查完成。机器人尚未收到可用于测试的私聊消息。';
+    return t('ui.dingtalk.connectionCheckCompletedTheBotHas');
   }
-  return value?.testMessage ? '连接检查完成，但测试消息发送失败。' : null;
+  return value?.testMessage ? t('ui.feishu.connectionCheckCompletedButTheTest') : null;
 }
 
 export function createTokenChannelSettings(definition) {
@@ -60,11 +60,11 @@ export function createTokenChannelSettings(definition) {
     platformLabel,
     CredentialPanel = null,
     credentialPayload = ({ secret }) => ({ token: secret }),
-    credentialAriaLabel = `使用 Bot Token 接入 ${channel} 机器人`,
-    credentialOpenLabel = '手动接入',
-    credentialCloseLabel = '收起凭据',
+    credentialAriaLabel = t('ui.common.connectWithToken', { channel }),
+    credentialOpenLabel = t('ui.dingtalk.manualSetup'),
+    credentialCloseLabel = t('ui.dingtalk.hideCredentials'),
     credentialNoun = 'Bot Token',
-    emptyActionLabel = '填写 Bot Token',
+    emptyActionLabel = t('ui.common.enterBotToken'),
     AccountSettings = null,
     accountSettingsEndpoint = null,
   } = definition;
@@ -72,7 +72,7 @@ export function createTokenChannelSettings(definition) {
   function AccountCard({ account, busy, testNotice, removing, onReconnect, onWorkspaceSave, onAgentPresetSave, onAccountSettingsSave, onRequestRemove, onConfirmRemove, onCancelRemove }) {
     const state = busy === 'reconnect' ? 'connecting' : account.state;
     const tone = account.connected ? 'success' : state === 'error' ? 'error' : 'warning';
-    const stateLabel = account.connected ? '运行正常' : state === 'connecting' ? '正在连接' : '连接未就绪';
+    const stateLabel = account.connected ? t('ui.dingtalk.connected') : state === 'connecting' ? t('ui.dingtalk.connecting2') : t('ui.dingtalk.notConnected');
     const summary = account.error?.message ?? (account.connected ? null : account.health.summary);
     const identity = account.bot.username ? `@${account.bot.username}` : account.bot.idMasked;
     return h('article', { className: 'ddt-card dim-botCard', 'data-bot-id': account.botId },
@@ -113,25 +113,25 @@ export function createTokenChannelSettings(definition) {
                 className: 'dim-cardAction',
                 onClick: onReconnect,
                 disabled: Boolean(busy),
-              }, busy === 'reconnect' ? '检查中…' : account.connected ? '检查连接' : '重试连接'),
+              }, busy === 'reconnect' ? t('ui.dingtalk.checking') : account.connected ? t('ui.dingtalk.checkConnection') : t('ui.dingtalk.reconnect')),
               h(Button, {
                 className: 'dim-cardAction',
                 kind: 'danger',
                 onClick: onRequestRemove,
                 disabled: Boolean(busy),
-              }, '移除接入')),
+              }, t('ui.dingtalk.removeConnection2'))),
             summary ? h('div', { className: 'ddt-summary dim-cardSummary' }, summary) : null,
             testNotice ? h('div', {
               className: 'ddt-summary dim-cardFeedback',
               role: 'status',
             }, testNotice) : null))),
       removing ? h('div', { className: 'ddt-confirm dim-confirm', role: 'alertdialog' },
-        h('strong', null, `从 DeepSeek Harness 移除“${account.bot.name}”？`),
-        h('p', null, `这会停止消息连接，并删除本机保存的 ${credentialNoun}、机器人配置及会话映射。${platformLabel}中的机器人不会被自动删除。`),
+        h('strong', null, t('ui.common.removeConfirm', { name: account.bot.name })),
+        h('p', null, t('ui.common.removeWarning', { credential: credentialNoun, platform: platformLabel })),
         h('div', { className: 'ddt-actions dim-viewActions' },
-          h(Button, { onClick: onCancelRemove, disabled: Boolean(busy) }, '保留机器人'),
+          h(Button, { onClick: onCancelRemove, disabled: Boolean(busy) }, t('ui.dingtalk.keepBot')),
           h(Button, { kind: 'danger', onClick: onConfirmRemove, disabled: Boolean(busy) },
-            busy === 'delete' ? '正在移除…' : '确认移除接入'))) : null);
+            busy === 'delete' ? t('ui.dingtalk.removing') : t('ui.dingtalk.removeConnection')))) : null);
   }
 
   function SettingsTab({ rpcCall }) {
@@ -160,7 +160,7 @@ export function createTokenChannelSettings(definition) {
     }, []);
 
     const invoke = React.useCallback(async (endpoint, payload = {}, signal) => {
-      if (typeof rpcCall !== 'function') throw new TypeError(`${channel} 设置页缺少 RPC 连接`);
+      if (typeof rpcCall !== 'function') throw new TypeError(t('ui.common.missingRpc', { channel }));
       return api.unwrapRpcResult(await rpcCall(endpoint, payload, signal));
     }, [rpcCall]);
 
@@ -256,7 +256,7 @@ export function createTokenChannelSettings(definition) {
         if (mounted.current) {
           setTestNoticeByBot((current) => ({
             ...current,
-            [account.botId]: '连接检查失败，请稍后重试。',
+            [account.botId]: t('ui.dingtalk.connectionCheckFailedTryAgainLater'),
           }));
         }
       } finally {
@@ -274,7 +274,7 @@ export function createTokenChannelSettings(definition) {
       ? h('section', { className: 'dim-listSection' },
           h(ChannelListHeading, {
             className: 'ddt-listHeading',
-            title: `已接入的 ${channel} 机器人`,
+            title: t('ui.common.connectedBots', { channel }),
             connectionLabel,
           }),
           h('ul', { className: 'ddt-list dim-botList' }, model.bots.map((account) =>
@@ -325,7 +325,7 @@ export function createTokenChannelSettings(definition) {
       value: model.agentPresetCatalog ?? EMPTY_AGENT_PRESET_CATALOG,
     }, h('section', {
       className: `ddt-page ${pageClass} dim-channelPage`,
-      'aria-label': `${channel} 设置`,
+      'aria-label': t('ui.common.settings', { channel }),
     },
     h('div', { className: 'ddt-heading' },
       h('div', { className: 'ddt-tools' },
@@ -340,19 +340,19 @@ export function createTokenChannelSettings(definition) {
           }, h(CredentialActionIcon), credentialOpen ? credentialCloseLabel : credentialOpenLabel)),
         model.totals.configured > 0
           ? h('div', { className: 'ddt-badge dim-onlineBadge' },
-              h('span', null, `${model.totals.connected} / ${model.totals.configured} 在线`))
+              h('span', null, t('ui.common.onlineCount', { connected: model.totals.connected, configured: model.totals.configured })))
           : null)),
     model.phase === 'loading'
       ? h('div', {
           className: 'ddt-card ddt-loading dim-surfaceCard dim-loadingView',
           'aria-busy': 'true',
-        }, h('div', { className: 'ddt-spinner dim-spinner' }), `正在读取 ${channel} 机器人状态…`)
+        }, h('div', { className: 'ddt-spinner dim-spinner' }), t('ui.common.loadingStatus', { channel }))
       : model.phase === 'error'
         ? h('div', { className: 'ddt-card dim-surfaceCard' },
             h('div', { className: 'ddt-inlineError dim-inlineError' },
-              h('h3', null, `无法读取 ${channel} 机器人状态`),
+              h('h3', null, t('ui.common.cannotReadStatus', { channel })),
               h('p', null, model.error?.message),
-              h(Button, { onClick: () => void loadStatus() }, '重新读取')))
+              h(Button, { onClick: () => void loadStatus() }, t('ui.dingtalk.reload'))))
         : h(React.Fragment, null,
             credentialOpen ? (CredentialPanel
               ? h(CredentialPanel, {
@@ -376,7 +376,7 @@ export function createTokenChannelSettings(definition) {
                     h('div', { className: 'dim-emptyCopy' },
                       h('div', { className: 'ddt-stateLabel dim-stateLabel' },
                         h('span', { className: 'ddt-dot dim-stateDot' }),
-                        h('span', null, `尚未接入 ${channel} 机器人`)),
+                        h('span', null, t('ui.common.noBotsYet', { channel }))),
                       h('h3', null, emptyTitle),
                       h('p', null, emptyDescription),
                       h('div', { className: 'ddt-actions dim-viewActions' },

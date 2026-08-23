@@ -12,6 +12,11 @@ import {
   safeQrSource,
   unwrapRpcResult,
 } from '../../../plugin-src/client/channels/dingtalk/api.js';
+import { t as uiText } from '../../../plugin-src/client/i18n.js';
+
+function escapeRe(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 test('client exposes the fixed DingTalk RPC channel and endpoint names', () => {
   assert.equal(DINGTALK_RPC_CHANNEL, '/dingtalk');
@@ -32,7 +37,7 @@ test('RPC envelopes are required and sensitive error details are replaced', () =
   assert.equal(unwrapRpcResult({ ok: true, value: { ready: true } }).ready, true);
   assert.throws(
     () => unwrapRpcResult({ value: {} }),
-    /无法识别/,
+    new RegExp(escapeRe(uiText('ui.common.unrecognizedResponse', { channel: 'DingTalk' }))),
   );
   assert.throws(
     () => unwrapRpcResult({
@@ -43,7 +48,7 @@ test('RPC envelopes are required and sensitive error details are replaced', () =
       },
     }),
     (error) => error.code === 'DINGTALK_RPC_ERROR'
-      && error.message === '钉钉操作失败'
+      && error.message === uiText('ui.common.operationFailed', { channel: 'DingTalk' })
       && !error.message.includes('super-secret-value'),
   );
 });
@@ -123,15 +128,15 @@ test('snapshot derives totals and exposes only browser-safe bot state', () => {
 test('connection-test feedback uses fixed client-owned messages', () => {
   assert.equal(
     connectionTestFeedback({ sent: true }),
-    '钉钉连接检查完成，测试消息已发送。',
+    uiText('ui.dingtalk.dingtalkConnectionCheckCompletedAndThe'),
   );
   assert.equal(
     connectionTestFeedback({ sent: false, code: 'test-target-unavailable' }),
-    '连接检查完成。机器人尚未收到可用于测试的私聊消息。',
+    uiText('ui.dingtalk.connectionCheckCompletedTheBotHas'),
   );
   assert.equal(
     connectionTestFeedback({ sent: false, code: 'test-message-failed' }),
-    '钉钉连接检查完成，但测试消息发送失败。',
+    uiText('ui.dingtalk.dingtalkConnectionCheckCompletedButThe'),
   );
   assert.equal(connectionTestFeedback(null), null);
 });
@@ -139,7 +144,10 @@ test('connection-test feedback uses fixed client-owned messages', () => {
 test('presentation helpers redact sensitive messages and format countdowns', () => {
   assert.deepEqual(
     presentError({ code: 'UPSTREAM_FAILED', message: 'accessToken: visible-value' }),
-    { code: 'UPSTREAM_FAILED', message: '钉钉操作失败，请稍后重试' },
+    {
+      code: 'UPSTREAM_FAILED',
+      message: uiText('ui.common.operationFailedRetry', { channel: 'DingTalk' }),
+    },
   );
   assert.equal(formatRemaining(61_000), '01:01');
   assert.equal(formatRemaining(-1), '00:00');

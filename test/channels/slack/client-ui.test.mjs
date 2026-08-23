@@ -10,21 +10,26 @@ import {
   SlackSettingsTab,
 } from '../../../plugin-src/client/channels/slack/index.js';
 import { SLACK_APP_MANIFEST_YAML } from '../../../src/channels/slack/manifest.mjs';
+import { t as uiText } from '../../../plugin-src/client/i18n.js';
+
+function escapeRe(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 test('Slack settings exposes Manifest-assisted dual-token access without QR', () => {
   const markup = renderToStaticMarkup(React.createElement(SlackSettingsTab, {
     rpcCall: async () => ({ ok: true, value: { bots: [] } }),
   }));
-  assert.match(markup, /aria-label="使用 Manifest 和双 Token 接入 Slack 机器人"/);
-  assert.match(markup, />接入机器人</);
-  assert.doesNotMatch(markup, /扫码接入机器人|dim-scanButton/);
+  assert.match(markup, new RegExp(`aria-label="${escapeRe(uiText('ui.slack.connectASlackBotWithA'))}"`));
+  assert.match(markup, new RegExp(`>${escapeRe(uiText('ui.slack.connectBot'))}<`));
+  assert.doesNotMatch(markup, new RegExp(`${escapeRe(uiText('ui.dingtalk.scanQrCode'))}|dim-scanButton`));
 
   const panel = renderToStaticMarkup(React.createElement(SlackCredentialPanel, {
     onSubmit() {},
     onCancel() {},
   }));
-  assert.match(panel, />复制 Manifest</);
-  assert.match(panel, />打开 Slack 创建页</);
+  assert.match(panel, new RegExp(`>${escapeRe(uiText('ui.slack.copyManifest'))}<`));
+  assert.match(panel, new RegExp(`>${escapeRe(uiText('ui.slack.openSlackAppCreation'))}<`));
   assert.match(panel, />Bot Token</);
   assert.match(panel, />App Token</);
   assert.match(panel, /placeholder="xoxb-…"/);
@@ -52,8 +57,8 @@ test('Slack account card matches the unified compact layout', () => {
   }));
   assert.match(markup, /data-im-channel-logo="slack"/);
   assert.match(markup, /@deepseek-harness/);
-  assert.match(markup, /class="dim-botHealthGroup"[^]*class="dim-lastChecked"><span>最近检查<\/span>/);
-  assert.doesNotMatch(markup, /Socket Mode 长连接|消息通道|dim-botMetric/);
-  assert.match(markup, />检查连接</);
-  assert.match(markup, />移除接入</);
+  assert.match(markup, new RegExp(`class="dim-botHealthGroup"[^]*class="dim-lastChecked"><span>${escapeRe(uiText('ui.channelCardMeta.lastChecked'))}</span>`));
+  assert.doesNotMatch(markup, new RegExp(`${escapeRe(uiText('ui.slack.socketModePersistentConnection2'))}|${escapeRe(uiText('ui.channelCardMeta.messageChannel'))}|dim-botMetric`));
+  assert.match(markup, new RegExp(`>${escapeRe(uiText('ui.dingtalk.checkConnection'))}<`));
+  assert.match(markup, new RegExp(`>${escapeRe(uiText('ui.dingtalk.removeConnection2'))}<`));
 });

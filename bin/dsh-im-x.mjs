@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Bootstrap installer. It runs before any Harness is available, so there is no
+// conversation or client locale to follow; its output is plain English.
 
 import { readFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
@@ -45,10 +47,10 @@ function runDsh(args) {
     shell: false,
   });
   if (result.error?.code === 'ENOENT') {
-    throw new Error('找不到 dsh，请先安装 DeepSeek Harness 并确保 dsh 在 PATH 中。');
+    throw new Error('Could not find dsh. Install DeepSeek Harness and make sure dsh is on PATH.');
   }
   if (result.error) throw result.error;
-  if (result.status !== 0) throw new Error(`dsh 退出，状态码 ${result.status ?? 1}`);
+  if (result.status !== 0) throw new Error(`dsh exited with status ${result.status ?? 1}`);
 }
 
 async function directProfilePackages(profile) {
@@ -61,7 +63,7 @@ async function directProfilePackages(profile) {
     return new Set(LEGACY_PACKAGES.filter((name) => dependencies[name] || bundles.has(name)));
   } catch (error) {
     if (error?.code === 'ENOENT') return new Set();
-    throw new Error(`无法读取 Harness 配置 ${profilePackage}：${error.message}`);
+    throw new Error(`Could not read the Harness config ${profilePackage}: ${error.message}`);
   }
 }
 
@@ -81,23 +83,23 @@ try {
       || requested.startsWith('./') || requested.startsWith('../')
       ? resolve(process.cwd(), requested)
       : (isAbsolute(requested) ? requested : requested);
-    if (args.length > 0) throw new Error(`无法识别的参数：${args.join(' ')}`);
+    if (args.length > 0) throw new Error(`Unrecognized arguments: ${args.join(' ')}`);
 
     const legacy = await directProfilePackages(profile);
     runDsh(['plugin', '--profile', profile, 'add', '--save-exact', source]);
     for (const packageName of legacy) {
       runDsh(['plugin', '--profile', profile, 'remove', packageName]);
     }
-    console.log('\nIM 机器人插件已安装。请重启 dsh web，然后打开「设置 → 插件 → IM机器人」。');
+    console.log('\nThe IM bot plugin is installed. Restart dsh web, then open Settings -> Plugins -> IM Bot.');
     if (legacy.size > 0) {
-      console.log('已用 dsh-im 替换独立飞书/微信/钉钉插件；原有凭据和扫码绑定保持不变。');
+      console.log('Replaced the standalone Feishu/WeChat/DingTalk plugins; existing credentials and QR bindings are unchanged.');
     }
   } else if (command === 'uninstall') {
-    if (args.length > 0) throw new Error(`无法识别的参数：${args.join(' ')}`);
+    if (args.length > 0) throw new Error(`Unrecognized arguments: ${args.join(' ')}`);
     runDsh(['plugin', '--profile', profile, 'remove', PACKAGE_NAME]);
-    console.log('\nIM 机器人插件已卸载。请重启 dsh web。');
+    console.log('\nThe IM bot plugin is uninstalled. Restart dsh web.');
   } else {
-    throw new Error(`无法识别的命令：${command}`);
+    throw new Error(`Unrecognized command: ${command}`);
   }
 } catch (error) {
   console.error(`dsh-im: ${error.message}`);

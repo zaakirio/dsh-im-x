@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { h } from '../../i18n.js';
+import { h, t } from '../../i18n.js';
 import {
   OFFICE_PROTOCOL_VERSION,
   OFFICE_RPC_ENDPOINTS,
@@ -24,9 +24,9 @@ function parseMap(value, label) {
     if (!line) continue;
     const index = line.indexOf('=');
     if (index < 1 || !line.slice(index + 1).trim()) {
-      throw new Error(label === 'Workspace 映射'
-        ? 'Workspace 映射每行必须使用 alias=value'
-        : 'Instruction Preset 映射每行必须使用 alias=value');
+      throw new Error(label === t('ui.office.workspaceMappings')
+        ? t('ui.office.eachWorkspaceMappingMustUseAlias')
+        : t('ui.office.eachInstructionPresetMappingMustUse'));
     }
     output[line.slice(0, index).trim()] = line.slice(index + 1).trim();
   }
@@ -34,12 +34,12 @@ function parseMap(value, label) {
 }
 
 function stateLabel(model) {
-  if (model.connected) return '已连接 Office';
-  if (!model.configured) return '尚未配置';
-  if (model.state === 'connecting') return '正在连接';
-  if (model.state === 'reconnecting') return '等待重连';
-  if (model.state === 'missing-token') return '凭据缺失';
-  return '已配置';
+  if (model.connected) return t('ui.office.connectedToOffice');
+  if (!model.configured) return t('ui.office.notConfigured');
+  if (model.state === 'connecting') return t('ui.dingtalk.connecting2');
+  if (model.state === 'reconnecting') return t('ui.office.waitingToReconnect');
+  if (model.state === 'missing-token') return t('ui.office.credentialMissing');
+  return t('ui.office.configured');
 }
 
 export function OfficeSettingsTab({ rpcCall, initialStatus }) {
@@ -54,7 +54,7 @@ export function OfficeSettingsTab({ rpcCall, initialStatus }) {
   });
 
   const invoke = React.useCallback(async (endpoint, payload = {}) => {
-    if (typeof rpcCall !== 'function') throw new Error('AI Office 设置页缺少 RPC 连接');
+    if (typeof rpcCall !== 'function') throw new Error(t('ui.office.aiOfficeSettingsAreMissingAn'));
     return unwrapOfficeRpc(await rpcCall(endpoint, payload));
   }, [rpcCall]);
 
@@ -83,7 +83,7 @@ export function OfficeSettingsTab({ rpcCall, initialStatus }) {
 
   const run = async (name, operation) => {
     setBusy(name); setError(''); setNotice('');
-    try { const value = await operation(); adopt(value); setNotice(name === 'test' ? '连接测试通过。' : '配置已保存。'); }
+    try { const value = await operation(); adopt(value); setNotice(name === 'test' ? t('ui.office.connectionTestPassed') : t('ui.office.configurationSaved')); }
     catch (caught) { setError(caught.message); }
     finally { setBusy(''); }
   };
@@ -93,41 +93,41 @@ export function OfficeSettingsTab({ rpcCall, initialStatus }) {
   }, [form.baseUrl]);
   const health = model.health ?? {};
 
-  if (phase === 'loading') return h('div', { className: 'ddt-card ddt-loading', 'aria-busy': 'true' }, '正在读取 AI Office Connector…');
+  if (phase === 'loading') return h('div', { className: 'ddt-card ddt-loading', 'aria-busy': 'true' }, t('ui.office.loadingAiOfficeConnector'));
 
-  return h('section', { className: 'dof-page', 'aria-label': 'AI Office 设置' },
+  return h('section', { className: 'dof-page', 'aria-label': t('ui.office.aiOfficeSettings') },
     h('div', { className: 'dof-hero' },
       h('div', { className: 'dof-heroCopy' },
         h('h3', null, 'AI Office Connector'),
-        h('p', null, '本机主动连接公网 Office；Harness 不开放端口。协议 Hook 固定为 ', OFFICE_PROTOCOL_VERSION, '。')),
+        h('p', null, t('ui.office.thisMachineConnectsOutwardToThe'), OFFICE_PROTOCOL_VERSION, '。')),
       h('span', { className: 'dof-status', 'data-connected': String(model.connected) },
         h('span', { className: 'dof-dot' }), stateLabel(model))),
     model.configured ? h('div', { className: 'dof-metrics' },
-      h('div', { className: 'dof-metric' }, h('span', null, '最近心跳'), h('strong', null, health.lastHeartbeatAt ?? '尚无')),
-      h('div', { className: 'dof-metric' }, h('span', null, '最近事件'), h('strong', null, health.lastEventType ?? '尚无')),
-      h('div', { className: 'dof-metric' }, h('span', null, '重连次数'), h('strong', null, String(health.reconnects ?? 0))),
+      h('div', { className: 'dof-metric' }, h('span', null, t('ui.office.lastHeartbeat')), h('strong', null, health.lastHeartbeatAt ?? t('ui.office.noneYet'))),
+      h('div', { className: 'dof-metric' }, h('span', null, t('ui.office.lastEvent')), h('strong', null, health.lastEventType ?? t('ui.office.noneYet'))),
+      h('div', { className: 'dof-metric' }, h('span', null, t('ui.office.reconnects')), h('strong', null, String(health.reconnects ?? 0))),
       h('div', { className: 'dof-metric' }, h('span', null, 'Job Offer'), h('strong', null, String(health.jobsOffered ?? 0))),
-      h('div', { className: 'dof-metric' }, h('span', null, '运行 Job'), h('strong', null, String(health.jobs?.running ?? 0))),
-      h('div', { className: 'dof-metric' }, h('span', null, '完成 Job'), h('strong', null, String(health.jobs?.completed ?? 0)))) : null,
+      h('div', { className: 'dof-metric' }, h('span', null, t('ui.office.runningJobs')), h('strong', null, String(health.jobs?.running ?? 0))),
+      h('div', { className: 'dof-metric' }, h('span', null, t('ui.office.completedJobs')), h('strong', null, String(health.jobs?.completed ?? 0)))) : null,
     h('div', { className: 'dof-card' },
-      h('div', { className: 'dof-cardTitle' }, h('h4', null, '设备连接'), h('span', null, 'Token 只写入本机凭据存储')),
+      h('div', { className: 'dof-cardTitle' }, h('h4', null, t('ui.office.deviceConnection')), h('span', null, t('ui.office.tokenIsWrittenOnlyToThe'))),
       h('div', { className: 'dof-grid' },
         h('label', { className: 'dof-field', 'data-wide': 'true' }, 'Office Base URL',
           h('input', { value: form.baseUrl, placeholder: 'https://office.example.com', onChange: (event) => setForm({ ...form, baseUrl: event.target.value }) })),
         h('label', { className: 'dof-field' }, 'Device ID',
           h('input', { value: form.deviceId, placeholder: 'local-harness', onChange: (event) => setForm({ ...form, deviceId: event.target.value }) })),
         h('label', { className: 'dof-field' }, 'Device Token',
-          h('input', { type: 'password', value: form.deviceToken, placeholder: model.tokenConfigured ? '已安全保存；留空保持不变' : '粘贴 Office 一次性凭据', autoComplete: 'new-password', onChange: (event) => setForm({ ...form, deviceToken: event.target.value }) })),
-        h('label', { className: 'dof-field' }, '最大并发',
+          h('input', { type: 'password', value: form.deviceToken, placeholder: model.tokenConfigured ? t('ui.office.storedSecurelyLeaveBlankToKeep') : t('ui.office.pasteTheOneTimeOfficeCredential'), autoComplete: 'new-password', onChange: (event) => setForm({ ...form, deviceToken: event.target.value }) })),
+        h('label', { className: 'dof-field' }, t('ui.office.maxConcurrency'),
           h('input', { type: 'number', min: 1, max: 4, value: form.maxConcurrency, onChange: (event) => setForm({ ...form, maxConcurrency: event.target.value }) })),
-        h('label', { className: 'dof-field' }, 'Heartbeat 秒数',
+        h('label', { className: 'dof-field' }, t('ui.office.heartbeatSeconds'),
           h('input', { type: 'number', min: 10, max: 300, value: form.heartbeatSeconds, onChange: (event) => setForm({ ...form, heartbeatSeconds: event.target.value }) })),
-        h('label', { className: 'dof-field', 'data-wide': 'true' }, 'Workspace 映射',
+        h('label', { className: 'dof-field', 'data-wide': 'true' }, t('ui.office.workspaceMappings'),
           h('textarea', { value: form.workspaces, placeholder: 'office-project=/Users/you/projects/ai-office', onChange: (event) => setForm({ ...form, workspaces: event.target.value }) }),
-          h('small', null, '每行 alias=/本机/绝对路径；Office 只能看到 alias。')),
-        h('label', { className: 'dof-field', 'data-wide': 'true' }, 'Instruction Preset 映射',
-          h('textarea', { value: form.instructionPresets, placeholder: 'action-items=转换为负责人、截止和验收明确的工单', onChange: (event) => setForm({ ...form, instructionPresets: event.target.value }) }),
-          h('small', null, '每行 alias=指令；新增 preset 不需要改 Office 代码。'))),
+          h('small', null, t('ui.office.oneAliasLocalAbsolutePathPer'))),
+        h('label', { className: 'dof-field', 'data-wide': 'true' }, t('ui.office.instructionPresetMappings'),
+          h('textarea', { value: form.instructionPresets, placeholder: t('ui.office.actionItemsTurnThisIntoAccountable'), onChange: (event) => setForm({ ...form, instructionPresets: event.target.value }) }),
+          h('small', null, t('ui.office.oneAliasInstructionPerLineNew')))),
       error ? h('p', { className: 'dof-error', role: 'alert' }, error) : null,
       notice ? h('p', { className: 'dof-notice', role: 'status' }, notice) : null,
       health.error?.message ? h('p', { className: 'dof-error' }, health.error.message) : null,
@@ -138,15 +138,15 @@ export function OfficeSettingsTab({ rpcCall, initialStatus }) {
           ...(form.deviceToken ? { deviceToken: form.deviceToken } : {}),
           maxConcurrency: Number(form.maxConcurrency),
           heartbeatSeconds: Number(form.heartbeatSeconds),
-          workspaces: parseMap(form.workspaces, 'Workspace 映射'),
-          instructionPresets: parseMap(form.instructionPresets, 'Instruction Preset 映射'),
-        })) }, busy === 'save' ? '保存中…' : '保存并连接'),
-        h(Button, { disabled: !model.configured || Boolean(busy), onClick: () => void run('test', () => invoke(OFFICE_RPC_ENDPOINTS.test)) }, busy === 'test' ? '测试中…' : '测试连接'),
-        h(Button, { disabled: !model.configured || Boolean(busy), onClick: () => void run('reconnect', () => invoke(OFFICE_RPC_ENDPOINTS.reconnect)) }, '重新连接'),
-        h(Button, { kind: 'danger', disabled: !model.configured || Boolean(busy), onClick: () => void run('remove', () => invoke(OFFICE_RPC_ENDPOINTS.remove, { confirm: true })) }, '移除连接'))),
+          workspaces: parseMap(form.workspaces, t('ui.office.workspaceMappings')),
+          instructionPresets: parseMap(form.instructionPresets, t('ui.office.instructionPresetMappings')),
+        })) }, busy === 'save' ? t('ui.agentPreset.saving') : t('ui.office.saveAndConnect')),
+        h(Button, { disabled: !model.configured || Boolean(busy), onClick: () => void run('test', () => invoke(OFFICE_RPC_ENDPOINTS.test)) }, busy === 'test' ? t('ui.office.testing') : t('ui.office.testConnection')),
+        h(Button, { disabled: !model.configured || Boolean(busy), onClick: () => void run('reconnect', () => invoke(OFFICE_RPC_ENDPOINTS.reconnect)) }, t('ui.office.reconnect')),
+        h(Button, { kind: 'danger', disabled: !model.configured || Boolean(busy), onClick: () => void run('remove', () => invoke(OFFICE_RPC_ENDPOINTS.remove, { confirm: true })) }, t('ui.office.removeConnection')))),
     h('div', { className: 'dof-card' },
-      h('div', { className: 'dof-cardTitle' }, h('h4', null, '协议 Hook 预览'), h('span', null, '由 Base URL 自动派生，不单独填写')),
+      h('div', { className: 'dof-cardTitle' }, h('h4', null, t('ui.office.protocolHookPreview')), h('span', null, t('ui.office.derivedFromBaseUrlNoSeparate'))),
       h('div', { className: 'dof-hooks' },
-        [['SSE', hooks.stream], ['Heartbeat', hooks.heartbeat], ['Job', hooks.job], ['Result', hooks.result]].map(([label, url]) => h('div', { className: 'dof-hook', key: label }, h('strong', null, label), h('code', null, url ?? 'Base URL 无效'))))),
-    h('p', { className: 'dof-notice' }, 'Office Hook 尚未部署时，配置会安全保存并自动重试；出现 HTTP 404 代表协议端点待上线，不代表 Harness 故障。'));
+        [['SSE', hooks.stream], ['Heartbeat', hooks.heartbeat], ['Job', hooks.job], ['Result', hooks.result]].map(([label, url]) => h('div', { className: 'dof-hook', key: label }, h('strong', null, label), h('code', null, url ?? t('ui.office.invalidBaseUrl')))))),
+    h('p', { className: 'dof-notice' }, t('ui.office.configurationIsSavedAndRetriedWhile')));
 }

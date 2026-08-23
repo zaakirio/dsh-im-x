@@ -6,6 +6,7 @@ import { QqController } from '../../../src/channels/qq/qq-controller.mjs';
 import { connectionTestMessage } from '../../../src/channels/shared/connection-test.mjs';
 import { QQ_ENDPOINTS, createQqRpcHandler } from '../../../plugin-src/host/channels/qq/rpc.mjs';
 import { defaultTranslator as tr } from '../../../src/i18n/index.mjs';
+import { t as uiText } from '../../../plugin-src/client/i18n.js';
 
 function deferred() {
   let resolve;
@@ -193,7 +194,7 @@ test('QQ reconnect RPC reports test-message outcomes without discarding the snap
       calls.push(['reconnect', botId]);
       return {
         revision: 7,
-        bots: [{ botId, connected, bot: { name: 'QQ机器人' } }],
+        bots: [{ botId, connected, bot: { name: uiText('ui.qq.qqBot') } }],
         totals: { configured: 1, connected: connected ? 1 : 0 },
       };
     },

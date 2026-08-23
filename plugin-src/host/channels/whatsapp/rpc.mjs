@@ -4,6 +4,7 @@ import { publicConnectionTestResult } from '../../../../src/channels/shared/conn
 import { resolveRpcAuthority } from '../../rpc-authority.mjs';
 import { publicWorkspaceError, SET_WORKSPACE_ENDPOINT, validWorkspacePayload } from '../shared/workspace-rpc.mjs';
 import { SET_AGENT_PRESET_ENDPOINT, validAgentPresetPayload } from '../shared/agent-preset-rpc.mjs';
+import { defaultTranslator } from '../../../../src/i18n/index.mjs';
 
 export const WHATSAPP_RPC_CHANNEL = '/whatsapp';
 export const WHATSAPP_ENDPOINTS = Object.freeze({
@@ -52,11 +53,11 @@ function payloadFailure(endpoint, payload) {
   }
   if (endpoint === WHATSAPP_ENDPOINTS.setWorkspace) {
     return validWorkspacePayload(payload)
-      ? null : '请输入工作区绝对路径。';
+      ? null : defaultTranslator('rpc.workspaceRequired');
   }
   if (endpoint === WHATSAPP_ENDPOINTS.setAgentPreset) {
     return validAgentPresetPayload(payload)
-      ? null : '请选择 Agent Preset。';
+      ? null : defaultTranslator('rpc.presetRequired');
   }
   return 'Unknown WhatsApp endpoint.';
 }
@@ -177,7 +178,7 @@ export function createWhatsappRpcHandler(controller, { encodeQr = qrDataUrl } = 
       return signal?.aborted
         ? { ok: false, error: { code: 'cancelled', message: 'The request was cancelled.' } }
         : { ok: false, error: workspaceError
-          ?? { code: 'whatsapp-operation-failed', message: 'WhatsApp 操作失败，请稍后重试。' } };
+          ?? { code: 'whatsapp-operation-failed', message: defaultTranslator('rpc.operationFailed', { channel: 'WhatsApp' }) } };
     }
   };
 }

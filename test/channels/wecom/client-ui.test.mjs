@@ -10,6 +10,11 @@ import {
   AccountCard,
   WecomSettingsTab,
 } from '../../../plugin-src/client/channels/wecom/index.js';
+import { t as uiText } from '../../../plugin-src/client/i18n.js';
+
+function escapeRe(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 const { act, create } = TestRenderer;
 const CLIENT_URL = new URL('../../../plugin-src/client/channels/wecom/index.js', import.meta.url);
@@ -34,7 +39,7 @@ function account(botId, name) {
     state: 'connected',
     workspace: '/workspace/current',
     bot: { name, appIdMasked: `${botId}•••` },
-    health: { summary: '企业微信 WebSocket 长连接运行正常', lastCheckedAt: Date.now() },
+    health: { summary: uiText('ui.wecom.wecomWebsocketConnectionIsHealthy'), lastCheckedAt: Date.now() },
     error: null,
   };
 }
@@ -45,8 +50,8 @@ test('Enterprise WeChat settings uses the shared compact channel toolbar', () =>
   }));
   assert.match(markup, /class="ddt-page dwecom-page dim-channelPage"/);
   assert.match(markup, /class="ddt-button dim-scanButton"/);
-  assert.match(markup, /aria-label="扫码接入企业微信机器人"/);
-  assert.match(markup, /class="dim-actionIcon"[^]*扫码接入机器人/);
+  assert.match(markup, new RegExp(`aria-label="${escapeRe(uiText('ui.wecom.connectWecomBotByQrCode'))}"`));
+  assert.match(markup, new RegExp(`class="dim-actionIcon"[^]*${escapeRe(uiText('ui.dingtalk.scanQrCode'))}`));
   assert.doesNotMatch(markup, /凭据仅保存在本机|role="switch"|type="checkbox"/);
 });
 
@@ -56,8 +61,8 @@ test('Enterprise WeChat cards keep check time with status and omit repeated chan
       botId: 'wecom_bot',
       connected: true,
       state: 'connected',
-      bot: { name: '企业微信机器人', appIdMasked: 'bot••••001' },
-      health: { summary: '企业微信 WebSocket 长连接运行正常', lastCheckedAt: Date.now() },
+      bot: { name: uiText('ui.wecom.wecomBot'), appIdMasked: 'bot••••001' },
+      health: { summary: uiText('ui.wecom.wecomWebsocketConnectionIsHealthy'), lastCheckedAt: Date.now() },
       error: null,
     },
     onReconnect() {},
@@ -67,9 +72,9 @@ test('Enterprise WeChat cards keep check time with status and omit repeated chan
   }));
   assert.match(markup, /class="ddt-card dim-botCard"/);
   assert.match(markup, /data-im-channel-logo="wecom"/);
-  assert.match(markup, /class="dim-botHealthGroup"[^]*class="dim-lastChecked"><span>最近检查<\/span>/);
-  assert.doesNotMatch(markup, /消息通道|dim-botMetric/);
-  assert.match(markup, />检查连接<[^]*>移除接入</);
+  assert.match(markup, new RegExp(`class="dim-botHealthGroup"[^]*class="dim-lastChecked"><span>${escapeRe(uiText('ui.channelCardMeta.lastChecked'))}</span>`));
+  assert.doesNotMatch(markup, new RegExp(`${escapeRe(uiText('ui.channelCardMeta.messageChannel'))}|dim-botMetric`));
+  assert.match(markup, new RegExp(`>${escapeRe(uiText('ui.dingtalk.checkConnection'))}<[^]*>${escapeRe(uiText('ui.dingtalk.removeConnection2'))}<`));
   assert.match(markup, /class="dim-presetSelect"/);
   assert.doesNotMatch(markup, /收到\s*\/\s*回复|dim-cardSummary|企业微信 WebSocket 长连接运行正常/);
 });
@@ -77,17 +82,17 @@ test('Enterprise WeChat cards keep check time with status and omit repeated chan
 test('Enterprise WeChat card feedback stays visible without hiding connection errors', () => {
   const markup = renderToStaticMarkup(React.createElement(AccountCard, {
     account: {
-      ...account('wecom_bot', '企业微信机器人'),
+      ...account('wecom_bot', uiText('ui.wecom.wecomBot')),
       connected: false,
       state: 'error',
       error: { code: 'offline', message: '连接凭据已失效' },
     },
-    feedback: '企业微信连接检查完成，测试消息已发送。',
+    feedback: uiText('ui.wecom.wecomConnectionCheckCompletedAndThe'),
     onReconnect() {}, onRequestRemove() {}, onConfirmRemove() {}, onCancelRemove() {},
   }));
 
   assert.match(markup, />连接凭据已失效</);
-  assert.match(markup, /role="status"[^>]*>企业微信连接检查完成，测试消息已发送。</);
+  assert.match(markup, new RegExp(`role="status"[^>]*>${escapeRe(uiText('ui.wecom.wecomConnectionCheckCompletedAndThe'))}<`));
 });
 
 test('Enterprise WeChat connection feedback is scoped to the checked bot', async (t) => {
@@ -120,22 +125,22 @@ test('Enterprise WeChat connection feedback is scoped to the checked bot', async
   });
   const first = renderer.root.findByProps({ 'data-bot-id': 'wecom_first' });
   await act(async () => {
-    buttonNamed(first, '检查连接').props.onClick();
+    buttonNamed(first, uiText('ui.dingtalk.checkConnection')).props.onClick();
     await flushMicrotasks();
   });
 
   const firstAfter = renderer.root.findByProps({ 'data-bot-id': 'wecom_first' });
   const secondAfter = renderer.root.findByProps({ 'data-bot-id': 'wecom_second' });
-  assert.match(textOf(firstAfter), /测试消息已发送/);
-  assert.doesNotMatch(textOf(secondAfter), /测试消息已发送/);
+  assert.match(textOf(firstAfter), new RegExp(escapeRe(uiText('ui.wecom.wecomConnectionCheckCompletedAndThe'))));
+  assert.doesNotMatch(textOf(secondAfter), new RegExp(escapeRe(uiText('ui.wecom.wecomConnectionCheckCompletedAndThe'))));
   assert.deepEqual(calls, [{ botId: 'wecom_first', sendTest: true }]);
   await act(async () => { renderer.unmount(); });
 });
 
 test('Enterprise WeChat reconnect failure uses fixed translatable copy', async () => {
   const source = await readFile(CLIENT_URL, 'utf8');
-  assert.match(source, /'连接检查失败，请稍后重试。'/);
-  assert.match(source, /'连接检查完成。机器人尚未收到可用于测试的私聊消息。'/);
+  assert.match(source, /ui\.dingtalk\.connectionCheckFailedTryAgainLater/);
+  assert.match(source, /ui\.dingtalk\.connectionCheckCompletedTheBotHas/);
   assert.doesNotMatch(source, /请先私聊机器人发送 \/status/);
   assert.doesNotMatch(source, /连接检查失败：\$\{presentError\(error\)\.message\}/);
 });

@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { h } from './i18n.js';
+import { h, t } from './i18n.js';
 
 export function ChannelListHeading({ className = '', id, title, connectionLabel }) {
   const helpId = React.useId();
@@ -11,7 +11,7 @@ export function ChannelListHeading({ className = '', id, title, connectionLabel 
         h('button', {
           type: 'button',
           className: 'dim-channelHelpButton',
-          'aria-label': '查看消息通道说明',
+          'aria-label': t('ui.channelCardMeta.viewMessageChannelDetails'),
           'aria-describedby': helpId,
         }, h('span', { 'aria-hidden': 'true' }, '?')),
         h('span', {
@@ -19,7 +19,7 @@ export function ChannelListHeading({ className = '', id, title, connectionLabel 
           className: 'dim-channelTooltip',
           role: 'tooltip',
         },
-        h('span', null, '消息通道'),
+        h('span', null, t('ui.channelCardMeta.messageChannel')),
         h('strong', null, connectionLabel)))));
 }
 
@@ -43,6 +43,6 @@ export function BotStatusMeta({
     }),
     h('span', null, stateLabel)),
     h('div', { className: 'dim-lastChecked' },
-      h('span', null, '最近检查'),
+      h('span', null, t('ui.channelCardMeta.lastChecked')),
       h('span', null, formatCheckedTime(lastCheckedAt))));
 }

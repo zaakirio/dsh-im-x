@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { QqLogoGlyph } from '../../channel-logos.js';
 import { CredentialActionIcon, CredentialBindingPanel, QrActionIcon } from '../../credential-binding.js';
-import { h } from '../../i18n.js';
+import { h, t } from '../../i18n.js';
 import { WorkspaceEditor } from '../../workspace-editor.js';
 import {
   AgentPresetCatalogContext,
@@ -25,6 +25,8 @@ import {
 } from './api.js';
 import { installQqStyles } from './styles.js';
 
+const CHANNEL_LABEL = 'QQ';
+
 const ACTIVE_STATES = new Set(['pending', 'refreshing', 'connecting']);
 
 const Button = React.forwardRef(function Button({ children, kind = 'secondary', className = '', ...props }, ref) {
@@ -38,13 +40,13 @@ const Button = React.forwardRef(function Button({ children, kind = 'secondary', 
 });
 
 function checkedTime(value) {
-  if (!value) return '尚未检查';
+  if (!value) return t('ui.dingtalk.notCheckedYet');
   try {
     return new Intl.DateTimeFormat('zh-CN', {
       hour: '2-digit', minute: '2-digit', second: '2-digit',
     }).format(new Date(value));
   } catch {
-    return '刚刚';
+    return t('ui.dingtalk.justNow');
   }
 }
 
@@ -58,26 +60,26 @@ function Heading({ totals, adding, busy, onAdd, onCredential, credentialOpen, ad
           onClick: onAdd,
           disabled: adding || busy,
           ref: addButtonRef,
-          'aria-label': '扫码接入 QQ 机器人',
-        }, h(QrActionIcon), adding ? '正在接入' : '扫码接入机器人'),
+          'aria-label': t('ui.qq.connectQqBotByQrCode'),
+        }, h(QrActionIcon), adding ? t('ui.dingtalk.connecting') : t('ui.dingtalk.scanQrCode')),
         h(Button, {
           kind: 'credential',
           className: 'dim-credentialButton',
           onClick: onCredential,
           disabled: adding || busy,
           'aria-pressed': credentialOpen,
-          'aria-label': '使用 AppID 和 AppSecret 绑定 QQ 机器人',
-        }, h(CredentialActionIcon), credentialOpen ? '收起凭据' : '手动接入')),
+          'aria-label': t('ui.qq.connectAQqBotWithAppid'),
+        }, h(CredentialActionIcon), credentialOpen ? t('ui.dingtalk.hideCredentials') : t('ui.dingtalk.manualSetup'))),
       totals.configured > 0
         ? h('div', { className: 'ddt-badge dim-onlineBadge' },
-            h('span', null, `${totals.connected} / ${totals.configured} 在线`))
+            h('span', null, t('ui.common.onlineCount', { connected: totals.connected, configured: totals.configured })))
         : null));
 }
 
 function LoadingView() {
   return h('div', { className: 'ddt-card ddt-loading dim-surfaceCard dim-loadingView', 'aria-busy': 'true' },
     h('div', { className: 'ddt-spinner dim-spinner' }),
-    h('span', null, '正在读取 QQ 机器人状态…'));
+    h('span', null, t('ui.common.loadingStatus', { channel: CHANNEL_LABEL })));
 }
 
 function EmptyView({ busy, onStart }) {
@@ -85,12 +87,12 @@ function EmptyView({ busy, onStart }) {
     h('div', { className: 'ddt-cardBody ddt-empty dim-surfaceBody dim-emptyView' },
       h('div', { className: 'dim-emptyCopy' },
         h('div', { className: 'ddt-stateLabel dim-stateLabel' },
-          h('span', { className: 'ddt-dot dim-stateDot' }), h('span', null, '尚未绑定 QQ 机器人')),
-        h('h3', null, '使用手机 QQ 扫码创建并绑定机器人'),
-        h('p', null, '扫码由腾讯官方页面完成，不需要手动填写 AppID 或 AppSecret。扫码成功后，机器人会自动连接 DeepSeek Harness。'),
+          h('span', { className: 'ddt-dot dim-stateDot' }), h('span', null, t('ui.qq.noQqBotConnectedYet'))),
+        h('h3', null, t('ui.qq.scanWithMobileQqToCreate')),
+        h('p', null, t('ui.qq.scanningIsCompletedOnTencentS')),
         h('div', { className: 'ddt-actions dim-viewActions' },
           h(Button, { kind: 'primary', onClick: onStart, disabled: busy },
-            busy ? '正在生成二维码…' : '生成 QQ 二维码'))),
+            busy ? t('ui.dingtalk.generatingQrCode') : t('ui.qq.generateQqQrCode')))),
       h('div', { className: 'ddt-brandMark dim-emptyBrand dqq-brand', 'aria-hidden': 'true' },
         h(QqLogoGlyph, { size: 64 }))));
 }
@@ -105,54 +107,54 @@ function QrPanel({ provision, now, busy, onRefresh, onCancel }) {
     h('div', { className: 'ddt-cardBody ddt-qrLayout dim-surfaceBody dim-qrLayout' },
       h('div', { className: 'ddt-qrColumn dim-qrColumn' },
         h('div', { className: 'ddt-qrFrame dim-qrFrame' },
-          source ? h('img', { src: source, alt: '用于绑定 QQ 机器人的一次性二维码' })
+          source ? h('img', { src: source, alt: t('ui.qq.oneTimeQrCodeForConnecting') })
             : h('div', { className: 'ddt-qrFallback dim-qrFallback' },
-                refreshing ? '二维码正在自动刷新…' : '二维码图片正在生成…')),
+                refreshing ? t('ui.qq.refreshingQrCode') : t('ui.qq.generatingQrCode'))),
         h('div', { className: 'ddt-countdown dim-countdown' },
           h('div', { className: 'ddt-countdownTop dim-countdownTop' },
-            h('span', null, '当前二维码有效时间'),
+            h('span', null, t('ui.qq.qrCodeExpiresIn')),
             h('strong', null, refreshing ? '--:--' : formatRemaining(remaining))),
           h('div', { className: 'ddt-progress dim-progress', style: { '--ddt-progress': `${progress}%` } }, h('span')))),
       h('div', { className: 'ddt-qrCopy dim-qrCopy' },
         h('div', { className: 'ddt-stateLabel dim-stateLabel' },
           h('span', { className: 'ddt-dot dim-stateDot', 'data-tone': 'warning' }),
-          h('span', null, refreshing ? '正在刷新二维码' : '等待手机 QQ 扫码')),
-        h('h3', null, '使用手机 QQ 完成机器人绑定'),
-        h('p', null, '腾讯页面会创建或绑定一个 QQ 机器人，并把连接凭据安全交给本机 Harness Host。'),
+          h('span', null, refreshing ? t('ui.qq.refreshingQrCode2') : t('ui.qq.waitingForMobileQqScan'))),
+        h('h3', null, t('ui.qq.completeBotSetupWithMobileQq')),
+        h('p', null, t('ui.qq.tencentWillCreateOrConnectA')),
         h('ol', { className: 'ddt-steps dim-steps' },
-          h('li', null, '打开手机 QQ，扫描左侧二维码'),
-          h('li', null, '在腾讯授权页面确认创建或绑定机器人'),
-          h('li', null, '返回这里等待连接完成')),
+          h('li', null, t('ui.qq.openMobileQqAndScanThe')),
+          h('li', null, t('ui.qq.confirmBotCreationOrConnectionOn')),
+          h('li', null, t('ui.qq.returnHereAndWaitForThe'))),
         h('div', { className: 'ddt-actions dim-viewActions' },
-          h(Button, { onClick: onRefresh, disabled: busy }, '重新生成二维码'),
-          h(Button, { kind: 'quiet', onClick: onCancel, disabled: busy }, '取消')))));
+          h(Button, { onClick: onRefresh, disabled: busy }, t('ui.dingtalk.generateANewQrCode2')),
+          h(Button, { kind: 'quiet', onClick: onCancel, disabled: busy }, t('ui.dingtalk.cancel'))))));
 }
 
 function ProvisionView({ provision, busy, onRetry, onClose }) {
   if (provision.status === 'connecting') {
     return h('div', { className: 'ddt-card ddt-loading dim-surfaceCard dim-specialView', 'aria-busy': 'true' },
       h('div', { className: 'ddt-spinner dim-spinner' }),
-      h('h3', null, 'QQ 已授权，正在连接机器人'),
-      h('p', null, '凭据正在写入本机，并启动 QQ WebSocket 消息连接。'));
+      h('h3', null, t('ui.qq.authorizedInQqConnectingTheBot')),
+      h('p', null, t('ui.qq.savingCredentialsLocallyAndStartingThe')));
   }
-  const error = provision.error ?? { code: 'QQ_PROVISION_FAILED', message: 'QQ 机器人没有绑定完成' };
+  const error = provision.error ?? { code: 'QQ_PROVISION_FAILED', message: t('ui.common.notBound', { channel: CHANNEL_LABEL }) };
   return h('div', { className: 'ddt-card dim-surfaceCard' },
     h('div', { className: 'ddt-inlineError dim-inlineError', role: 'alert' },
-      h('h3', null, 'QQ 机器人没有绑定完成'),
+      h('h3', null, t('ui.common.notBound', { channel: CHANNEL_LABEL })),
       h('p', null, error.message),
       h('span', { className: 'ddt-errorCode' }, error.code),
       h('div', { className: 'ddt-actions dim-viewActions' },
-        h(Button, { kind: 'primary', onClick: onRetry, disabled: busy }, '重新生成二维码'),
-        h(Button, { onClick: onClose, disabled: busy }, '关闭'))));
+        h(Button, { kind: 'primary', onClick: onRetry, disabled: busy }, t('ui.dingtalk.generateANewQrCode2')),
+        h(Button, { onClick: onClose, disabled: busy }, t('ui.dingtalk.close')))));
 }
 
 function RemoveConfirmation({ account, busy, onConfirm, onCancel }) {
   return h('div', { className: 'ddt-confirm dim-confirm', role: 'alertdialog' },
-    h('strong', null, `从 DeepSeek Harness 移除“${account.bot.name}”？`),
-    h('p', null, '这会停止消息连接，并删除本机保存的应用凭据、机器人配置及会话映射。腾讯平台中的机器人不会被自动删除。'),
+    h('strong', null, t('ui.common.removeConfirm', { name: account.bot.name })),
+    h('p', null, t('ui.qq.thisStopsTheMessageConnectionAnd')),
     h('div', { className: 'ddt-actions dim-viewActions' },
-      h(Button, { onClick: onCancel, disabled: busy }, '保留机器人'),
-      h(Button, { kind: 'danger', onClick: onConfirm, disabled: busy }, busy ? '正在移除…' : '确认移除接入')));
+      h(Button, { onClick: onCancel, disabled: busy }, t('ui.dingtalk.keepBot')),
+      h(Button, { kind: 'danger', onClick: onConfirm, disabled: busy }, busy ? t('ui.dingtalk.removing') : t('ui.dingtalk.removeConnection'))));
 }
 
 export function AccountCard({
@@ -168,7 +170,7 @@ export function AccountCard({
   onCancelRemove,
 }) {
   const tone = account.connected ? 'success' : account.state === 'error' ? 'error' : 'warning';
-  const stateLabel = account.connected ? '运行正常' : account.state === 'connecting' ? '正在连接' : '连接未就绪';
+  const stateLabel = account.connected ? t('ui.dingtalk.connected') : account.state === 'connecting' ? t('ui.dingtalk.connecting2') : t('ui.dingtalk.notConnected');
   const summary = account.error?.message ?? (account.connected ? null : account.health.summary);
   return h('article', { className: 'ddt-card dim-botCard', 'data-bot-id': account.botId },
     h('div', { className: 'ddt-cardBody dim-botCardBody' },
@@ -198,8 +200,8 @@ export function AccountCard({
       h('div', { className: 'ddt-accountFooter dim-cardFooter' },
         h('div', { className: 'dim-cardFooterLayout' },
           h('div', { className: 'ddt-actions dim-cardActions' },
-            h(Button, { className: 'dim-cardAction', onClick: onReconnect, disabled: Boolean(busy) }, busy === 'reconnect' ? '检查中…' : account.connected ? '检查连接' : '重试连接'),
-            h(Button, { className: 'dim-cardAction', kind: 'danger', onClick: onRequestRemove, disabled: Boolean(busy) }, '移除接入')),
+            h(Button, { className: 'dim-cardAction', onClick: onReconnect, disabled: Boolean(busy) }, busy === 'reconnect' ? t('ui.dingtalk.checking') : account.connected ? t('ui.dingtalk.checkConnection') : t('ui.dingtalk.reconnect')),
+            h(Button, { className: 'dim-cardAction', kind: 'danger', onClick: onRequestRemove, disabled: Boolean(busy) }, t('ui.dingtalk.removeConnection2'))),
           summary ? h('div', { className: 'ddt-summary dim-cardSummary' }, summary) : null,
           feedback ? h('div', {
             className: 'ddt-summary dim-cardFeedback',
@@ -240,7 +242,7 @@ export function QqSettingsTab({ rpcCall }) {
   }, []);
 
   const invoke = React.useCallback(async (endpoint, payload = {}, signal) => {
-    if (typeof rpcCall !== 'function') throw new TypeError('QQ 设置页缺少 RPC 连接');
+    if (typeof rpcCall !== 'function') throw new TypeError(t('ui.common.missingRpc', { channel: CHANNEL_LABEL }));
     return unwrapRpcResult(await rpcCall(endpoint, payload, signal));
   }, [rpcCall]);
 
@@ -420,14 +422,14 @@ export function QqSettingsTab({ rpcCall }) {
       if (mounted.current) {
         setFeedbackByBot((current) => ({
           ...current,
-          [account.botId]: '连接检查失败，请稍后重试。',
+          [account.botId]: t('ui.dingtalk.connectionCheckFailedTryAgainLater'),
         }));
       }
     }
   }, [botAction]);
 
   let provisionView = null;
-  if (provision?.status === 'starting') provisionView = h('div', { className: 'ddt-card ddt-loading dim-surfaceCard' }, h('div', { className: 'ddt-spinner' }), '正在申请 QQ 二维码…');
+  if (provision?.status === 'starting') provisionView = h('div', { className: 'ddt-card ddt-loading dim-surfaceCard' }, h('div', { className: 'ddt-spinner' }), t('ui.qq.requestingQqQrCode'));
   else if (['pending', 'refreshing'].includes(provision?.status)) provisionView = h(QrPanel, {
     provision, now, busy, onRefresh: () => void startProvisioning(true), onCancel: () => void closeProvision(),
   });
@@ -439,8 +441,8 @@ export function QqSettingsTab({ rpcCall }) {
     ? h('section', { className: 'dim-listSection' },
         h(ChannelListHeading, {
           className: 'ddt-listHeading',
-          title: '已绑定的 QQ 机器人',
-          connectionLabel: 'WebSocket 长连接',
+          title: t('ui.qq.connectedQqBots'),
+          connectionLabel: t('ui.qq.websocketPersistentConnection'),
         }),
         h('ul', { className: 'ddt-list dim-botList' }, model.bots.map((account) =>
           h('li', { key: account.botId }, h(AccountCard, {
@@ -474,9 +476,9 @@ export function QqSettingsTab({ rpcCall }) {
     ? h(CredentialBindingPanel, {
         channel: 'QQ',
         identityLabel: 'AppID',
-        identityPlaceholder: '填写 QQ 开放平台 AppID',
+        identityPlaceholder: t('ui.qq.enterTheQqOpenPlatformAppid'),
         secretLabel: 'AppSecret',
-        secretPlaceholder: '填写 QQ 开放平台 AppSecret',
+        secretPlaceholder: t('ui.qq.enterTheQqOpenPlatformAppsecret'),
         busy,
         error: credentialError,
         onSubmit: bindCredentials,
@@ -486,7 +488,7 @@ export function QqSettingsTab({ rpcCall }) {
 
   return h(AgentPresetCatalogContext.Provider, {
     value: model.agentPresetCatalog ?? EMPTY_AGENT_PRESET_CATALOG,
-  }, h('section', { className: 'ddt-page dqq-page dim-channelPage', 'aria-label': 'QQ 设置' },
+  }, h('section', { className: 'ddt-page dqq-page dim-channelPage', 'aria-label': t('ui.common.settings', { channel: CHANNEL_LABEL }) },
     h(Heading, {
       totals: model.totals,
       adding: Boolean(provision),
@@ -498,7 +500,7 @@ export function QqSettingsTab({ rpcCall }) {
     }),
     model.phase === 'loading' ? h(LoadingView)
       : model.phase === 'error'
-        ? h('div', { className: 'ddt-card dim-surfaceCard' }, h('div', { className: 'ddt-inlineError dim-inlineError' }, h('h3', null, '无法读取 QQ 机器人状态'), h('p', null, model.error?.message), h(Button, { onClick: () => void loadStatus() }, '重新读取')))
+        ? h('div', { className: 'ddt-card dim-surfaceCard' }, h('div', { className: 'ddt-inlineError dim-inlineError' }, h('h3', null, t('ui.common.cannotReadStatus', { channel: CHANNEL_LABEL })), h('p', null, model.error?.message), h(Button, { onClick: () => void loadStatus() }, t('ui.dingtalk.reload'))))
         : h(React.Fragment, null,
             credentialView,
             provisionView,

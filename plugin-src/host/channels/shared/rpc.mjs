@@ -9,6 +9,7 @@ import {
   SET_AGENT_PRESET_ENDPOINT,
   validAgentPresetPayload,
 } from './agent-preset-rpc.mjs';
+import { defaultTranslator } from '../../../../src/i18n/index.mjs';
 
 export const TOKEN_BOT_ENDPOINTS = Object.freeze({
   status: 'connection.status',
@@ -60,11 +61,11 @@ function payloadFailure(endpoint, payload) {
   }
   if (endpoint === TOKEN_BOT_ENDPOINTS.setWorkspace) {
     return validWorkspacePayload(payload)
-      ? null : '请输入工作区绝对路径。';
+      ? null : defaultTranslator('rpc.workspaceRequired');
   }
   if (endpoint === TOKEN_BOT_ENDPOINTS.setAgentPreset) {
     return validAgentPresetPayload(payload)
-      ? null : '请选择 Agent Preset。';
+      ? null : defaultTranslator('rpc.presetRequired');
   }
   return 'Unknown bot endpoint.';
 }
@@ -86,12 +87,12 @@ function operationError(channel, error) {
     return { code: 'webhook-configured', message: error.message };
   }
   if (error?.code === 'telegram-401' || error?.code === 'discord-401') {
-    return { code: 'invalid-token', message: `${channel} Bot Token 无效，请重新填写。` };
+    return { code: 'invalid-token', message: defaultTranslator('rpc.invalidBotToken', { channel }) };
   }
   if (error?.code === 'discord-intents') {
     return { code: 'discord-intents', message: error.message };
   }
-  return { code: `${channel.toLowerCase()}-operation-failed`, message: `${channel} 操作失败，请稍后重试。` };
+  return { code: `${channel.toLowerCase()}-operation-failed`, message: defaultTranslator('rpc.operationFailed', { channel }) };
 }
 
 export function createTokenBotRpcHandler(controller, { channel }) {

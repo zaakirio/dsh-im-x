@@ -6,6 +6,7 @@ import {
   connectionTestTargetUnavailable,
   publicConnectionTestResult,
 } from '../../../../src/channels/shared/connection-test.mjs';
+import { defaultTranslator } from '../../../../src/i18n/index.mjs';
 
 export const WECOM_RPC_CHANNEL = '/wecom';
 export const WECOM_ENDPOINTS = Object.freeze({
@@ -70,11 +71,11 @@ function payloadFailure(endpoint, payload) {
   }
   if (endpoint === WECOM_ENDPOINTS.setWorkspace) {
     return validWorkspacePayload(payload)
-      ? null : '请输入工作区绝对路径。';
+      ? null : defaultTranslator('rpc.workspaceRequired');
   }
   if (endpoint === WECOM_ENDPOINTS.setAgentPreset) {
     return validAgentPresetPayload(payload)
-      ? null : '请选择 Agent Preset。';
+      ? null : defaultTranslator('rpc.presetRequired');
   }
   return 'Unknown Enterprise WeChat endpoint.';
 }
@@ -154,7 +155,7 @@ export function createWecomRpcHandler(controller, { encodeQr = qrDataUrl } = {})
           );
           if (!connected || typeof controller.sendConnectionTest !== 'function') {
             testMessage = publicConnectionTestResult(
-              connectionTestTargetUnavailable('企业微信机器人'),
+              connectionTestTargetUnavailable(defaultTranslator('bot.wecomDefaultName')),
             );
           } else {
             try {
@@ -189,7 +190,7 @@ export function createWecomRpcHandler(controller, { encodeQr = qrDataUrl } = {})
       return signal?.aborted
         ? { ok: false, error: { code: 'cancelled', message: 'The request was cancelled.' } }
         : { ok: false, error: workspaceError
-          ?? { code: 'wecom-operation-failed', message: '企业微信操作失败，请稍后重试。' } };
+          ?? { code: 'wecom-operation-failed', message: defaultTranslator('rpc.operationFailed', { channel: 'WeCom' }) } };
     }
   };
 }

@@ -6,6 +6,7 @@ import {
   connectionTestTargetUnavailable,
   publicConnectionTestResult,
 } from '../../../../src/channels/shared/connection-test.mjs';
+import { defaultTranslator } from '../../../../src/i18n/index.mjs';
 
 export const DINGTALK_RPC_CHANNEL = '/dingtalk';
 export const DINGTALK_ENDPOINTS = Object.freeze({
@@ -88,11 +89,11 @@ function payloadFailure(endpoint, payload) {
   }
   if (endpoint === DINGTALK_ENDPOINTS.setWorkspace) {
     return validWorkspacePayload(payload)
-      ? null : '请输入工作区绝对路径。';
+      ? null : defaultTranslator('rpc.workspaceRequired');
   }
   if (endpoint === DINGTALK_ENDPOINTS.setAgentPreset) {
     return validAgentPresetPayload(payload)
-      ? null : '请选择 Agent Preset。';
+      ? null : defaultTranslator('rpc.presetRequired');
   }
   if (endpoint === DINGTALK_ENDPOINTS.approveSender) {
     return exactKeys(payload, ['botId', 'requestId', 'confirm'])
@@ -124,7 +125,7 @@ function cancelled() {
 function internalFailure() {
   return {
     ok: false,
-    error: { code: 'dingtalk-operation-failed', message: '钉钉操作失败，请稍后重试。' },
+    error: { code: 'dingtalk-operation-failed', message: defaultTranslator('rpc.operationFailed', { channel: 'DingTalk' }) },
   };
 }
 
@@ -231,7 +232,7 @@ export function createDingtalkRpcHandler(controller, { encodeQr = qrDataUrl } = 
           );
           if (!connected || typeof controller.sendConnectionTest !== 'function') {
             testMessage = publicConnectionTestResult(
-              connectionTestTargetUnavailable('钉钉机器人'),
+              connectionTestTargetUnavailable(defaultTranslator('bot.dingtalkDefaultName')),
             );
           } else {
             try {

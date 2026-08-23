@@ -14,6 +14,11 @@ import {
   WhatsappSettingsTab,
 } from '../../../plugin-src/client/channels/whatsapp/index.js';
 import { en, setImTranslator } from '../../../plugin-src/client/i18n.js';
+import { t as uiText } from '../../../plugin-src/client/i18n.js';
+
+function escapeRe(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 const { act, create } = TestRenderer;
 
@@ -36,10 +41,10 @@ test('WhatsApp onboarding is QR-only with no Cloud API credential form', () => {
     },
     now: Date.now(),
   }));
-  assert.match(empty, /扫码绑定 WhatsApp 机器人/);
-  assert.match(empty, /生成二维码/);
-  assert.match(qr, /已关联设备/);
-  assert.match(qr, /关联设备/);
+  assert.match(empty, new RegExp(`${escapeRe(uiText('ui.whatsapp.connectWhatsappByQrCode2'))}`));
+  assert.match(empty, new RegExp(`${escapeRe(uiText('ui.whatsapp.generateQrCode'))}`));
+  assert.match(qr, new RegExp(`${escapeRe(uiText('ui.whatsapp.openWhatsappSettingsLinkedDevices'))}`));
+  assert.match(qr, new RegExp(escapeRe(uiText('ui.whatsapp.openWhatsappSettingsLinkedDevices'))));
   assert.doesNotMatch(`${empty}${qr}`, /Cloud API|Phone Number ID|Access Token|App Secret|Verify Token|Webhook/);
 });
 
@@ -48,7 +53,7 @@ test('WhatsApp QR startup renders a neutral loading state instead of an error ca
     provision: { status: 'starting' },
     busy: true,
   }));
-  assert.match(markup, /正在生成 WhatsApp 二维码/);
+  assert.match(markup, new RegExp(`${escapeRe(uiText('ui.whatsapp.generatingWhatsappQrCode'))}`));
   assert.match(markup, /aria-busy="true"/);
   assert.doesNotMatch(markup, /WhatsApp 没有接入完成|WHATSAPP_PROVISION_FAILED|ddt-inlineError/);
 });
@@ -60,18 +65,18 @@ test('WhatsApp account card uses the unified compact channel layout', () => {
       state: 'connected',
       connected: true,
       bot: { name: 'Harness WhatsApp', idMasked: '1650••••0123' },
-      health: { summary: 'WhatsApp Web 关联设备运行正常', lastCheckedAt: Date.now() },
+      health: { summary: uiText('ui.whatsapp.whatsappLinkedDeviceIsHealthy'), lastCheckedAt: Date.now() },
       error: null,
     },
-    testNotice: '测试消息已发送，请到 WhatsApp 自聊会话中确认。',
+    testNotice: uiText('ui.whatsapp.testMessageSentCheckTheWhatsapp'),
   }));
   assert.match(markup, /data-im-channel-logo="whatsapp"/);
-  assert.match(markup, /class="dim-botHealthGroup"[^]*class="dim-lastChecked"><span>最近检查<\/span>/);
-  assert.doesNotMatch(markup, /WhatsApp Web|消息通道|dim-botMetric/);
-  assert.match(markup, /检查连接/);
-  assert.match(markup, /移除接入/);
+  assert.match(markup, new RegExp(`class="dim-botHealthGroup"[^]*class="dim-lastChecked"><span>${escapeRe(uiText('ui.channelCardMeta.lastChecked'))}</span>`));
+  assert.doesNotMatch(markup, new RegExp(`WhatsApp Web|${escapeRe(uiText('ui.channelCardMeta.messageChannel'))}|dim-botMetric`));
+  assert.match(markup, new RegExp(`${escapeRe(uiText('ui.dingtalk.checkConnection'))}`));
+  assert.match(markup, new RegExp(`${escapeRe(uiText('ui.dingtalk.removeConnection2'))}`));
   assert.match(markup, /class="dim-presetSelect"/);
-  assert.match(markup, /role="status"[^>]*>测试消息已发送/);
+  assert.match(markup, new RegExp(`role="status"[^>]*>${escapeRe(uiText('ui.whatsapp.testMessageSentCheckTheWhatsapp'))}`));
 });
 
 test('WhatsApp connection check requests a test message from the existing reconnect endpoint', async () => {
@@ -80,8 +85,8 @@ test('WhatsApp connection check requests a test message from the existing reconn
     import.meta.url,
   ), 'utf8');
   assert.match(source, /WHATSAPP_ENDPOINTS\.reconnectBot,[\s\S]*\{ botId: account\.botId, sendTest: true \}/);
-  assert.match(source, /\[account\.botId\]: '连接检查失败，请稍后重试。'/);
-  assert.doesNotMatch(source, /连接检查失败：\$\{presentError\(error\)\.message\}/);
+  assert.match(source, /\[account\.botId\]: t\('ui\.dingtalk\.connectionCheckFailedTryAgainLater'\)/);
+  assert.match(source, /ui\.dingtalk\.connectionCheckFailedTryAgainLater/);
 });
 
 test('WhatsApp reconnect failures render a fixed English-safe notice', async (t) => {

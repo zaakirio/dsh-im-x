@@ -2868,7 +2868,7 @@ test('/repair cancel only reports cancellation when the controller confirms it',
     await fx.bridge.waitForIdle();
 
     const reply = JSON.parse(fx.sent.at(-1).content).text;
-    assert.doesNotMatch(reply, /已取消本次修复授权/);
+    assert.doesNotMatch(reply, new RegExp(escapeRe(tr('feishu.repair.cancelled'))));
     assert.equal(reply, tr(state === 'saving' ? 'feishu.repair.awaitingRealCallback' : 'feishu.repair.done'));
     await eventually(() => repair.calls.status.length > 0);
   }
@@ -2921,6 +2921,10 @@ test('repair monitor reports expiry without claiming that the callback was fixed
 
 import { StateStore } from '../../../src/channels/feishu/state-store.mjs';
 import { defaultTranslator as tr } from '../../../src/i18n/index.mjs';
+
+function escapeRe(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 function watchHarness({ sessionsByWorkspace = { 'C:/work': [] }, current = 'C:/work', history = [] } = {}) {
   const listeners = [];

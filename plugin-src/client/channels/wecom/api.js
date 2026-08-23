@@ -1,4 +1,8 @@
+import { t } from '../../i18n.js';
+
 import { normalizeAgentPresetCatalog, normalizeAgentPresetId, SET_AGENT_PRESET_ENDPOINT } from '../../agent-preset.js';
+
+const CHANNEL_LABEL = 'WeCom';
 
 export const WECOM_RPC_CHANNEL = '/wecom';
 
@@ -48,9 +52,9 @@ function normalizeTestMessage(value) {
 }
 
 export function unwrapRpcResult(result) {
-  if (!isRecord(result) || typeof result.ok !== 'boolean') throw new Error('企业微信服务返回了无法识别的响应');
+  if (!isRecord(result) || typeof result.ok !== 'boolean') throw new Error(t('ui.common.unrecognizedResponse', { channel: CHANNEL_LABEL }));
   if (!result.ok) {
-    const error = new Error(text(result.error?.message, '企业微信操作失败'));
+    const error = new Error(text(result.error?.message, t('ui.common.operationFailed', { channel: CHANNEL_LABEL })));
     error.code = text(result.error?.code, 'WECOM_RPC_ERROR', 80);
     throw error;
   }
@@ -64,9 +68,9 @@ export function safeQrSource(value) {
 
 export function normalizeProvisioning(value, now = Date.now()) {
   const source = isRecord(value?.provisioning) ? value.provisioning : value;
-  if (!isRecord(source)) throw new Error('企业微信服务没有返回扫码绑定进度');
+  if (!isRecord(source)) throw new Error(t('ui.wecom.wecomDidNotReturnQrSetup'));
   const attemptId = id(source.attemptId);
-  if (!attemptId) throw new Error('企业微信扫码服务没有返回有效的绑定任务');
+  if (!attemptId) throw new Error(t('ui.wecom.wecomDidNotReturnAValid'));
   const reported = text(source.status, 'failed', 32);
   const result = {
     attemptId,
@@ -80,7 +84,7 @@ export function normalizeProvisioning(value, now = Date.now()) {
   if (id(source.botId)) result.botId = id(source.botId);
   if (isRecord(source.error)) result.error = {
     code: text(source.error.code, 'WECOM_PROVISION_FAILED', 80),
-    message: text(source.error.message, '企业微信机器人没有接入完成'),
+    message: text(source.error.message, t('ui.common.notConnected', { channel: CHANNEL_LABEL })),
   };
   return result;
 }
@@ -96,23 +100,23 @@ function normalizeBot(value) {
     workspace: text(value.workspace, '', 4_096),
     agentPreset: normalizeAgentPresetId(value.agentPreset),
     bot: {
-      name: text(value.bot?.name, '企业微信机器人', 100),
-      appIdMasked: text(value.bot?.appIdMasked, '应用标识已安全保存', 140),
+      name: text(value.bot?.name, t('ui.wecom.wecomBot'), 100),
+      appIdMasked: text(value.bot?.appIdMasked, t('ui.feishu.appIdentifierStoredSecurely'), 140),
     },
     health: {
-      summary: text(value.health?.summary, connected ? '企业微信 WebSocket 长连接运行正常' : '企业微信连接尚未就绪'),
+      summary: text(value.health?.summary, connected ? t('ui.wecom.wecomWebsocketConnectionIsHealthy') : t('ui.common.connectionNotReady', { channel: CHANNEL_LABEL })),
       lastCheckedAt: timestamp(value.health?.lastCheckedAt),
     },
     error: isRecord(value.error) ? {
       code: text(value.error.code, 'WECOM_ACCOUNT_ERROR', 80),
-      message: text(value.error.message, '企业微信连接尚未就绪'),
+      message: text(value.error.message, t('ui.common.connectionNotReady', { channel: CHANNEL_LABEL })),
     } : null,
   };
 }
 
 export function normalizeSnapshot(value) {
   const source = isRecord(value?.snapshot) ? value.snapshot : value;
-  if (!isRecord(source) || !Array.isArray(source.bots)) throw new Error('企业微信服务没有返回有效的机器人列表');
+  if (!isRecord(source) || !Array.isArray(source.bots)) throw new Error(t('ui.wecom.wecomDidNotReturnAValid2'));
   const bots = source.bots.map(normalizeBot).filter(Boolean);
   return {
     revision: Number.isSafeInteger(source.revision) ? source.revision : 0,
@@ -127,7 +131,7 @@ export function normalizeSnapshot(value) {
 export function presentError(error) {
   return {
     code: text(error?.code, 'WECOM_ERROR', 80),
-    message: text(error?.message, '企业微信操作失败，请稍后重试'),
+    message: text(error?.message, t('ui.common.operationFailedRetry', { channel: CHANNEL_LABEL })),
   };
 }
 

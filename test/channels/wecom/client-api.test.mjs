@@ -6,6 +6,7 @@ import {
   normalizeSnapshot,
   safeQrSource,
 } from '../../../plugin-src/client/channels/wecom/api.js';
+import { t as uiText } from '../../../plugin-src/client/i18n.js';
 
 test('Enterprise WeChat client keeps only redacted bot and Host-rendered QR state', () => {
   const qr = 'data:image/png;base64,YWJjZA==';
@@ -18,8 +19,8 @@ test('Enterprise WeChat client keeps only redacted bot and Host-rendered QR stat
     testMessage: { sent: false, code: 'test-target-unavailable', ignored: 'secret' },
     bots: [{
       botId: 'wecom_abc', connected: true, state: 'connected',
-      bot: { name: '企业微信机器人', appIdMasked: 'bot••••001' },
-      health: { summary: '运行正常' },
+      bot: { name: uiText('ui.wecom.wecomBot'), appIdMasked: 'bot••••001' },
+      health: { summary: uiText('ui.dingtalk.connected') },
     }],
   });
   assert.equal(snapshot.totals.connected, 1);

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { h } from './i18n.js';
+import { h, t } from './i18n.js';
 
 function ActionIcon({ children }) {
   return h('svg', {
@@ -65,7 +65,7 @@ export function CredentialBindingPanel({
     className: 'ddt-card dim-surfaceCard dim-credentialPanel',
     'aria-labelledby': headingId,
   },
-  h('h3', { id: headingId, className: 'dim-credentialTitle' }, `手动接入${channel}机器人`),
+  h('h3', { id: headingId, className: 'dim-credentialTitle' }, t('ui.common.manualConnect', { channel })),
   h('form', {
     className: `dim-credentialForm${hasIdentity ? '' : ' dim-credentialFormSingle'}`,
     onSubmit: submit,
@@ -106,11 +106,11 @@ export function CredentialBindingPanel({
         className: 'ddt-button',
         'data-kind': 'primary',
         disabled: busy || (hasIdentity && !identity.trim()) || !secret.trim(),
-      }, busy ? '正在绑定…' : '绑定并连接'),
+      }, busy ? t('ui.credentialBinding.connecting') : t('ui.credentialBinding.connect')),
       h('button', {
         type: 'button',
         className: 'ddt-button',
         onClick: onCancel,
         disabled: busy,
-      }, '取消'))));
+      }, t('ui.dingtalk.cancel')))));
 }

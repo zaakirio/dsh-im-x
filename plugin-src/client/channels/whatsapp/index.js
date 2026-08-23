@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { WhatsappLogoGlyph } from '../../channel-logos.js';
 import { QrActionIcon } from '../../credential-binding.js';
-import { h } from '../../i18n.js';
+import { h, t } from '../../i18n.js';
 import { WorkspaceEditor } from '../../workspace-editor.js';
 import {
   AgentPresetCatalogContext,
@@ -23,6 +23,8 @@ import {
 } from './api.js';
 import { installWhatsappStyles } from './styles.js';
 
+const CHANNEL_LABEL = 'WhatsApp';
+
 const ACTIVE_STATES = new Set(['pending', 'connecting']);
 
 const Button = React.forwardRef(function Button(
@@ -39,24 +41,24 @@ const Button = React.forwardRef(function Button(
 });
 
 function checkedTime(value) {
-  if (!value) return '尚未检查';
+  if (!value) return t('ui.dingtalk.notCheckedYet');
   try {
     return new Intl.DateTimeFormat('zh-CN', {
       hour: '2-digit', minute: '2-digit', second: '2-digit',
     }).format(new Date(value));
   } catch {
-    return '刚刚';
+    return t('ui.dingtalk.justNow');
   }
 }
 
 function connectionTestNotice(value) {
   if (value?.testMessage?.sent === true) {
-    return '测试消息已发送，请到 WhatsApp 自聊会话中确认。';
+    return t('ui.whatsapp.testMessageSentCheckTheWhatsapp');
   }
   if (value?.testMessage?.code === 'test-target-unavailable') {
-    return '连接检查完成，但当前没有可用的 WhatsApp 自聊目标。';
+    return t('ui.whatsapp.connectionCheckCompletedButNoWhatsapp');
   }
-  return value?.testMessage ? '连接检查完成，但测试消息发送失败。' : null;
+  return value?.testMessage ? t('ui.feishu.connectionCheckCompletedButTheTest') : null;
 }
 
 function Heading({ totals, busy, onAdd, addButtonRef }) {
@@ -69,11 +71,11 @@ function Heading({ totals, busy, onAdd, addButtonRef }) {
           onClick: onAdd,
           disabled: busy,
           ref: addButtonRef,
-          'aria-label': '扫码接入 WhatsApp 机器人',
-        }, h(QrActionIcon), busy ? '正在接入' : '扫码接入机器人')),
+          'aria-label': t('ui.whatsapp.connectWhatsappByQrCode'),
+        }, h(QrActionIcon), busy ? t('ui.dingtalk.connecting') : t('ui.dingtalk.scanQrCode'))),
       totals.configured > 0
         ? h('div', { className: 'ddt-badge dim-onlineBadge' },
-            h('span', null, `${totals.connected} / ${totals.configured} 在线`))
+            h('span', null, t('ui.common.onlineCount', { connected: totals.connected, configured: totals.configured })))
         : null));
 }
 
@@ -81,7 +83,7 @@ function LoadingView() {
   return h('div', {
     className: 'ddt-card ddt-loading dim-surfaceCard dim-loadingView',
     'aria-busy': 'true',
-  }, h('div', { className: 'ddt-spinner dim-spinner' }), '正在读取 WhatsApp 机器人状态…');
+  }, h('div', { className: 'ddt-spinner dim-spinner' }), t('ui.common.loadingStatus', { channel: CHANNEL_LABEL }));
 }
 
 export function EmptyView({ busy, onStart }) {
@@ -90,12 +92,12 @@ export function EmptyView({ busy, onStart }) {
       h('div', { className: 'dim-emptyCopy' },
         h('div', { className: 'ddt-stateLabel dim-stateLabel' },
           h('span', { className: 'ddt-dot dim-stateDot' }),
-          h('span', null, '尚未接入 WhatsApp 机器人')),
-        h('h3', null, '扫码绑定 WhatsApp 机器人'),
-        h('p', null, '使用手机 WhatsApp 扫描二维码即可接入。'),
+          h('span', null, t('ui.common.noBotsYet', { channel: CHANNEL_LABEL }))),
+        h('h3', null, t('ui.whatsapp.connectWhatsappByQrCode2')),
+        h('p', null, t('ui.whatsapp.scanTheQrCodeWithWhatsapp')),
         h('div', { className: 'ddt-actions dim-viewActions' },
           h(Button, { kind: 'primary', onClick: onStart, disabled: busy },
-            busy ? '正在生成二维码…' : '生成二维码'))),
+            busy ? t('ui.dingtalk.generatingQrCode') : t('ui.whatsapp.generateQrCode')))),
       h('div', {
         className: 'ddt-brandMark dim-emptyBrand dwa-avatar',
         'aria-hidden': 'true',
@@ -113,11 +115,11 @@ export function QrPanel({ provision, now, busy, onRefresh, onCancel }) {
         h('div', { className: 'ddt-qrFrame dim-qrFrame' },
           source ? h('img', {
             src: source,
-            alt: '用于关联 WhatsApp 设备的一次性二维码',
-          }) : h('div', { className: 'ddt-qrFallback dim-qrFallback' }, '二维码正在生成…')),
+            alt: t('ui.whatsapp.oneTimeQrCodeForLinking'),
+          }) : h('div', { className: 'ddt-qrFallback dim-qrFallback' }, t('ui.whatsapp.generatingQrCode'))),
         h('div', { className: 'ddt-countdown dim-countdown' },
           h('div', { className: 'ddt-countdownTop dim-countdownTop' },
-            h('span', null, '当前二维码有效时间'),
+            h('span', null, t('ui.qq.qrCodeExpiresIn')),
             h('strong', null, formatRemaining(remaining))),
           h('div', {
             className: 'ddt-progress dim-progress',
@@ -126,14 +128,14 @@ export function QrPanel({ provision, now, busy, onRefresh, onCancel }) {
       h('div', { className: 'ddt-qrCopy dim-qrCopy' },
         h('div', { className: 'ddt-stateLabel dim-stateLabel' },
           h('span', { className: 'ddt-dot dim-stateDot', 'data-tone': 'warning' }),
-          h('span', null, '等待 WhatsApp 扫码')),
-        h('h3', null, '用手机 WhatsApp 扫描二维码'),
+          h('span', null, t('ui.whatsapp.waitingForWhatsappScan'))),
+        h('h3', null, t('ui.whatsapp.scanWithWhatsappOnYourPhone')),
         h('ol', { className: 'ddt-steps dim-steps' },
-          h('li', null, '打开 WhatsApp → 设置 → 已关联设备'),
-          h('li', null, '点击“关联设备”并扫描左侧二维码')),
+          h('li', null, t('ui.whatsapp.openWhatsappSettingsLinkedDevices')),
+          h('li', null, t('ui.whatsapp.selectLinkADeviceAndScan'))),
         h('div', { className: 'ddt-actions dim-viewActions' },
-          h(Button, { onClick: onRefresh, disabled: busy }, '重新生成二维码'),
-          h(Button, { kind: 'quiet', onClick: onCancel, disabled: busy }, '取消')))));
+          h(Button, { onClick: onRefresh, disabled: busy }, t('ui.dingtalk.generateANewQrCode2')),
+          h(Button, { kind: 'quiet', onClick: onCancel, disabled: busy }, t('ui.dingtalk.cancel'))))));
 }
 
 export function ProvisionView({ provision, busy, onRetry, onClose }) {
@@ -143,33 +145,33 @@ export function ProvisionView({ provision, busy, onRetry, onClose }) {
       className: 'ddt-card ddt-loading dim-surfaceCard dim-specialView',
       'aria-busy': 'true',
     }, h('div', { className: 'ddt-spinner dim-spinner' }),
-    h('h3', null, starting ? '正在生成 WhatsApp 二维码' : '已扫码，正在连接 WhatsApp'),
+    h('h3', null, starting ? t('ui.whatsapp.generatingWhatsappQrCode') : t('ui.whatsapp.scannedConnectingWhatsapp')),
     h('p', null, starting
-      ? '正在建立安全的关联设备会话。'
-      : '关联设备正在接入 DeepSeek Harness。'));
+      ? t('ui.whatsapp.creatingASecureLinkedDeviceSession')
+      : t('ui.whatsapp.linkingTheDeviceToDeepseekHarness')));
   }
   const error = provision.error ?? {
     code: 'WHATSAPP_PROVISION_FAILED',
-    message: 'WhatsApp 没有接入完成',
+    message: t('ui.common.notConnected', { channel: CHANNEL_LABEL }),
   };
   return h('div', { className: 'ddt-card dim-surfaceCard' },
     h('div', { className: 'ddt-inlineError dim-inlineError', role: 'alert' },
-      h('h3', null, 'WhatsApp 没有接入完成'),
+      h('h3', null, t('ui.common.notConnected', { channel: CHANNEL_LABEL })),
       h('p', null, error.message),
       h('span', { className: 'ddt-errorCode' }, error.code),
       h('div', { className: 'ddt-actions dim-viewActions' },
-        h(Button, { kind: 'primary', onClick: onRetry, disabled: busy }, '重新生成二维码'),
-        h(Button, { onClick: onClose, disabled: busy }, '关闭'))));
+        h(Button, { kind: 'primary', onClick: onRetry, disabled: busy }, t('ui.dingtalk.generateANewQrCode2')),
+        h(Button, { onClick: onClose, disabled: busy }, t('ui.dingtalk.close')))));
 }
 
 function RemoveConfirmation({ account, busy, onConfirm, onCancel }) {
   return h('div', { className: 'ddt-confirm dim-confirm', role: 'alertdialog' },
-    h('strong', null, `从 DeepSeek Harness 移除“${account.bot.name}”？`),
-    h('p', null, '这会停止消息连接，并删除本机保存的 WhatsApp 关联设备和会话映射。'),
+    h('strong', null, t('ui.common.removeConfirm', { name: account.bot.name })),
+    h('p', null, t('ui.whatsapp.thisStopsTheMessageConnectionAnd')),
     h('div', { className: 'ddt-actions dim-viewActions' },
-      h(Button, { onClick: onCancel, disabled: busy }, '保留机器人'),
+      h(Button, { onClick: onCancel, disabled: busy }, t('ui.dingtalk.keepBot')),
       h(Button, { kind: 'danger', onClick: onConfirm, disabled: busy },
-        busy ? '正在移除…' : '确认移除接入')));
+        busy ? t('ui.dingtalk.removing') : t('ui.dingtalk.removeConnection'))));
 }
 
 export function WhatsappAccountCard({
@@ -186,7 +188,7 @@ export function WhatsappAccountCard({
 }) {
   const state = busy === 'reconnect' ? 'connecting' : account.state;
   const tone = account.connected ? 'success' : state === 'error' ? 'error' : 'warning';
-  const stateLabel = account.connected ? '运行正常' : state === 'connecting' ? '正在连接' : '连接未就绪';
+  const stateLabel = account.connected ? t('ui.dingtalk.connected') : state === 'connecting' ? t('ui.dingtalk.connecting2') : t('ui.dingtalk.notConnected');
   const summary = account.error?.message ?? (account.connected ? null : account.health.summary);
   return h('article', { className: 'ddt-card dim-botCard', 'data-bot-id': account.botId },
     h('div', { className: 'ddt-cardBody dim-botCardBody' },
@@ -221,10 +223,10 @@ export function WhatsappAccountCard({
           h('div', { className: 'ddt-actions dim-cardActions' },
             h(Button, {
               className: 'dim-cardAction', onClick: onReconnect, disabled: Boolean(busy),
-            }, busy === 'reconnect' ? '检查中…' : account.connected ? '检查连接' : '重试连接'),
+            }, busy === 'reconnect' ? t('ui.dingtalk.checking') : account.connected ? t('ui.dingtalk.checkConnection') : t('ui.dingtalk.reconnect')),
             h(Button, {
               className: 'dim-cardAction', kind: 'danger', onClick: onRequestRemove, disabled: Boolean(busy),
-            }, '移除接入')),
+            }, t('ui.dingtalk.removeConnection2'))),
           summary ? h('div', { className: 'ddt-summary dim-cardSummary' }, summary) : null,
           testNotice ? h('div', {
             className: 'ddt-summary dim-cardFeedback',
@@ -265,7 +267,7 @@ export function WhatsappSettingsTab({ rpcCall }) {
   }, []);
 
   const invoke = React.useCallback(async (endpoint, payload = {}, signal) => {
-    if (typeof rpcCall !== 'function') throw new TypeError('WhatsApp 设置页缺少 RPC 连接');
+    if (typeof rpcCall !== 'function') throw new TypeError(t('ui.common.missingRpc', { channel: CHANNEL_LABEL }));
     return unwrapRpcResult(await rpcCall(endpoint, payload, signal));
   }, [rpcCall]);
 
@@ -424,7 +426,7 @@ export function WhatsappSettingsTab({ rpcCall }) {
       if (mounted.current && workspaceFence.canCommitMutation(snapshotVersion)) {
         setTestNoticeByBot((current) => ({
           ...current,
-          [account.botId]: '连接检查失败，请稍后重试。',
+          [account.botId]: t('ui.dingtalk.connectionCheckFailedTryAgainLater'),
         }));
       }
     } finally {
@@ -442,7 +444,7 @@ export function WhatsappSettingsTab({ rpcCall }) {
     ? h('section', { className: 'dim-listSection' },
         h(ChannelListHeading, {
           className: 'ddt-listHeading',
-          title: '已接入的 WhatsApp 机器人',
+          title: t('ui.whatsapp.connectedWhatsappAccounts'),
           connectionLabel: 'WhatsApp Web',
         }),
         h('ul', { className: 'ddt-list dim-botList' }, model.bots.map((account) =>
@@ -485,7 +487,7 @@ export function WhatsappSettingsTab({ rpcCall }) {
     value: model.agentPresetCatalog ?? EMPTY_AGENT_PRESET_CATALOG,
   }, h('section', {
     className: 'ddt-page dwa-page dim-channelPage',
-    'aria-label': 'WhatsApp 设置',
+    'aria-label': t('ui.common.settings', { channel: CHANNEL_LABEL }),
   },
   h(Heading, {
     totals: model.totals,
@@ -498,9 +500,9 @@ export function WhatsappSettingsTab({ rpcCall }) {
     : model.phase === 'error'
       ? h('div', { className: 'ddt-card dim-surfaceCard' },
           h('div', { className: 'ddt-inlineError dim-inlineError' },
-            h('h3', null, '无法读取 WhatsApp 机器人状态'),
+            h('h3', null, t('ui.common.cannotReadStatus', { channel: CHANNEL_LABEL })),
             h('p', null, model.error?.message),
-            h(Button, { onClick: () => void loadStatus() }, '重新读取')))
+            h(Button, { onClick: () => void loadStatus() }, t('ui.dingtalk.reload'))))
       : h(React.Fragment, null,
           provision?.status === 'pending'
             ? h(QrPanel, {

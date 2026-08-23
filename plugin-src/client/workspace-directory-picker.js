@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 
-import { h } from './i18n.js';
+import { h, t } from './i18n.js';
 
 function pickerErrorCode(error) {
   return error?.rpcError?.code ?? error?.code;
@@ -12,7 +12,7 @@ function pickerErrorDetails(error) {
 }
 
 function pickerErrorMessage(error) {
-  return error?.rpcError?.message ?? error?.message ?? '无法读取目录，请重试。';
+  return error?.rpcError?.message ?? error?.message ?? t('ui.workspaceDirectoryPicker.couldNotLoadTheFolderTry');
 }
 
 function FolderIcon() {
@@ -162,9 +162,9 @@ export function WorkspaceDirectoryPicker({
     tabIndex: -1,
   },
   h('header', { className: 'dim-directoryPickerHeader' },
-    h('h3', { id: titleId }, '选择机器人工作区目录'),
+    h('h3', { id: titleId }, t('ui.workspaceDirectoryPicker.selectBotWorkspaceFolder')),
     listing
-      ? h('nav', { className: 'dim-directoryCrumbs', 'aria-label': '当前目录' },
+      ? h('nav', { className: 'dim-directoryCrumbs', 'aria-label': t('ui.workspaceDirectoryPicker.currentFolder') },
           crumbs.map((crumb, index) => h(React.Fragment, { key: crumb.path },
             index > 0 ? h('span', { className: 'dim-directoryCrumbSeparator', 'aria-hidden': 'true' }, '›') : null,
             React.createElement('button', {
@@ -174,15 +174,15 @@ export function WorkspaceDirectoryPicker({
               'aria-current': index === crumbs.length - 1 ? 'page' : undefined,
               onClick: () => void loadDirectory(crumb.path),
             }, crumb.path === listing.home
-              ? h('span', null, '主目录')
+              ? h('span', null, t('ui.workspaceDirectoryPicker.home'))
               : (crumb.name || crumb.path)))),
         )
-      : h('p', null, '正在准备目录选择器…')),
+      : h('p', null, t('ui.workspaceDirectoryPicker.preparingFolderPicker'))),
   h('div', { ref: bodyRef, className: 'dim-directoryPickerBody', 'aria-busy': loading },
     loading && !listing
       ? h('div', { className: 'dim-directoryPickerState' },
           h('span', { className: 'dim-directoryPickerSpinner', 'aria-hidden': 'true' }),
-          h('p', null, '正在读取目录…'))
+          h('p', null, t('ui.workspaceDirectoryPicker.loadingFolders')))
       : listing
         ? entries.length > 0
           ? h('ul', { className: 'dim-directoryList' }, entries.map((entry) => h('li', { key: entry.path },
@@ -196,16 +196,16 @@ export function WorkspaceDirectoryPicker({
               React.createElement('span', { className: 'dim-directoryName' }, entry.name),
               h('span', { className: 'dim-directoryChevron' }, h(ChevronIcon))))))
           : h('div', { className: 'dim-directoryPickerState' },
-              h('p', null, '这个目录中没有子文件夹。'))
+              h('p', null, t('ui.workspaceDirectoryPicker.thisFolderHasNoSubfolders')))
         : null,
     listing?.truncated
-      ? h('p', { className: 'dim-directoryPickerTruncated' }, '此目录的子文件夹过多，仅显示前一部分。')
+      ? h('p', { className: 'dim-directoryPickerTruncated' }, t('ui.workspaceDirectoryPicker.thisFolderHasTooManySubfolders'))
       : null,
     presentedError ? h('div', { className: 'dim-directoryPickerError', role: 'alert' },
       h('span', null, presentedError),
       !listing && !busy ? h('button', {
         type: 'button', onClick: () => setRetryKey((value) => value + 1),
-      }, '重试') : null) : null),
+      }, t('ui.workspaceDirectoryPicker.retry')) : null) : null),
   h('footer', { className: 'dim-directoryPickerFooter' },
     h('button', {
       type: 'button',
@@ -215,16 +215,16 @@ export function WorkspaceDirectoryPicker({
       disabled: busy || !listing,
     },
       h('span', { className: 'dim-directoryHiddenBox', 'aria-hidden': 'true' }),
-      h('span', null, '显示隐藏文件夹')),
-    h('p', { id: noticeId, className: 'dim-directoryPickerNotice' }, '切换后会清除这个机器人的旧会话映射。'),
+      h('span', null, t('ui.workspaceDirectoryPicker.showHiddenFolders'))),
+    h('p', { id: noticeId, className: 'dim-directoryPickerNotice' }, t('ui.workspaceDirectoryPicker.switchingClearsThisBotSPrevious')),
     h('div', { className: 'dim-directoryPickerActions' },
-      h('button', { type: 'button', onClick: onCancel, disabled: busy }, '取消'),
+      h('button', { type: 'button', onClick: onCancel, disabled: busy }, t('ui.dingtalk.cancel')),
       h('button', {
         type: 'button',
         className: 'dim-directoryPickerPrimary',
         disabled: busy || loading || !listing,
         onClick: () => listing && void onPicked(listing.path),
-      }, busy ? '切换中…' : '选择此目录')))));
+      }, busy ? t('ui.workspaceDirectoryPicker.switching') : t('ui.workspaceDirectoryPicker.selectThisFolder'))))));
 
   return typeof document === 'undefined' ? content : createPortal(content, document.body);
 }

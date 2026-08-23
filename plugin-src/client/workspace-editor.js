@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { h } from './i18n.js';
+import { h, t } from './i18n.js';
 import { WorkspaceDirectoryPicker } from './workspace-directory-picker.js';
 
 export const WorkspaceDirectoryPickerContext = React.createContext(null);
@@ -33,7 +33,7 @@ export function WorkspaceEditor({ workspace, directoryPicker, disabled = false, 
       await onSave?.(value);
       close();
     } catch (cause) {
-      setError(cause?.message ?? '工作区修改失败，请重试。');
+      setError(cause?.message ?? t('ui.workspaceEditor.couldNotUpdateTheWorkspaceTry'));
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -42,20 +42,20 @@ export function WorkspaceEditor({ workspace, directoryPicker, disabled = false, 
 
   return h('div', { className: 'dim-workspace' },
     h('div', { className: 'dim-workspaceHeader' },
-      h('span', null, '当前工作区'),
+      h('span', null, t('ui.workspaceEditor.currentWorkspace')),
       h('button', {
         type: 'button',
         ref: editButtonRef,
         className: 'dim-workspaceEdit',
         onClick: () => { setOpen(true); setError(null); },
         disabled: disabled || !activeDirectoryPicker,
-      }, '选择目录')),
+      }, t('ui.workspaceEditor.chooseFolder'))),
     workspace
       ? React.createElement('code', {
           className: 'dim-workspacePath',
           title: workspace,
         }, workspace)
-      : h('code', { className: 'dim-workspacePath' }, '未设置'),
+      : h('code', { className: 'dim-workspacePath' }, t('ui.workspaceEditor.notSet')),
     open ? h(WorkspaceDirectoryPicker, {
       open,
       startPath: workspace,

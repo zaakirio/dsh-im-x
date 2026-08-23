@@ -7,6 +7,11 @@ import {
   DINGTALK_ENDPOINTS,
 } from '../../../plugin-src/client/channels/dingtalk/api.js';
 import { DingtalkSettingsTab } from '../../../plugin-src/client/channels/dingtalk/index.js';
+import { t as uiText } from '../../../plugin-src/client/i18n.js';
+
+function escapeRe(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 const { act, create } = TestRenderer;
 
@@ -131,7 +136,7 @@ test('connection check requests a test message and announces its delivery', asyn
     botId: 'dt_test',
     connected: true,
     state: 'connected',
-    bot: { name: '钉钉机器人', clientIdMasked: 'ding••••test' },
+    bot: { name: uiText('ui.dingtalk.dingtalkBot'), clientIdMasked: 'ding••••test' },
     health: { status: 'healthy', summary: '连接正常', lastCheckedAt: Date.now() },
   };
   const calls = [];
@@ -156,7 +161,7 @@ test('connection check requests a test message and announces its delivery', asyn
     await flushMicrotasks();
   });
   await act(async () => {
-    findButton(renderer, '检查连接').props.onClick();
+    findButton(renderer, uiText('ui.dingtalk.checkConnection')).props.onClick();
     await flushMicrotasks();
   });
 
@@ -173,12 +178,12 @@ test('connection check requests a test message and announces its delivery', asyn
   const liveRegion = renderer.root.find(
     (node) => node.props.role === 'status' && node.props['aria-live'] === 'polite',
   );
-  assert.equal(nodeText(liveRegion), '钉钉连接检查完成，测试消息已发送。');
+  assert.equal(nodeText(liveRegion), uiText('ui.dingtalk.dingtalkConnectionCheckCompletedAndThe'));
   const botCard = renderer.root.find((node) => node.props['data-bot-id'] === 'dt_test');
   const visibleFeedback = botCard.find(
     (node) => node.props.role === 'status' && node.props['aria-live'] === undefined,
   );
-  assert.equal(nodeText(visibleFeedback), '钉钉连接检查完成，测试消息已发送。');
+  assert.equal(nodeText(visibleFeedback), uiText('ui.dingtalk.dingtalkConnectionCheckCompletedAndThe'));
   act(() => renderer.unmount());
 });
 
@@ -221,7 +226,7 @@ test('connection-check failure stays on the matching card with locale-safe wordi
   });
   const targetCard = renderer.root.find((node) => node.props['data-bot-id'] === 'dt_two');
   const targetButton = targetCard.findAllByType('button')
-    .find((candidate) => nodeText(candidate) === '重试连接');
+    .find((candidate) => nodeText(candidate) === uiText('ui.dingtalk.reconnect'));
   assert.ok(targetButton);
   await act(async () => {
     targetButton.props.onClick();
@@ -231,7 +236,7 @@ test('connection-check failure stays on the matching card with locale-safe wordi
   const firstCard = renderer.root.find((node) => node.props['data-bot-id'] === 'dt_one');
   assert.equal(firstCard.findAll((node) => node.props.role === 'status').length, 0);
   const visibleFeedback = targetCard.find((node) => node.props.role === 'status');
-  assert.equal(nodeText(visibleFeedback), '连接检查失败，请稍后重试。');
+  assert.equal(nodeText(visibleFeedback), uiText('ui.dingtalk.connectionCheckFailedTryAgainLater'));
   assert.match(nodeText(targetCard), /现有连接错误/);
   assert.equal(
     targetCard.findAll((node) => node.props.className?.includes('dim-cardSummary')).length,
@@ -252,7 +257,7 @@ test('connection-check failure stays on the matching card with locale-safe wordi
   const liveRegion = renderer.root.find(
     (node) => node.props.role === 'status' && node.props['aria-live'] === 'polite',
   );
-  assert.equal(nodeText(liveRegion), '连接检查失败，请稍后重试。');
+  assert.equal(nodeText(liveRegion), uiText('ui.dingtalk.connectionCheckFailedTryAgainLater'));
   act(() => renderer.unmount());
 });
 
@@ -295,11 +300,11 @@ test('a later disconnect removes stale success feedback and exposes the account 
     await flushMicrotasks();
   });
   await act(async () => {
-    findButton(renderer, '检查连接').props.onClick();
+    findButton(renderer, uiText('ui.dingtalk.checkConnection')).props.onClick();
     await flushMicrotasks();
   });
   let botCard = renderer.root.find((node) => node.props['data-bot-id'] === 'dt_stale');
-  assert.match(nodeText(botCard), /测试消息已发送/);
+  assert.match(nodeText(botCard), new RegExp(escapeRe(uiText('ui.dingtalk.dingtalkConnectionCheckCompletedAndThe'))));
 
   disconnected = true;
   await act(async () => {
@@ -309,7 +314,7 @@ test('a later disconnect removes stale success feedback and exposes the account 
 
   botCard = renderer.root.find((node) => node.props['data-bot-id'] === 'dt_stale');
   assert.match(nodeText(botCard), /Stream 已断开/);
-  assert.doesNotMatch(nodeText(botCard), /测试消息已发送/);
+  assert.doesNotMatch(nodeText(botCard), new RegExp(escapeRe(uiText('ui.dingtalk.dingtalkConnectionCheckCompletedAndThe'))));
   assert.equal(botCard.findAll((node) => node.props.role === 'status').length, 0);
   act(() => renderer.unmount());
 });
@@ -343,7 +348,7 @@ test('a late poll response cannot issue status RPCs or schedule work after effec
     await flushMicrotasks();
   });
   await act(async () => {
-    findButton(renderer, '生成钉钉二维码').props.onClick();
+    findButton(renderer, uiText('ui.dingtalk.generateDingtalkQrCode')).props.onClick();
     await flushMicrotasks();
   });
   await act(async () => {
@@ -351,7 +356,7 @@ test('a late poll response cannot issue status RPCs or schedule work after effec
     await flushMicrotasks();
   });
   await act(async () => {
-    findButton(renderer, '换一个二维码').props.onClick();
+    findButton(renderer, uiText('ui.dingtalk.getAnotherQrCode')).props.onClick();
     await flushMicrotasks();
   });
 
@@ -396,7 +401,7 @@ test('a stale periodic status response cannot restore cancelled provisioning', a
     await flushMicrotasks();
   });
   await act(async () => {
-    findButton(renderer, '生成钉钉二维码').props.onClick();
+    findButton(renderer, uiText('ui.dingtalk.generateDingtalkQrCode')).props.onClick();
     await flushMicrotasks();
   });
   const firstAnnouncement = [...clock.frames.keys()][0];
@@ -407,7 +412,7 @@ test('a stale periodic status response cannot restore cancelled provisioning', a
     await flushMicrotasks();
   });
   await act(async () => {
-    findButton(renderer, '取消').props.onClick();
+    findButton(renderer, uiText('ui.dingtalk.cancel')).props.onClick();
     await flushMicrotasks();
   });
   assert.ok(clock.cancelledFrames.includes(firstAnnouncement), 'a new announcement cancels the old frame');
@@ -418,7 +423,7 @@ test('a stale periodic status response cannot restore cancelled provisioning', a
   });
 
   assert.equal(renderer.root.findAllByType('img').length, 0);
-  findButton(renderer, '生成钉钉二维码');
+  findButton(renderer, uiText('ui.dingtalk.generateDingtalkQrCode'));
   assert.ok(clock.frames.size > 0, 'cancel leaves its announcement or focus frame pending');
 
   act(() => renderer.unmount());
@@ -443,7 +448,7 @@ test('unmount does not cancel a Host provisioning task that already started', as
     await flushMicrotasks();
   });
   await act(async () => {
-    findButton(renderer, '生成钉钉二维码').props.onClick();
+    findButton(renderer, uiText('ui.dingtalk.generateDingtalkQrCode')).props.onClick();
     await flushMicrotasks();
   });
 
@@ -469,7 +474,7 @@ test('DingTalk settings save an Agent Preset through bot.preset.set', async (t) 
     connected: true,
     state: 'connected',
     workspace: '/workspace/current',
-    bot: { name: '钉钉机器人', clientIdMasked: 'ding••••test' },
+    bot: { name: uiText('ui.dingtalk.dingtalkBot'), clientIdMasked: 'ding••••test' },
     health: { status: 'healthy', summary: '连接正常', lastCheckedAt: Date.now() },
   };
   const catalog = {

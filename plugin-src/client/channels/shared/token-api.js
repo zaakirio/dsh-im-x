@@ -1,3 +1,5 @@
+import { t } from '../../i18n.js';
+
 import { normalizeAgentPresetCatalog, normalizeAgentPresetId, SET_AGENT_PRESET_ENDPOINT } from '../../agent-preset.js';
 
 const ACCOUNT_STATES = new Set(['connected', 'connecting', 'offline', 'error']);
@@ -35,10 +37,10 @@ export function createTokenChannelApi(channel, connectionSummary, {
 } = {}) {
   const unwrapRpcResult = (result) => {
     if (!isRecord(result) || typeof result.ok !== 'boolean') {
-      throw new Error(`${channel} 服务返回了无法识别的响应`);
+      throw new Error(t('ui.common.unrecognizedResponse', { channel }));
     }
     if (!result.ok) {
-      const error = new Error(text(result.error?.message, `${channel} 操作失败`));
+      const error = new Error(text(result.error?.message, t('ui.common.operationFailed', { channel })));
       error.code = text(result.error?.code, `${channel.toUpperCase()}_RPC_ERROR`, 80);
       throw error;
     }
@@ -57,20 +59,22 @@ export function createTokenChannelApi(channel, connectionSummary, {
       workspace: text(value.workspace, '', 4_096),
       agentPreset: normalizeAgentPresetId(value.agentPreset),
       bot: {
-        name: text(value.bot?.name, `${channel}机器人`, 100),
+        name: text(value.bot?.name, t('ui.common.botLabel', { channel }), 100),
         username: text(value.bot?.username, '', 100),
-        idMasked: text(value.bot?.idMasked, '机器人标识已安全保存', 140),
+        idMasked: text(value.bot?.idMasked, t('ui.common.botIdentifierStoredSecurely'), 140),
       },
       health: {
         summary: text(
           value.health?.summary,
-          connected ? `${channel}${connectionSummary}运行正常` : `${channel}连接尚未就绪`,
+          connected
+            ? t('ui.common.runningNormally', { channel, connection: connectionSummary })
+            : t('ui.common.connectionNotReady', { channel }),
         ),
         lastCheckedAt: timestamp(value.health?.lastCheckedAt),
       },
       error: isRecord(value.error) ? {
         code: text(value.error.code, `${channel.toUpperCase()}_ACCOUNT_ERROR`, 80),
-        message: text(value.error.message, `${channel}连接尚未就绪`),
+        message: text(value.error.message, t('ui.common.connectionNotReady', { channel })),
       } : null,
       ...(isRecord(extension) ? extension : {}),
     };
@@ -79,7 +83,7 @@ export function createTokenChannelApi(channel, connectionSummary, {
   const normalizeSnapshot = (value) => {
     const source = isRecord(value?.snapshot) ? value.snapshot : value;
     if (!isRecord(source) || !Array.isArray(source.bots)) {
-      throw new Error(`${channel} 服务没有返回有效的机器人列表`);
+      throw new Error(t('ui.common.noBotList', { channel }));
     }
     const bots = source.bots.map(normalizeBot).filter(Boolean);
     return {
@@ -92,7 +96,7 @@ export function createTokenChannelApi(channel, connectionSummary, {
 
   const presentError = (error) => ({
     code: text(error?.code, `${channel.toUpperCase()}_ERROR`, 80),
-    message: text(error?.message, `${channel}操作失败，请稍后重试`),
+    message: text(error?.message, t('ui.common.operationFailedRetry', { channel })),
   });
 
   return Object.freeze({ unwrapRpcResult, normalizeSnapshot, presentError });

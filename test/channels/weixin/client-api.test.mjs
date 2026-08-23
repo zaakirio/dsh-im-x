@@ -6,12 +6,18 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import TestRenderer from 'react-test-renderer';
 
-import { en, setImTranslator } from '../../../plugin-src/client/i18n.js';
+import { setImTranslator } from '../../../plugin-src/client/i18n.js';
 import { normalizeSnapshot } from '../../../plugin-src/client/channels/weixin/api.js';
 import {
   AccountCard,
   WeixinSettingsTab,
 } from '../../../plugin-src/client/channels/weixin/index.js';
+import { t as uiText } from '../../../plugin-src/client/i18n.js';
+import { defaultTranslator as runtimeText } from '../../../src/i18n/index.mjs';
+
+function escapeRe(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 const { act, create } = TestRenderer;
 const CLIENT_URL = new URL('../../../plugin-src/client/channels/weixin/index.js', import.meta.url);
@@ -57,7 +63,7 @@ test('Weixin client keeps only the public connection-test result', () => {
       connected: true,
       state: 'connected',
       configured: true,
-      bot: { name: '微信机器人', accountIdMasked: 'account••••1234' },
+      bot: { name: uiText('ui.weixin.wechatBot'), accountIdMasked: 'account••••1234' },
       lastMessageError: {
         code: 'attachment-error',
         reason: 'MODEL_DOES_NOT_SUPPORT_IMAGES',
@@ -82,13 +88,17 @@ test('Weixin client keeps only the public connection-test result', () => {
 });
 
 test('Weixin account card shows the latest safe message-processing error', () => {
+  // The host now renders this message in the conversation's language and sends
+  // it already localized, so the card must display it verbatim rather than
+  // trying to translate someone else's prose.
+  const hostMessage = runtimeText('image.host.modelDoesNotSupportImages');
   const props = {
     account: {
-      ...account('wx_image', '微信机器人'),
+      ...account('wx_image', uiText('ui.weixin.wechatBot')),
       lastMessageError: {
         code: 'attachment-error',
         reason: 'MODEL_DOES_NOT_SUPPORT_IMAGES',
-        message: '当前模型不支持图片，请用 /models 查看可用模型，再用 /model <序号> 切换后重发。',
+        message: hostMessage,
         at: Date.now(),
       },
     },
@@ -96,15 +106,16 @@ test('Weixin account card shows the latest safe message-processing error', () =>
   };
   const markup = renderToStaticMarkup(React.createElement(AccountCard, props));
 
-  assert.match(markup, /最近一条消息处理失败/);
-  assert.match(markup, /当前模型不支持图片/);
+  assert.match(markup, new RegExp(escapeRe(uiText('ui.common.lastMessageFailed', { reason: '' }).trim())));
+  assert.ok(markup.includes(hostMessage.split('.')[0]));
+  assert.doesNotMatch(markup, /\p{Script=Han}/u);
 
-  setImTranslator((key) => en[key] ?? key);
+  // Switching the page language changes the label around it, never the
+  // host-provided message itself.
+  setImTranslator((key) => (key === 'ui.localeTag' ? 'zh-CN' : key));
   try {
-    const english = renderToStaticMarkup(React.createElement(AccountCard, props));
-    assert.match(english, /Latest message failed/);
-    assert.match(english, /current model does not support images/i);
-    assert.doesNotMatch(english, /[\p{Script=Han}]/u);
+    const chinese = renderToStaticMarkup(React.createElement(AccountCard, props));
+    assert.ok(chinese.includes(uiText('ui.common.lastMessageFailed', { reason: '' }).trim()));
   } finally {
     setImTranslator(null);
   }
@@ -113,17 +124,17 @@ test('Weixin account card shows the latest safe message-processing error', () =>
 test('Weixin card feedback stays visible without hiding connection errors', () => {
   const markup = renderToStaticMarkup(React.createElement(AccountCard, {
     account: {
-      ...account('wx_first', '微信机器人'),
+      ...account('wx_first', uiText('ui.weixin.wechatBot')),
       connected: false,
       state: 'error',
       error: { code: 'offline', message: '连接凭据已失效' },
     },
-    feedback: '微信连接检查完成，测试消息已发送。',
+    feedback: uiText('ui.weixin.wechatConnectionCheckCompletedAndThe'),
     onReconnect() {}, onRequestRemove() {}, onConfirmRemove() {}, onCancelRemove() {},
   }));
 
   assert.match(markup, />连接凭据已失效</);
-  assert.match(markup, /role="status"[^>]*>微信连接检查完成，测试消息已发送。</);
+  assert.match(markup, new RegExp(`role="status"[^>]*>${escapeRe(uiText('ui.weixin.wechatConnectionCheckCompletedAndThe'))}<`));
 });
 
 test('Weixin connection feedback is scoped to the checked bot', async (t) => {
@@ -156,22 +167,22 @@ test('Weixin connection feedback is scoped to the checked bot', async (t) => {
   });
   const first = renderer.root.findByProps({ 'data-bot-id': 'wx_first' });
   await act(async () => {
-    buttonNamed(first, '检查连接').props.onClick();
+    buttonNamed(first, uiText('ui.dingtalk.checkConnection')).props.onClick();
     await flushMicrotasks();
   });
 
   const firstAfter = renderer.root.findByProps({ 'data-bot-id': 'wx_first' });
   const secondAfter = renderer.root.findByProps({ 'data-bot-id': 'wx_second' });
-  assert.match(textOf(firstAfter), /测试消息已发送/);
-  assert.doesNotMatch(textOf(secondAfter), /测试消息已发送/);
+  assert.match(textOf(firstAfter), new RegExp(escapeRe(uiText('ui.weixin.wechatConnectionCheckCompletedAndThe'))));
+  assert.doesNotMatch(textOf(secondAfter), new RegExp(escapeRe(uiText('ui.weixin.wechatConnectionCheckCompletedAndThe'))));
   assert.deepEqual(calls, [{ botId: 'wx_first', sendTest: true }]);
   await act(async () => { renderer.unmount(); });
 });
 
 test('Weixin reconnect failure uses fixed translatable copy', async () => {
   const source = await readFile(CLIENT_URL, 'utf8');
-  assert.match(source, /'连接检查失败，请稍后重试。'/);
-  assert.match(source, /'连接检查完成。机器人尚未收到可用于测试的私聊消息。'/);
+  assert.match(source, /ui\.dingtalk\.connectionCheckFailedTryAgainLater/);
+  assert.match(source, /ui\.dingtalk\.connectionCheckCompletedTheBotHas/);
   assert.doesNotMatch(source, /请先私聊机器人发送 \/status/);
   assert.doesNotMatch(source, /连接检查失败：\$\{presentError\(error\)\.message\}/);
 });

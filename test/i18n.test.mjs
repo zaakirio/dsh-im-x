@@ -239,3 +239,28 @@ test('a conversation locale override survives only while its catalogue exists', 
   assert.equal(store.localeFor('direct:keep'), 'zh-CN');
   assert.equal(store.localeFor('direct:drop'), null, 'a missing catalogue must not pin a chat');
 });
+
+test('no source calls a placeholder key without params', async () => {
+  // A key used both with and without params renders `{name}` to a user. That
+  // survives the parity test, so it is checked here against real call sites.
+  const { readdir, readFile } = await import('node:fs/promises');
+  const roots = ['src', 'plugin-src'];
+  const english = I18N_CATALOGUES.get('en');
+  const withPlaceholders = new Set(Object.entries(english)
+    .filter(([, value]) => typeof value === 'string' && /\{\w+\}/.test(value))
+    .map(([key]) => key));
+
+  const offenders = [];
+  for (const root of roots) {
+    const entries = await readdir(new URL(`../${root}/`, import.meta.url), { recursive: true });
+    for (const entry of entries) {
+      if (!/\.(?:mjs|js)$/.test(entry)) continue;
+      const source = await readFile(new URL(`../${root}/${entry}`, import.meta.url), 'utf8');
+      // A call with no second argument: `t('key')` closed immediately.
+      for (const match of source.matchAll(/\bt\('([\w.]+)'\)/g)) {
+        if (withPlaceholders.has(match[1])) offenders.push(`${root}/${entry}: ${match[1]}`);
+      }
+    }
+  }
+  assert.deepEqual(offenders, []);
+});

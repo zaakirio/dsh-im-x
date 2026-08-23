@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { CredentialActionIcon, CredentialBindingPanel, QrActionIcon } from '../../credential-binding.js';
-import { h } from '../../i18n.js';
+import { h, t } from '../../i18n.js';
 import { WorkspaceEditor } from '../../workspace-editor.js';
 import {
   AgentPresetCatalogContext,
@@ -22,6 +22,8 @@ import {
   unwrapRpcResult,
 } from './api.js';
 import { installDingtalkStyles } from './styles.js';
+
+const CHANNEL_LABEL = 'DingTalk';
 
 const ACTIVE_PROVISION_STATES = new Set(['pending', 'scanned', 'authorizing', 'creating', 'connecting']);
 
@@ -60,8 +62,8 @@ function Heading({ totals, adding, busy, onAdd, onCredential, credentialOpen, ad
   return h('div', { className: 'ddt-heading' },
     h('div', { className: 'ddt-headingCopy' },
       h('div', { className: 'ddt-eyebrow' }, 'Channel'),
-      h('h2', null, '钉钉机器人'),
-      h('p', null, '通过扫码把钉钉机器人接入 DeepSeek Harness')),
+      h('h2', null, t('ui.dingtalk.dingtalkBot')),
+      h('p', null, t('ui.dingtalk.connectADingtalkBotToDeepseek'))),
     h('div', { className: 'ddt-tools' },
       h('div', { className: 'dim-bindActions' },
         h(Button, {
@@ -70,26 +72,26 @@ function Heading({ totals, adding, busy, onAdd, onCredential, credentialOpen, ad
           onClick: onAdd,
           disabled: adding || busy,
           ref: addButtonRef,
-          'aria-label': '扫码接入钉钉机器人',
-        }, h(QrActionIcon), adding ? '正在接入' : '扫码接入机器人'),
+          'aria-label': t('ui.dingtalk.connectDingtalkBotByQrCode'),
+        }, h(QrActionIcon), adding ? t('ui.dingtalk.connecting') : t('ui.dingtalk.scanQrCode')),
         h(Button, {
           kind: 'credential',
           className: 'dim-credentialButton',
           onClick: onCredential,
           disabled: adding || busy,
           'aria-pressed': credentialOpen,
-          'aria-label': '使用 Client ID 和 Client Secret 绑定钉钉机器人',
-        }, h(CredentialActionIcon), credentialOpen ? '收起凭据' : '手动接入')),
+          'aria-label': t('ui.dingtalk.connectADingtalkBotWithClient'),
+        }, h(CredentialActionIcon), credentialOpen ? t('ui.dingtalk.hideCredentials') : t('ui.dingtalk.manualSetup'))),
       totals.configured > 0
         ? h('div', { className: 'ddt-badge dim-onlineBadge' },
-            h('span', null, `${totals.connected} / ${totals.configured} 在线`))
+            h('span', null, t('ui.common.onlineCount', { connected: totals.connected, configured: totals.configured })))
         : null));
 }
 
 function LoadingView() {
   return h('div', { className: 'ddt-card ddt-loading dim-surfaceCard dim-loadingView', 'aria-busy': 'true' },
     h('div', { className: 'ddt-spinner dim-spinner' }),
-    h('span', null, '正在读取钉钉连接状态…'));
+    h('span', null, t('ui.dingtalk.loadingDingtalkConnectionStatus')));
 }
 
 function EmptyView({ busy, onStart }) {
@@ -97,12 +99,12 @@ function EmptyView({ busy, onStart }) {
     h('div', { className: 'ddt-cardBody ddt-empty dim-surfaceBody dim-emptyView' },
       h('div', { className: 'dim-emptyCopy' },
         h('div', { className: 'ddt-stateLabel dim-stateLabel' },
-          h('span', { className: 'ddt-dot dim-stateDot' }), h('span', null, '尚未接入钉钉机器人')),
-        h('h3', null, '扫一次码，自动创建并连接机器人'),
-        h('p', null, '授权由钉钉官方页面完成。扫码账号必须已加入一个企业/组织并有权创建机器人；创建成功后，应用凭据会直接写入 Harness Host。'),
+          h('span', { className: 'ddt-dot dim-stateDot' }), h('span', null, t('ui.common.noBotsYet', { channel: CHANNEL_LABEL }))),
+        h('h3', null, t('ui.dingtalk.scanOnceToCreateAndConnect')),
+        h('p', null, t('ui.dingtalk.authorizationIsCompletedOnDingtalkS')),
         h('div', { className: 'ddt-actions dim-viewActions' },
           h(Button, { kind: 'primary', onClick: onStart, disabled: busy },
-            busy ? '正在生成二维码…' : '生成钉钉二维码'))),
+            busy ? t('ui.dingtalk.generatingQrCode') : t('ui.dingtalk.generateDingtalkQrCode')))),
       h('div', { className: 'ddt-brandMark dim-emptyBrand', 'aria-hidden': 'true' },
         h(DingtalkIcon, { size: 68 }))));
 }
@@ -124,32 +126,32 @@ function QrPanel({ provision, now, busy, onRefresh, onCancel }) {
           source && !imageFailed
             ? h('img', {
                 src: source,
-                alt: '用于把钉钉机器人接入 DeepSeek Harness 的一次性二维码',
+                alt: t('ui.dingtalk.oneTimeQrCodeForConnecting'),
                 onError: () => setImageFailed(true),
               })
-            : h('div', { className: 'ddt-qrFallback dim-qrFallback' }, '二维码图片未就绪，请重新生成。'),
-          expired ? h('div', { className: 'ddt-expired dim-qrExpired' }, '二维码已过期\n请重新生成') : null),
+            : h('div', { className: 'ddt-qrFallback dim-qrFallback' }, t('ui.dingtalk.theQrCodeIsNotReady')),
+          expired ? h('div', { className: 'ddt-expired dim-qrExpired' }, t('ui.common.qrExpiredRegenerate')) : null),
         h('div', { className: 'ddt-countdown dim-countdown' },
           h('div', { className: 'ddt-countdownTop dim-countdownTop' },
-            h('span', null, '二维码有效时间'), h('strong', null, formatRemaining(remaining))),
+            h('span', null, t('ui.dingtalk.qrCodeExpiresIn')), h('strong', null, formatRemaining(remaining))),
           h('div', { className: 'ddt-progress dim-progress', 'aria-hidden': 'true' },
             h('span', { style: { '--ddt-progress': `${progress}%` } })))),
       h('div', { className: 'ddt-qrCopy dim-qrCopy' },
         h('div', { className: 'ddt-stateLabel dim-stateLabel' },
           h('span', { className: 'ddt-dot dim-stateDot', 'data-tone': expired ? 'error' : 'warning' }),
-          h('span', null, expired ? '二维码已失效' : '等待钉钉扫码授权')),
-        h('h3', null, expired ? '重新生成二维码后继续' : '使用钉钉 App 完成机器人授权'),
-        h('p', null, '扫码账号必须已加入企业/组织。如果钉钉提示尚未加入组织，请在提示页创建组织，或换用已加入组织的账号。'),
+          h('span', null, expired ? t('ui.dingtalk.qrCodeExpired') : t('ui.dingtalk.waitingForDingtalkAuthorization'))),
+        h('h3', null, expired ? t('ui.dingtalk.generateANewQrCode') : t('ui.dingtalk.authorizeTheBotWithTheDingtalk')),
+        h('p', null, t('ui.dingtalk.theDingtalkAccountMustBelongTo')),
         h('ol', { className: 'ddt-steps dim-steps' },
-          h('li', null, '使用已加入企业/组织的钉钉账号扫描左侧二维码'),
-          h('li', null, '在授权页点击“一键创建新机器人”'),
-          h('li', null, '保持本页打开，等待机器人自动连接')),
+          h('li', null, t('ui.dingtalk.scanTheQrCodeWithA')),
+          h('li', null, t('ui.dingtalk.selectCreateNewBotOnThe')),
+          h('li', null, t('ui.dingtalk.keepThisPageOpenWhileThe'))),
         h('div', { className: 'ddt-actions dim-viewActions' },
           expired
-            ? h(Button, { kind: 'primary', onClick: onRefresh, disabled: busy }, '重新生成二维码')
+            ? h(Button, { kind: 'primary', onClick: onRefresh, disabled: busy }, t('ui.dingtalk.generateANewQrCode2'))
             : null,
-          !expired ? h(Button, { onClick: onRefresh, disabled: busy }, '换一个二维码') : null,
-          h(Button, { onClick: onCancel, disabled: busy }, '取消')))));
+          !expired ? h(Button, { onClick: onRefresh, disabled: busy }, t('ui.dingtalk.getAnotherQrCode')) : null,
+          h(Button, { onClick: onCancel, disabled: busy }, t('ui.dingtalk.cancel'))))));
 }
 
 function ProgressPanel({ status, busy, onCancel }) {
@@ -158,38 +160,38 @@ function ProgressPanel({ status, busy, onCancel }) {
   return h('div', { className: 'ddt-card ddt-loading dim-surfaceCard dim-loadingView', 'aria-busy': 'true' },
     h('div', { className: 'ddt-spinner dim-spinner' }),
     h('h3', null, connecting
-      ? '机器人已创建，正在建立消息连接'
-      : creating ? '授权已确认，正在创建钉钉机器人' : '正在确认钉钉授权'),
+      ? t('ui.dingtalk.botCreatedStartingTheMessageConnection')
+      : creating ? t('ui.dingtalk.authorizedCreatingTheDingtalkBot') : t('ui.dingtalk.confirmingDingtalkAuthorization')),
     h('p', null, connecting
-      ? '正在检查钉钉 Stream 长连接，成功后会自动显示为在线。'
-      : '请勿关闭本页，钉钉完成授权后将自动继续。'),
+      ? t('ui.dingtalk.checkingTheDingtalkStreamConnectionIt')
+      : t('ui.dingtalk.keepThisPageOpenSetupWill')),
     h('div', { className: 'ddt-actions dim-viewActions', style: { justifyContent: 'center', marginTop: 14 } },
-      h(Button, { onClick: onCancel, disabled: busy }, '取消接入')));
+      h(Button, { onClick: onCancel, disabled: busy }, t('ui.dingtalk.cancelSetup'))));
 }
 
 function ProvisionError({ provision, busy, onRetry, onClose }) {
   const error = provision.error ?? {
     code: 'DINGTALK_PROVISION_FAILED',
-    message: '钉钉机器人没有接入完成',
+    message: t('ui.common.notConnected', { channel: CHANNEL_LABEL }),
   };
   return h('div', { className: 'ddt-card dim-surfaceCard' },
     h('div', { className: 'ddt-inlineError dim-inlineError', role: 'alert' },
-      h('h3', null, provision.status === 'expired' ? '二维码已过期' : '钉钉机器人没有接入完成'),
+      h('h3', null, provision.status === 'expired' ? t('ui.dingtalk.qrCodeExpired2') : t('ui.common.notConnected', { channel: CHANNEL_LABEL })),
       h('p', null, error.message),
       h('span', { className: 'ddt-errorCode' }, error.code),
       h('div', { className: 'ddt-actions dim-viewActions' },
-        h(Button, { kind: 'primary', onClick: onRetry, disabled: busy }, '重新生成二维码'),
-        h(Button, { onClick: onClose, disabled: busy }, '关闭'))));
+        h(Button, { kind: 'primary', onClick: onRetry, disabled: busy }, t('ui.dingtalk.generateANewQrCode2')),
+        h(Button, { onClick: onClose, disabled: busy }, t('ui.dingtalk.close')))));
 }
 
 function checkedTime(value) {
-  if (!value) return '尚未检查';
+  if (!value) return t('ui.dingtalk.notCheckedYet');
   try {
     return new Intl.DateTimeFormat('zh-CN', {
       hour: '2-digit', minute: '2-digit', second: '2-digit',
     }).format(new Date(value));
   } catch {
-    return '刚刚';
+    return t('ui.dingtalk.justNow');
   }
 }
 
@@ -199,17 +201,17 @@ function RemoveConfirmation({ account, busy, onConfirm, onCancel }) {
   return h('div', {
     className: 'ddt-confirm dim-confirm',
     role: 'alertdialog',
-    'aria-label': `移除${account.bot.name}`,
+    'aria-label': t('ui.common.removeAria', { name: account.bot.name }),
     onKeyDown: (event) => {
       if (event.key === 'Escape' && !busy) onCancel();
     },
   },
-  h('strong', null, `从 DeepSeek Harness 移除“${account.bot.name}”？`),
-  h('p', null, '这会停止消息连接，并删除本机保存的应用凭据、机器人配置及会话映射。钉钉开放平台中的机器人不会被自动删除。'),
+  h('strong', null, t('ui.common.removeConfirm', { name: account.bot.name })),
+  h('p', null, t('ui.dingtalk.thisStopsTheMessageConnectionAnd')),
   h('div', { className: 'ddt-actions dim-viewActions' },
-    h(Button, { ref: cancelRef, onClick: onCancel, disabled: busy }, '保留机器人'),
+    h(Button, { ref: cancelRef, onClick: onCancel, disabled: busy }, t('ui.dingtalk.keepBot')),
     h(Button, { kind: 'danger', onClick: onConfirm, disabled: busy },
-      busy ? '正在移除…' : '确认移除接入')));
+      busy ? t('ui.dingtalk.removing') : t('ui.dingtalk.removeConnection'))));
 }
 
 export function AccountCard({
@@ -226,7 +228,7 @@ export function AccountCard({
 }) {
   const state = busy === 'reconnect' ? 'connecting' : account.state;
   const tone = account.connected ? 'success' : state === 'error' ? 'error' : 'warning';
-  const stateLabel = account.connected ? '运行正常' : state === 'connecting' ? '正在连接' : '连接未就绪';
+  const stateLabel = account.connected ? t('ui.dingtalk.connected') : state === 'connecting' ? t('ui.dingtalk.connecting2') : t('ui.dingtalk.notConnected');
   const summary = account.error?.message ?? (account.connected ? null : account.health.summary);
   return h('article', { className: 'ddt-card dim-botCard', tabIndex: -1, 'data-bot-id': account.botId },
     h('div', { className: 'ddt-cardBody dim-botCardBody' },
@@ -258,9 +260,9 @@ export function AccountCard({
         h('div', { className: 'dim-cardFooterLayout' },
           h('div', { className: 'ddt-actions dim-cardActions' },
             h(Button, { className: 'dim-cardAction', onClick: onReconnect, disabled: Boolean(busy) },
-              busy === 'reconnect' ? '检查中…' : account.connected ? '检查连接' : '重试连接'),
+              busy === 'reconnect' ? t('ui.dingtalk.checking') : account.connected ? t('ui.dingtalk.checkConnection') : t('ui.dingtalk.reconnect')),
             h(Button, { className: 'dim-cardAction', kind: 'danger', onClick: onRequestRemove, disabled: Boolean(busy) },
-              '移除接入')),
+              t('ui.dingtalk.removeConnection2'))),
           summary ? h('div', { className: 'ddt-summary dim-cardSummary' }, summary) : null,
           feedback ? h('div', {
             className: 'ddt-summary dim-cardFeedback',
@@ -278,8 +280,8 @@ function AccountList(props) {
   return h('section', { className: 'dim-listSection' },
     h(ChannelListHeading, {
       className: 'ddt-listHeading',
-      title: '已接入的钉钉机器人',
-      connectionLabel: 'Stream 长连接',
+      title: t('ui.dingtalk.connectedDingtalkBots'),
+      connectionLabel: t('ui.dingtalk.streamPersistentConnection'),
     }),
     h('ul', { className: 'ddt-list dim-botList' }, props.bots.map((account) => h('li', { key: account.botId },
       h(AccountCard, {
@@ -378,7 +380,7 @@ export function DingtalkSettingsTab({ rpcCall }) {
   }, []);
 
   const invoke = React.useCallback(async (endpoint, payload = {}, signal) => {
-    if (typeof rpcCall !== 'function') throw new TypeError('钉钉设置页缺少 RPC 连接');
+    if (typeof rpcCall !== 'function') throw new TypeError(t('ui.common.missingRpc', { channel: CHANNEL_LABEL }));
     return unwrapRpcResult(await rpcCall(endpoint, payload, signal));
   }, [rpcCall]);
 
@@ -486,14 +488,14 @@ export function DingtalkSettingsTab({ rpcCall }) {
       ));
       if (!mountedRef.current) return;
       if (!started.qrCodeDataUrl) {
-        throw new Error('钉钉扫码服务没有返回安全的二维码');
+        throw new Error(t('ui.dingtalk.dingtalkDidNotReturnASecure'));
       }
       setNow(Date.now());
       setProvision({
         ...started,
         durationMs: Math.max(1, started.expiresAt - Date.now()),
       });
-      announce('钉钉二维码已生成，请使用钉钉 App 扫描。');
+      announce(t('ui.dingtalk.dingtalkQrCodeGeneratedScanIt'));
     } catch (error) {
       if (!mountedRef.current) return;
       setProvision({
@@ -529,7 +531,7 @@ export function DingtalkSettingsTab({ rpcCall }) {
         discardStaleFeedback(snapshot);
       }
       setCredentialOpen(false);
-      announce('钉钉机器人凭据已绑定。');
+      announce(t('ui.dingtalk.dingtalkBotCredentialsConnected'));
     } catch (error) {
       if (mountedRef.current) setCredentialError(presentError(error));
     } finally {
@@ -548,7 +550,7 @@ export function DingtalkSettingsTab({ rpcCall }) {
         if (!mountedRef.current) return;
       }
       setProvision(null);
-      announce('已取消钉钉机器人接入。');
+      announce(t('ui.dingtalk.dingtalkBotSetupCancelled'));
       focusAddButton();
     } catch (error) {
       if (!mountedRef.current) return;
@@ -601,8 +603,8 @@ export function DingtalkSettingsTab({ rpcCall }) {
           }
           setProvision(null);
           announce(result.alreadyConnected
-            ? '这个钉钉机器人已经接入并保持在线。'
-            : '钉钉机器人已接入，可以开始发送消息。');
+            ? t('ui.dingtalk.thisDingtalkBotIsConnectedAnd')
+            : t('ui.dingtalk.theDingtalkBotIsConnectedAnd'));
           return;
         }
         if (!canCommit()) return;
@@ -678,8 +680,8 @@ export function DingtalkSettingsTab({ rpcCall }) {
     } catch (error) {
       if (!mountedRef.current) return undefined;
       const failureMessage = operation === 'reconnect'
-        ? '连接检查失败，请稍后重试。'
-        : `操作失败：${presentError(error).message}`;
+        ? t('ui.dingtalk.connectionCheckFailedTryAgainLater')
+        : t('ui.common.operationFailedReason', { reason: presentError(error).message });
       if (operation === 'reconnect') {
         setFeedbackByBot((current) => ({
           ...current,
@@ -702,8 +704,8 @@ export function DingtalkSettingsTab({ rpcCall }) {
     payload: { botId: account.botId, sendTest: true },
     success: (snapshot) => {
       const refreshed = snapshot?.bots.find((bot) => bot.botId === account.botId);
-      if (!refreshed?.connected) return '钉钉仍未连接，插件会继续自动重试。';
-      return connectionTestFeedback(snapshot.testMessage) ?? '钉钉连接检查完成。';
+      if (!refreshed?.connected) return t('ui.common.stillOffline', { channel: CHANNEL_LABEL });
+      return connectionTestFeedback(snapshot.testMessage) ?? t('ui.common.connectionCheckDone', { channel: CHANNEL_LABEL });
     },
   }), [runBotAction]);
 
@@ -765,7 +767,7 @@ export function DingtalkSettingsTab({ rpcCall }) {
       operation: 'delete',
       endpoint: DINGTALK_ENDPOINTS.deleteBot,
       payload: { botId: account.botId, confirm: true },
-      success: '钉钉机器人及本机凭据已移除。',
+      success: t('ui.dingtalk.dingtalkBotAndLocalCredentialsRemoved'),
     });
     if (snapshot && mountedRef.current) setRemoveTarget(null);
   }, [runBotAction]);
@@ -773,7 +775,7 @@ export function DingtalkSettingsTab({ rpcCall }) {
   let provisionView = null;
   if (provision?.status === 'starting') {
     provisionView = h('div', { className: 'ddt-card ddt-loading', 'aria-busy': 'true' },
-      h('div', { className: 'ddt-spinner' }), h('span', null, '正在申请钉钉授权二维码…'));
+      h('div', { className: 'ddt-spinner' }), h('span', null, t('ui.dingtalk.requestingDingtalkAuthorizationQrCode')));
   } else if (provision?.status === 'pending') {
     provisionView = h(QrPanel, {
       provision,
@@ -799,11 +801,11 @@ export function DingtalkSettingsTab({ rpcCall }) {
 
   const credentialView = credentialOpen
     ? h(CredentialBindingPanel, {
-        channel: '钉钉',
+        channel: t('ui.dingtalk.dingtalk'),
         identityLabel: 'Client ID',
-        identityPlaceholder: '填写钉钉应用 Client ID',
+        identityPlaceholder: t('ui.dingtalk.enterTheDingtalkClientId'),
         secretLabel: 'Client Secret',
-        secretPlaceholder: '填写钉钉应用 Client Secret',
+        secretPlaceholder: t('ui.dingtalk.enterTheDingtalkClientSecret'),
         busy,
         error: credentialError,
         onSubmit: bindCredentials,
@@ -813,7 +815,7 @@ export function DingtalkSettingsTab({ rpcCall }) {
 
   return h(AgentPresetCatalogContext.Provider, {
     value: model.agentPresetCatalog ?? EMPTY_AGENT_PRESET_CATALOG,
-  }, h('section', { className: 'ddt-page dim-channelPage', 'aria-label': '钉钉设置' },
+  }, h('section', { className: 'ddt-page dim-channelPage', 'aria-label': t('ui.dingtalk.dingtalkSettings') },
     h(Heading, {
       totals: model.totals,
       adding: Boolean(provision),
@@ -825,16 +827,16 @@ export function DingtalkSettingsTab({ rpcCall }) {
     }),
     h('div', { className: 'ddt-visuallyHidden', role: 'status', 'aria-live': 'polite' }, notice),
     model.error && model.phase === 'ready'
-      ? h('div', { className: 'ddt-statusNotice dim-statusNotice', role: 'alert' }, `状态刷新失败：${model.error.message}`)
+      ? h('div', { className: 'ddt-statusNotice dim-statusNotice', role: 'alert' }, t('ui.common.statusRefreshFailed', { reason: model.error.message }))
       : null,
     model.phase === 'loading'
       ? h(LoadingView)
       : model.phase === 'error'
         ? h('div', { className: 'ddt-card dim-surfaceCard' },
             h('div', { className: 'ddt-inlineError dim-inlineError', role: 'alert' },
-              h('h3', null, '无法读取钉钉机器人状态'),
-              h('p', null, model.error?.message ?? '请稍后重试'),
-              h(Button, { onClick: () => void loadStatus() }, '重新读取')))
+              h('h3', null, t('ui.common.cannotReadStatus', { channel: CHANNEL_LABEL })),
+              h('p', null, model.error?.message ?? t('ui.dingtalk.tryAgainLater')),
+              h(Button, { onClick: () => void loadStatus() }, t('ui.dingtalk.reload'))))
         : h(React.Fragment, null,
             credentialView,
             provisionView,
@@ -865,7 +867,7 @@ export function apply(ctx) {
     name: 'settings.plugins.tab',
     id: 'dingtalk',
     order: 40,
-    label: '钉钉',
+    label: t('ui.dingtalk.dingtalk'),
     inject: () => ({ rpcCall }),
   }, DingtalkSettingsTab));
 }

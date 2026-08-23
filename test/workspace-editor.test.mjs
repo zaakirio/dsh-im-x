@@ -13,6 +13,7 @@ import {
 } from '../plugin-src/client/workspace-editor.js';
 import { DiscordSettingsTab } from '../plugin-src/client/channels/discord/index.js';
 import { en, setImTranslator } from '../plugin-src/client/i18n.js';
+import { t as uiText } from '../plugin-src/client/i18n.js';
 
 const { act, create } = TestRenderer;
 
@@ -165,7 +166,7 @@ test('WorkspaceEditor browses from the current path and saves the selected direc
   assert.equal(dialog.props['aria-modal'], 'true');
   assert.equal(
     textOf(renderer.root.findByProps({ id: dialog.props['aria-describedby'] })),
-    '切换后会清除这个机器人的旧会话映射。',
+    uiText('ui.workspaceDirectoryPicker.switchingClearsThisBotSPrevious'),
   );
   assert.equal(renderer.root.findAllByProps({ title: '/workspace/current/.hidden' }).length, 0);
   bodyNode.scrollTop = 240;
@@ -357,7 +358,7 @@ test('WorkspaceEditor moves keyboard focus into and back out of the picker', asy
   });
   assert.equal(dialogFocus, 1);
   await act(async () => {
-    buttonNamed(renderer.root, '取消').props.onClick();
+    buttonNamed(renderer.root, uiText('ui.dingtalk.cancel')).props.onClick();
     await flushMicrotasks();
   });
   assert.equal(editFocus, 1);
@@ -429,7 +430,7 @@ test('a status response started before saving cannot restore the old workspace',
     await flushMicrotasks();
   });
   await act(async () => {
-    buttonNamed(renderer.root, '选择目录').props.onClick();
+    buttonNamed(renderer.root, uiText('ui.workspaceEditor.chooseFolder')).props.onClick();
     await flushMicrotasks();
   });
   assert.equal(renderer.root.findByType('code').props.title, '/workspace/new');
@@ -479,11 +480,11 @@ test('an older reconnect snapshot from another bot cannot restore a saved worksp
   const secondCard = renderer.root.findByProps({ 'data-bot-id': 'discord_second' });
   await act(async () => {
     secondCard.findAllByType('button')
-      .find((button) => button.children.join('') === '检查连接').props.onClick();
+      .find((button) => button.children.join('') === uiText('ui.dingtalk.checkConnection')).props.onClick();
     await flushMicrotasks();
   });
   await act(async () => {
-    buttonNamed(firstCard, '选择目录').props.onClick();
+    buttonNamed(firstCard, uiText('ui.workspaceEditor.chooseFolder')).props.onClick();
     await flushMicrotasks();
   });
 
@@ -521,7 +522,7 @@ test('connection check requests a test message and shows its delivery result', a
   });
   const card = renderer.root.findByProps({ 'data-bot-id': 'discord_test' });
   await act(async () => {
-    buttonNamed(card, '检查连接').props.onClick();
+    buttonNamed(card, uiText('ui.dingtalk.checkConnection')).props.onClick();
     await flushMicrotasks();
   });
 
@@ -531,7 +532,7 @@ test('connection check requests a test message and shows its delivery result', a
   });
   assert.equal(
     textOf(renderer.root.findByProps({ role: 'status' })),
-    '测试消息已发送，请到对应机器人会话中确认。',
+    uiText('ui.qq.testMessageSentCheckTheMatching'),
   );
   await act(async () => { renderer.unmount(); });
 });
@@ -648,16 +649,16 @@ test('an older reconnect snapshot cannot resurrect a bot deleted by a newer muta
   const secondCard = renderer.root.findByProps({ 'data-bot-id': 'discord_second' });
   await act(async () => {
     secondCard.findAllByType('button')
-      .find((button) => button.children.join('') === '检查连接').props.onClick();
+      .find((button) => button.children.join('') === uiText('ui.dingtalk.checkConnection')).props.onClick();
     await flushMicrotasks();
   });
   await act(async () => {
     firstCard.findAllByType('button')
-      .find((button) => button.children.join('') === '移除接入').props.onClick();
+      .find((button) => button.children.join('') === uiText('ui.dingtalk.removeConnection2')).props.onClick();
   });
   await act(async () => {
     await firstCard.findAllByType('button')
-      .find((button) => button.children.join('') === '确认移除接入').props.onClick();
+      .find((button) => button.children.join('') === uiText('ui.dingtalk.removeConnection')).props.onClick();
     await flushMicrotasks();
   });
   assert.equal(renderer.root.findAllByProps({ 'data-bot-id': 'discord_first' }).length, 0);
@@ -692,10 +693,10 @@ test('AgentPresetEditor lists Host presets and moves its session guidance into a
   const select = renderer.root.findByProps({ className: 'dim-presetSelect' });
   assert.equal(select.props.value, 'coding');
   assert.deepEqual(optionValues(select), ['', 'coding', 'default']);
-  assert.equal(textOf(select.children[0]), '跟随 Host 默认');
+  assert.equal(textOf(select.children[0]), uiText('ui.agentPreset.followTheHostDefault'));
   assert.equal(textOf(select.children[1]), 'Coding（coding）');
   const helpButton = renderer.root.findByProps({
-    'aria-label': '查看 Agent Preset 说明',
+    'aria-label': uiText('ui.agentPreset.viewAgentPresetHelp'),
   });
   const tooltip = renderer.root.findByProps({ role: 'tooltip' });
   assert.equal(helpButton.props.type, 'button');
@@ -703,7 +704,7 @@ test('AgentPresetEditor lists Host presets and moves its session guidance into a
   assert.equal(helpButton.props['aria-describedby'], tooltip.props.id);
   assert.equal(
     textOf(tooltip),
-    '只影响新建会话；若当前聊天已有会话，先发送 /new，再发送普通消息生效。',
+    uiText('ui.agentPreset.thisAffectsOnlyNewSessionsIf'),
   );
   assert.equal(renderer.root.findAllByType('small').length, 0);
   renderer.unmount();
@@ -722,10 +723,10 @@ test('AgentPresetEditor marks a removed current preset and still allows clearing
   const select = renderer.root.findByProps({ className: 'dim-presetSelect' });
   assert.equal(select.props.value, 'removed-preset');
   assert.deepEqual(optionValues(select), ['', 'coding', 'default', 'removed-preset']);
-  assert.equal(textOf(select.children[3]), 'removed-preset（已不可用）');
+  assert.equal(textOf(select.children[3]), `removed-preset${uiText('ui.agentPreset.unavailable')}`);
   assert.equal(
     textOf(renderer.root.findByProps({ role: 'status' })),
-    '当前 Agent Preset 已不可用，请选择其他 Preset 或跟随 Host 默认。',
+    uiText('ui.agentPreset.theCurrentAgentPresetIsUnavailable'),
   );
 
   await act(async () => {

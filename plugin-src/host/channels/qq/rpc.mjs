@@ -6,6 +6,7 @@ import {
 import { resolveRpcAuthority } from '../../rpc-authority.mjs';
 import { publicWorkspaceError, SET_WORKSPACE_ENDPOINT, validWorkspacePayload } from '../shared/workspace-rpc.mjs';
 import { SET_AGENT_PRESET_ENDPOINT, validAgentPresetPayload } from '../shared/agent-preset-rpc.mjs';
+import { defaultTranslator } from '../../../../src/i18n/index.mjs';
 
 export const QQ_RPC_CHANNEL = '/qq';
 export const QQ_ENDPOINTS = Object.freeze({
@@ -70,11 +71,11 @@ function payloadFailure(endpoint, payload) {
   }
   if (endpoint === QQ_ENDPOINTS.setWorkspace) {
     return validWorkspacePayload(payload)
-      ? null : '请输入工作区绝对路径。';
+      ? null : defaultTranslator('rpc.workspaceRequired');
   }
   if (endpoint === QQ_ENDPOINTS.setAgentPreset) {
     return validAgentPresetPayload(payload)
-      ? null : '请选择 Agent Preset。';
+      ? null : defaultTranslator('rpc.presetRequired');
   }
   return 'Unknown QQ endpoint.';
 }
@@ -149,7 +150,7 @@ export function createQqRpcHandler(controller, { encodeQr = qrDataUrl } = {}) {
           ) === true;
           if (!connected || typeof controller.sendConnectionTest !== 'function') {
             testMessage = publicConnectionTestResult(
-              connectionTestTargetUnavailable('QQ机器人'),
+              connectionTestTargetUnavailable(defaultTranslator('bot.qqDefaultName')),
             );
           } else {
             let testError = null;
@@ -188,7 +189,7 @@ export function createQqRpcHandler(controller, { encodeQr = qrDataUrl } = {}) {
       return signal?.aborted
         ? { ok: false, error: { code: 'cancelled', message: 'The request was cancelled.' } }
         : { ok: false, error: workspaceError
-          ?? { code: 'qq-operation-failed', message: 'QQ 操作失败，请稍后重试。' } };
+          ?? { code: 'qq-operation-failed', message: defaultTranslator('rpc.operationFailed', { channel: 'QQ' }) } };
     }
   };
 }

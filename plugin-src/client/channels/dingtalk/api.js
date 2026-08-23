@@ -1,4 +1,8 @@
+import { t } from '../../i18n.js';
+
 import { normalizeAgentPresetCatalog, normalizeAgentPresetId, SET_AGENT_PRESET_ENDPOINT } from '../../agent-preset.js';
+
+const CHANNEL_LABEL = 'DingTalk';
 
 export const DINGTALK_RPC_CHANNEL = '/dingtalk';
 
@@ -100,10 +104,10 @@ function normalizeTestMessage(value) {
 
 export function unwrapRpcResult(result) {
   if (!isRecord(result) || typeof result.ok !== 'boolean') {
-    throw new Error('钉钉服务返回了无法识别的响应');
+    throw new Error(t('ui.common.unrecognizedResponse', { channel: CHANNEL_LABEL }));
   }
   if (!result.ok) {
-    const error = new Error(sanitizeMessage(result.error?.message, '钉钉操作失败'));
+    const error = new Error(sanitizeMessage(result.error?.message, t('ui.common.operationFailed', { channel: CHANNEL_LABEL })));
     error.code = safeErrorCode(result.error?.code, 'DINGTALK_RPC_ERROR');
     throw error;
   }
@@ -117,9 +121,9 @@ export function safeQrSource(value) {
 
 export function normalizeProvisioning(value, now = Date.now()) {
   const source = isRecord(value?.provisioning) ? value.provisioning : value;
-  if (!isRecord(source)) throw new Error('钉钉服务没有返回扫码绑定进度');
+  if (!isRecord(source)) throw new Error(t('ui.dingtalk.dingtalkDidNotReturnQrSetup'));
   const attemptId = opaqueId(source.attemptId);
-  if (!attemptId) throw new Error('钉钉扫码服务没有返回有效的绑定任务');
+  if (!attemptId) throw new Error(t('ui.dingtalk.dingtalkDidNotReturnAValid'));
 
   const reportedStatus = optionalString(source.status, 32) ?? optionalString(source.state, 32);
   const status = PROVISION_STATES.has(reportedStatus) ? reportedStatus : 'failed';
@@ -138,7 +142,7 @@ export function normalizeProvisioning(value, now = Date.now()) {
   const error = normalizeError(
     source.error,
     'DINGTALK_PROVISION_FAILED',
-    '钉钉机器人没有接入完成',
+    t('ui.common.notConnected', { channel: CHANNEL_LABEL }),
   );
   if (error) result.error = error;
   return result;
@@ -162,15 +166,15 @@ function normalizeBot(value) {
     workspace: optionalString(value.workspace, 4_096) ?? '',
     agentPreset: normalizeAgentPresetId(value.agentPreset),
     bot: {
-      name: optionalString(bot.name, 100) ?? '钉钉机器人',
-      clientIdMasked: optionalString(bot.clientIdMasked, 140) ?? '已安全保存',
+      name: optionalString(bot.name, 100) ?? t('ui.dingtalk.dingtalkBot'),
+      clientIdMasked: optionalString(bot.clientIdMasked, 140) ?? t('ui.dingtalk.storedSecurely'),
     },
     health: {
       status: HEALTH_STATES.has(health.status)
         ? health.status
         : connected ? 'healthy' : 'offline',
       summary: optionalString(health.summary, 200)
-        ?? (connected ? '钉钉 Stream 长连接运行正常' : '钉钉连接尚未就绪'),
+        ?? (connected ? t('ui.dingtalk.dingtalkStreamConnectionIsHealthy') : t('ui.common.connectionNotReady', { channel: CHANNEL_LABEL })),
       lastCheckedAt: timestamp(health.lastCheckedAt),
       lastConnectedAt: timestamp(health.lastConnectedAt),
     },
@@ -178,14 +182,14 @@ function normalizeBot(value) {
       messagesReceived: nonNegativeInteger(stats.messagesReceived),
       messagesReplied: nonNegativeInteger(stats.messagesReplied),
     },
-    error: normalizeError(value.error, 'DINGTALK_ACCOUNT_ERROR', '钉钉连接尚未就绪') ?? null,
+    error: normalizeError(value.error, 'DINGTALK_ACCOUNT_ERROR', t('ui.common.connectionNotReady', { channel: CHANNEL_LABEL })) ?? null,
   };
 }
 
 export function normalizeSnapshot(value) {
   const source = isRecord(value?.snapshot) ? value.snapshot : value;
   if (!isRecord(source) || !Array.isArray(source.bots)) {
-    throw new Error('钉钉服务没有返回有效的机器人列表');
+    throw new Error(t('ui.dingtalk.dingtalkDidNotReturnAValid2'));
   }
   const seen = new Set();
   const bots = source.bots.map(normalizeBot).filter((bot) => {
@@ -209,17 +213,17 @@ export function normalizeSnapshot(value) {
 }
 
 export function connectionTestFeedback(result) {
-  if (result?.sent === true) return '钉钉连接检查完成，测试消息已发送。';
+  if (result?.sent === true) return t('ui.dingtalk.dingtalkConnectionCheckCompletedAndThe');
   if (result?.code === 'test-target-unavailable') {
-    return '连接检查完成。机器人尚未收到可用于测试的私聊消息。';
+    return t('ui.dingtalk.connectionCheckCompletedTheBotHas');
   }
-  return result ? '钉钉连接检查完成，但测试消息发送失败。' : null;
+  return result ? t('ui.dingtalk.dingtalkConnectionCheckCompletedButThe') : null;
 }
 
 export function presentError(error) {
   return {
     code: safeErrorCode(error?.code, 'DINGTALK_ERROR'),
-    message: sanitizeMessage(error?.message, '钉钉操作失败，请稍后重试'),
+    message: sanitizeMessage(error?.message, t('ui.common.operationFailedRetry', { channel: CHANNEL_LABEL })),
   };
 }
 

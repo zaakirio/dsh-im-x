@@ -4,6 +4,7 @@ import {
 } from '../shared/rpc.mjs';
 import { resolveRpcAuthority } from '../../rpc-authority.mjs';
 import { normalizeTelegramAccessPolicy } from '../../../../src/channels/telegram/config-store.mjs';
+import { defaultTranslator } from '../../../../src/i18n/index.mjs';
 
 export const TELEGRAM_RPC_CHANNEL = '/telegram';
 export const TELEGRAM_ENDPOINTS = Object.freeze({
@@ -40,7 +41,7 @@ export function createTelegramRpcHandler(controller) {
     } catch {
       return {
         ok: false,
-        error: { code: 'bad-request', message: '请输入有效的 Telegram 访问模式和数字 User ID。' },
+        error: { code: 'bad-request', message: defaultTranslator('rpc.telegramBadRequest') },
       };
     }
     try {
@@ -53,7 +54,7 @@ export function createTelegramRpcHandler(controller) {
         ? { ok: false, error: { code: 'cancelled', message: 'The request was cancelled.' } }
         : {
             ok: false,
-            error: { code: 'telegram-operation-failed', message: 'Telegram 操作失败，请稍后重试。' },
+            error: { code: 'telegram-operation-failed', message: defaultTranslator('rpc.operationFailed', { channel: 'Telegram' }) },
           };
     }
   };

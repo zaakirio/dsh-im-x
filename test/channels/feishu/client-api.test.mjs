@@ -13,6 +13,7 @@ import {
   screenFromSnapshot,
   unwrapRpcResult,
 } from '../../../plugin-src/client/channels/feishu/api.js';
+import { t as uiText } from '../../../plugin-src/client/i18n.js';
 
 test('multi-bot endpoints are bot-scoped and keep legacy operations separate', () => {
   assert.equal(FEISHU_ENDPOINTS.beginCallbackRepair, 'bot.callback-repair.begin');
@@ -43,7 +44,7 @@ test('client normalizes multiple independent bots and derives authoritative tota
           domain: 'feishu',
           clientSecret: 'must-not-leak',
         },
-        health: { status: 'healthy', summary: '长连接运行正常' },
+        health: { status: 'healthy', summary: uiText('ui.feishu.persistentConnectionIsHealthy') },
       },
       {
         botId: 'bot-b',
@@ -52,7 +53,7 @@ test('client normalizes multiple independent bots and derives authoritative tota
         connected: false,
         configured: true,
         bot: { name: '研发助手', domain: 'lark' },
-        health: { status: 'offline', summary: '等待重连' },
+        health: { status: 'offline', summary: uiText('ui.office.waitingToReconnect') },
         error: { code: 'connection_failed', message: '连接失败' },
       },
     ],
@@ -241,7 +242,7 @@ test('configured offline and startup errors never become the create screen', () 
     state: 'error',
     connected: false,
     configured: false,
-    error: { message: '二维码已过期' },
+    error: { message: uiText('ui.dingtalk.qrCodeExpired2') },
   }));
   assert.equal(failedBeforeConfiguration.phase, 'error');
   assert.equal(failedBeforeConfiguration.retry, 'begin');

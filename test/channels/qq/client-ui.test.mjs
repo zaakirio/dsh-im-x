@@ -7,6 +7,11 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { AccountCard, QqSettingsTab } from '../../../plugin-src/client/channels/qq/index.js';
 import { en, setImTranslator } from '../../../plugin-src/client/i18n.js';
+import { t as uiText } from '../../../plugin-src/client/i18n.js';
+
+function escapeRe(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 const CLIENT_URL = new URL('../../../plugin-src/client/channels/qq/index.js', import.meta.url);
 
@@ -16,8 +21,8 @@ test('QQ settings uses the shared compact channel toolbar', () => {
   }));
   assert.match(markup, /class="ddt-page dqq-page dim-channelPage"/);
   assert.match(markup, /class="ddt-button dim-scanButton"/);
-  assert.match(markup, /aria-label="扫码接入 QQ 机器人"/);
-  assert.match(markup, /class="dim-actionIcon"[^]*扫码接入机器人/);
+  assert.match(markup, new RegExp(`aria-label="${escapeRe(uiText('ui.qq.connectQqBotByQrCode'))}"`));
+  assert.match(markup, new RegExp(`class="dim-actionIcon"[^]*${escapeRe(uiText('ui.dingtalk.scanQrCode'))}`));
   assert.doesNotMatch(markup, /凭据仅保存在本机|role="switch"|type="checkbox"/);
 });
 
@@ -27,8 +32,8 @@ test('QQ bot cards keep check time with status and omit repeated channel details
       botId: 'qq_bot',
       connected: true,
       state: 'connected',
-      bot: { name: 'QQ机器人', appIdMasked: '123••••456' },
-      health: { summary: 'QQ WebSocket 长连接运行正常', lastCheckedAt: Date.now() },
+      bot: { name: uiText('ui.qq.qqBot'), appIdMasked: '123••••456' },
+      health: { summary: uiText('ui.qq.qqWebsocketConnectionIsHealthy'), lastCheckedAt: Date.now() },
       error: null,
     },
     onReconnect() {},
@@ -38,16 +43,16 @@ test('QQ bot cards keep check time with status and omit repeated channel details
   }));
   assert.match(markup, /class="ddt-card dim-botCard"/);
   assert.match(markup, /data-im-channel-logo="qq"/);
-  assert.match(markup, /class="dim-botHealthGroup"[^]*class="dim-lastChecked"><span>最近检查<\/span>/);
-  assert.doesNotMatch(markup, /消息通道|dim-botMetric/);
-  assert.match(markup, />检查连接<[^]*>移除接入</);
+  assert.match(markup, new RegExp(`class="dim-botHealthGroup"[^]*class="dim-lastChecked"><span>${escapeRe(uiText('ui.channelCardMeta.lastChecked'))}</span>`));
+  assert.doesNotMatch(markup, new RegExp(`${escapeRe(uiText('ui.channelCardMeta.messageChannel'))}|dim-botMetric`));
+  assert.match(markup, new RegExp(`>${escapeRe(uiText('ui.dingtalk.checkConnection'))}<[^]*>${escapeRe(uiText('ui.dingtalk.removeConnection2'))}<`));
   assert.match(markup, /class="dim-presetSelect"/);
   assert.doesNotMatch(markup, /收到\s*\/\s*回复|dim-cardSummary|QQ WebSocket 长连接运行正常/);
 
   const offlineMarkup = renderToStaticMarkup(React.createElement(AccountCard, {
     account: {
       botId: 'qq_bot', connected: false, state: 'error',
-      bot: { name: 'QQ机器人', appIdMasked: '123••••456' },
+      bot: { name: uiText('ui.qq.qqBot'), appIdMasked: '123••••456' },
       health: { summary: '连接失败，请检查凭据', lastCheckedAt: Date.now() },
       error: null,
     },
@@ -59,34 +64,34 @@ test('QQ bot cards keep check time with status and omit repeated channel details
 test('QQ connection checks request a test message and show concise card feedback', async () => {
   const source = await readFile(CLIENT_URL, 'utf8');
   assert.match(source, /\{ botId: account\.botId, sendTest: true \}/);
-  assert.match(source, /'连接检查失败，请稍后重试。'/);
+  assert.match(source, /ui\.dingtalk\.connectionCheckFailedTryAgainLater/);
   assert.doesNotMatch(source, /连接检查失败：\$\{presentError\(error\)\.message\}/);
 
   const markup = renderToStaticMarkup(React.createElement(AccountCard, {
     account: {
       botId: 'qq_bot', connected: true, state: 'connected',
-      bot: { name: 'QQ机器人', appIdMasked: '123••••456' },
-      health: { summary: 'QQ WebSocket 长连接运行正常', lastCheckedAt: Date.now() },
+      bot: { name: uiText('ui.qq.qqBot'), appIdMasked: '123••••456' },
+      health: { summary: uiText('ui.qq.qqWebsocketConnectionIsHealthy'), lastCheckedAt: Date.now() },
       error: null,
     },
-    feedback: '测试消息已发送，请到对应机器人会话中确认。',
+    feedback: uiText('ui.qq.testMessageSentCheckTheMatching'),
     onReconnect() {}, onRequestRemove() {}, onConfirmRemove() {}, onCancelRemove() {},
   }));
   assert.match(markup, /role="status"/);
-  assert.match(markup, /测试消息已发送/);
+  assert.match(markup, new RegExp(escapeRe(uiText('ui.qq.testMessageSentCheckTheMatching'))));
 
   const offlineMarkup = renderToStaticMarkup(React.createElement(AccountCard, {
     account: {
       botId: 'qq_bot', connected: false, state: 'error',
-      bot: { name: 'QQ机器人', appIdMasked: '123••••456' },
+      bot: { name: uiText('ui.qq.qqBot'), appIdMasked: '123••••456' },
       health: { summary: 'QQ 连接尚未就绪', lastCheckedAt: Date.now() },
       error: { code: 'offline', message: '连接凭据已失效' },
     },
-    feedback: '测试消息已发送，请到对应机器人会话中确认。',
+    feedback: uiText('ui.qq.testMessageSentCheckTheMatching'),
     onReconnect() {}, onRequestRemove() {}, onConfirmRemove() {}, onCancelRemove() {},
   }));
   assert.match(offlineMarkup, />连接凭据已失效</);
-  assert.match(offlineMarkup, /role="status"[^>]*>测试消息已发送/);
+  assert.match(offlineMarkup, new RegExp(`role="status"[^>]*>${escapeRe(uiText('ui.qq.testMessageSentCheckTheMatching'))}`));
 });
 
 test('fixed reconnect failure copy renders fully in English', () => {
@@ -99,7 +104,7 @@ test('fixed reconnect failure copy renders fully in English', () => {
         health: { summary: 'healthy', lastCheckedAt: Date.now() },
         error: null,
       },
-      feedback: '连接检查失败，请稍后重试。',
+      feedback: uiText('ui.dingtalk.connectionCheckFailedTryAgainLater'),
       onReconnect() {}, onRequestRemove() {}, onConfirmRemove() {}, onCancelRemove() {},
     }));
     assert.match(markup, /Connection check failed\. Try again later\./);

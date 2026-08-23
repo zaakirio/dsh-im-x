@@ -51,10 +51,16 @@ import {
 } from '../plugin-src/client/channels/whatsapp/index.js';
 import {
   en,
+  imLocale,
   IM_LOCALE_NAMESPACE,
-  localizeText,
   setImTranslator,
+  t,
 } from '../plugin-src/client/i18n.js';
+import { t as uiText } from '../plugin-src/client/i18n.js';
+
+function escapeRe(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 const STYLES_URL = new URL('../plugin-src/client/styles.js', import.meta.url);
 const FEISHU_STYLES_URL = new URL(
@@ -111,8 +117,8 @@ test('IM settings renders nine IM channels plus the AI Office connector', async 
     officeRpcCall: async () => ({ ok: true, value: {} }),
   }));
 
-  assert.match(markup, /IM机器人/);
-  assert.match(markup, /让 DeepSeek Harness 触手可及/);
+  assert.match(markup, new RegExp(escapeRe(uiText('ui.index.imBotSettings'))));
+  assert.match(markup, new RegExp(`${escapeRe(uiText('ui.index.deepseekHarnessAlwaysWithinReach'))}`));
   assert.match(markup, /class="dim-brand"/);
   assert.match(markup, /<strong class="dim-brandName">DSH-IM<\/strong>/);
   assert.doesNotMatch(markup, /dim-brandLogo|<img/);
@@ -121,7 +127,7 @@ test('IM settings renders nine IM channels plus the AI Office connector', async 
   assert.match(markup, /rel="noopener noreferrer"/);
   assert.match(markup, /aria-label="dsh-im GitHub"/);
   assert.match(markup, /aria-describedby="[^"]+"/);
-  assert.match(markup, /role="tooltip"[^>]*>帮助与反馈 · 前往 GitHub</);
+  assert.match(markup, new RegExp(`role="tooltip"[^>]*>${escapeRe(uiText('ui.index.helpFeedbackOpenGithub').replace(/&/g, '&amp;'))}<`));
   assert.match(styles, /\.dim-title \{[^}]*margin: 0 0 18px;/);
   assert.match(styles, /\.dim-title p \{[^}]*color: var\(--dsw-alias-label-secondary, #646a73\);[^}]*font-size: 12px;[^}]*font-weight: 500;/);
   assert.match(styles, /\.dim-brand \{[^}]*display: flex;[^}]*flex-direction: column;[^}]*align-items: flex-start;[^}]*gap: 1px;/);
@@ -131,16 +137,16 @@ test('IM settings renders nine IM channels plus the AI Office connector', async 
   assert.match(styles, /\.dim-githubTooltip \{[^}]*bottom: calc\(100% \+ 8px\);[^}]*transform: translateY\(3px\);/);
   assert.match(styles, /\.dim-githubAction:hover \.dim-githubTooltip, \.dim-githubAction:focus-within \.dim-githubTooltip \{[^}]*opacity: 1;[^}]*visibility: visible;/);
   assert.doesNotMatch(markup, /\d+ 个渠道|dim-channelCount/);
-  assert.match(markup, />微信</);
-  assert.match(markup, />飞书</);
-  assert.match(markup, />钉钉</);
-  assert.match(markup, />企业微信</);
+  assert.match(markup, new RegExp(`>${escapeRe(uiText('ui.weixin.wechat'))}<`));
+  assert.match(markup, new RegExp(`>${escapeRe(uiText('ui.feishu.feishu'))}<`));
+  assert.match(markup, new RegExp(`>${escapeRe(uiText('ui.dingtalk.dingtalk'))}<`));
+  assert.match(markup, new RegExp(`>${escapeRe(uiText('ui.wecom.wecom'))}<`));
   assert.match(markup, />QQ</);
   assert.match(markup, />Slack</);
   assert.match(markup, />Telegram</);
   assert.match(markup, />Discord</);
   assert.match(markup, />WhatsApp</);
-  assert.match(markup, />AI Office<\/strong><small class="dim-channelNote">（实验功能）<\/small>/);
+  assert.match(markup, new RegExp(`>AI Office</strong><small class="dim-channelNote">${escapeRe(uiText('ui.index.experimental'))}</small>`));
   assert.match(markup, /dim-logoWeixin/);
   assert.match(markup, /dim-logoFeishu/);
   assert.match(markup, /dim-logoDingtalk/);
@@ -156,7 +162,7 @@ test('IM settings renders nine IM channels plus the AI Office connector', async 
   assert.equal((markup.match(/aria-selected="true"/g) ?? []).length, 1);
   assert.doesNotMatch(markup, /role="switch"|type="checkbox"/);
   assert.doesNotMatch(markup, /dim-chevron|扫码绑定<\/small>|扫码接入<\/small>/);
-  assert.doesNotMatch(markup, />INSTANT MESSAGING<|>Channel<|>微信设置</);
+  assert.doesNotMatch(markup, new RegExp(`>INSTANT MESSAGING<|>Channel<|>${escapeRe(uiText('ui.weixin.wechatSettings'))}<`));
 });
 
 test('all channel styles use the current Harness theme tokens', async () => {
@@ -215,7 +221,7 @@ test('Feishu bot cards place the application identifier under the bot name', asy
         avatarUrl: 'https://example.com/custom-bot-avatar.png',
       },
       health: {
-        summary: '长连接运行正常',
+        summary: uiText('ui.feishu.persistentConnectionIsHealthy'),
         lastCheckedAt: '2026-08-15T07:30:49.000Z',
       },
     },
@@ -229,16 +235,16 @@ test('Feishu bot cards place the application identifier under the bot name', asy
   assert.match(markup, /data-im-channel-logo="feishu"/);
   assert.match(markup, /class="bxf-card bxf-botCard dim-botCard"/);
   assert.match(markup, /class="bxf-healthPill dim-botHealth"/);
-  assert.match(markup, /<button[^>]*aria-label="检查连接今天是牢梁"[^>]*><span>检查连接<\/span><\/button>/);
+  assert.match(markup, new RegExp(`<button[^>]*aria-label="${escapeRe(uiText('ui.feishu.checkConnectionOf', { name: '今天是牢梁' }))}"[^>]*><span>${escapeRe(uiText('ui.dingtalk.checkConnection'))}</span></button>`));
   assert.match(markup, /class="bxf-connectedFooter dim-cardFooter"/);
-  assert.doesNotMatch(markup, /dim-cardSummary|长连接运行正常/);
+  assert.doesNotMatch(markup, new RegExp(`dim-cardSummary|${escapeRe(uiText('ui.feishu.persistentConnectionIsHealthy'))}`));
   assert.equal((markup.match(/dim-cardAction(?: |")/g) ?? []).length, 3);
   assert.doesNotMatch(markup, /连接状态：|bxf-divider/);
   assert.doesNotMatch(markup, /custom-bot-avatar/);
-  assert.match(markup, /class="dim-botHealthGroup"[^]*class="dim-lastChecked"><span>最近检查<\/span>/);
-  assert.doesNotMatch(markup, /消息通道|dim-botMetric/);
+  assert.match(markup, new RegExp(`class="dim-botHealthGroup"[^]*class="dim-lastChecked"><span>${escapeRe(uiText('ui.channelCardMeta.lastChecked'))}</span>`));
+  assert.doesNotMatch(markup, new RegExp(`${escapeRe(uiText('ui.channelCardMeta.messageChannel'))}|dim-botMetric`));
   assert.match(markup, /class="dim-presetSelect"/);
-  assert.doesNotMatch(markup, />应用标识<|>飞书机器人</);
+  assert.doesNotMatch(markup, new RegExp(`>${escapeRe(uiText('ui.feishu.appIdentifierStoredSecurely'))}<|>${escapeRe(uiText('ui.feishu.feishuBot'))}<`));
   assert.doesNotMatch(styles, /\.bxf-statusGrid|\.bxf-metric/);
 });
 
@@ -248,8 +254,8 @@ test('Feishu keeps its heading controls on one row without a plus icon', async (
     rpcCall: async () => ({ ok: true, value: {} }),
   }));
 
-  assert.match(markup, /aria-label="扫码接入飞书机器人"/);
-  assert.match(markup, /class="dim-actionIcon"[^]*<span>扫码接入机器人<\/span>/);
+  assert.match(markup, new RegExp(`aria-label="${escapeRe(uiText('ui.feishu.connectFeishuBotByQrCode'))}"`));
+  assert.match(markup, new RegExp(`class="dim-actionIcon"[^]*<span>${escapeRe(uiText('ui.dingtalk.scanQrCode'))}</span>`));
   assert.doesNotMatch(markup, />添加机器人</);
   assert.match(styles, /\.bxf-headingTools \{[^}]*justify-content: space-between;[^}]*flex-wrap: nowrap;/);
   assert.match(styles, /@container \(max-width: 620px\)[^]*\.bxf-headingTools \{ gap: 6px; \}/);
@@ -258,10 +264,10 @@ test('Feishu keeps its heading controls on one row without a plus icon', async (
 
 test('credential binding is a distinct secondary action beside QR binding in four channels', async () => {
   const settings = [
-    ['飞书', FeishuSettingsTab],
+    [uiText('ui.feishu.feishu'), FeishuSettingsTab],
     ['QQ', QqSettingsTab],
-    ['钉钉', DingtalkSettingsTab],
-    ['企业微信', WecomSettingsTab],
+    [uiText('ui.dingtalk.dingtalk'), DingtalkSettingsTab],
+    [uiText('ui.wecom.wecom'), WecomSettingsTab],
   ];
   for (const [channel, Component] of settings) {
     const markup = renderToStaticMarkup(React.createElement(Component, {
@@ -274,7 +280,7 @@ test('credential binding is a distinct secondary action beside QR binding in fou
     assert.match(markup, /data-kind="credential"/);
     const credentialMarkup = markup.slice(credentialIndex, markup.indexOf('</button>', credentialIndex));
     assert.match(credentialMarkup, /dim-actionIcon/);
-    assert.match(credentialMarkup, /手动接入/);
+    assert.match(credentialMarkup, new RegExp(`${escapeRe(uiText('ui.dingtalk.manualSetup'))}`));
   }
 
   const styles = await readFile(STYLES_URL, 'utf8');
@@ -286,7 +292,7 @@ test('credential binding is a distinct secondary action beside QR binding in fou
 
 test('credential form stays compact while using a protected password input', () => {
   const markup = renderToStaticMarkup(React.createElement(CredentialBindingPanel, {
-    channel: '企业微信',
+    channel: uiText('ui.wecom.wecom'),
     identityLabel: 'Bot ID',
     identityPlaceholder: '填写 Bot ID',
     secretLabel: 'Secret',
@@ -297,7 +303,7 @@ test('credential form stays compact while using a protected password input', () 
   assert.match(markup, />Bot ID</);
   assert.match(markup, /type="password"/);
   assert.match(markup, /autoComplete="new-password"/i);
-  assert.match(markup, />手动接入企业微信机器人</);
+  assert.match(markup, new RegExp(`>${escapeRe(uiText('ui.common.manualConnect', { channel: 'WeCom' }))}<`));
   assert.doesNotMatch(markup, /已有机器人应用|Harness 会校验凭据|可见范围|受保护的凭据存储/);
   assert.doesNotMatch(markup, /value="[^"]+"/);
 });
@@ -332,10 +338,10 @@ test('scan actions align left while online totals align right in every channel',
   const weixinHeading = headingSource(weixinSource);
   const dingtalkHeading = headingSource(dingtalkSource);
   const wecomHeading = headingSource(wecomSource);
-  assert.ok(feishuHeading.indexOf('扫码接入机器人') < feishuHeading.indexOf('bxf-totalBadge'));
-  assert.ok(weixinHeading.indexOf('扫码接入机器人') < weixinHeading.indexOf('dxw-badge'));
-  assert.ok(dingtalkHeading.indexOf('扫码接入机器人') < dingtalkHeading.indexOf('ddt-badge'));
-  assert.ok(wecomHeading.indexOf('扫码接入机器人') < wecomHeading.indexOf('ddt-badge'));
+  assert.ok(feishuHeading.indexOf(uiText('ui.dingtalk.scanQrCode')) < feishuHeading.indexOf('bxf-totalBadge'));
+  assert.ok(weixinHeading.indexOf(uiText('ui.dingtalk.scanQrCode')) < weixinHeading.indexOf('dxw-badge'));
+  assert.ok(dingtalkHeading.indexOf(uiText('ui.dingtalk.scanQrCode')) < dingtalkHeading.indexOf('ddt-badge'));
+  assert.ok(wecomHeading.indexOf(uiText('ui.dingtalk.scanQrCode')) < wecomHeading.indexOf('ddt-badge'));
 
   for (const heading of [feishuHeading, weixinHeading, dingtalkHeading, wecomHeading]) {
     assert.match(heading, /dim-scanButton/);
@@ -377,13 +383,13 @@ test('channel connection details live in an accessible heading tooltip', async (
   const styles = await readFile(STYLES_URL, 'utf8');
   const markup = renderToStaticMarkup(React.createElement(ChannelListHeading, {
     className: 'dxw-listHeading',
-    title: '已接入的微信账号',
-    connectionLabel: 'iLink 长轮询',
+    title: uiText('ui.weixin.connectedWechatAccounts'),
+    connectionLabel: uiText('ui.weixin.ilinkLongPolling'),
   }));
 
-  assert.match(markup, /<h3>已接入的微信账号<\/h3>/);
-  assert.match(markup, /aria-label="查看消息通道说明"/);
-  assert.match(markup, /role="tooltip"><span>消息通道<\/span><strong>iLink 长轮询<\/strong>/);
+  assert.match(markup, new RegExp(`<h3>${escapeRe(uiText('ui.weixin.connectedWechatAccounts'))}</h3>`));
+  assert.match(markup, new RegExp(`aria-label="${escapeRe(uiText('ui.channelCardMeta.viewMessageChannelDetails'))}"`));
+  assert.match(markup, new RegExp(`role="tooltip"><span>${escapeRe(uiText('ui.channelCardMeta.messageChannel'))}</span><strong>${escapeRe(uiText('ui.weixin.ilinkLongPolling'))}</strong>`));
   assert.match(styles, /\.dim-panel \.dim-channelHelp:hover \.dim-channelTooltip, \.dim-panel \.dim-channelHelp:focus-within \.dim-channelTooltip \{[^}]*opacity: 1;[^}]*visibility: visible;/);
 });
 
@@ -443,7 +449,7 @@ test('bot cards reuse the same channel brand logos as the channel rail', () => {
       botId: 'bot-weixin-card',
       state: 'connected',
       connected: true,
-      bot: { name: '微信机器人', accountIdMasked: 'wxid••••1234' },
+      bot: { name: uiText('ui.weixin.wechatBot'), accountIdMasked: 'wxid••••1234' },
       stats: { messagesReceived: 2, messagesReplied: 2 },
       health: { summary: '长轮询运行正常', lastCheckedAt: '2026-08-15T07:30:49.000Z' },
     },
@@ -461,10 +467,10 @@ test('bot cards reuse the same channel brand logos as the channel rail', () => {
   assert.match(accountMarkup, /class="dxw-health dim-botHealth"/);
   assert.match(accountMarkup, /class="dxw-accountFooter dim-cardFooter"/);
   assert.match(accountMarkup, /class="dim-presetSelect"/);
-  assert.doesNotMatch(accountMarkup, /dim-cardSummary|微信消息长轮询运行正常/);
+  assert.doesNotMatch(accountMarkup, new RegExp(`dim-cardSummary|${escapeRe(uiText('ui.weixin.wechat'))}${escapeRe(uiText('ui.weixin.keepThisPageOpenUntilLong'))}${escapeRe(uiText('ui.dingtalk.connected'))}`));
   assert.equal((accountMarkup.match(/dim-cardAction(?: |")/g) ?? []).length, 2);
-  assert.match(accountMarkup, /class="dim-botHealthGroup"[^]*class="dim-lastChecked"><span>最近检查<\/span>/);
-  assert.doesNotMatch(accountMarkup, /消息通道|dim-botMetric/);
+  assert.match(accountMarkup, new RegExp(`class="dim-botHealthGroup"[^]*class="dim-lastChecked"><span>${escapeRe(uiText('ui.channelCardMeta.lastChecked'))}</span>`));
+  assert.doesNotMatch(accountMarkup, new RegExp(`${escapeRe(uiText('ui.channelCardMeta.messageChannel'))}|dim-botMetric`));
   assert.doesNotMatch(accountMarkup, /收到 \/ 回复/);
 });
 
@@ -472,15 +478,15 @@ test('Enterprise WeChat cards reuse the rail logo and compact action treatment',
   const markup = renderToStaticMarkup(React.createElement(WecomAccountCard, {
     account: {
       botId: 'wecom-card', state: 'connected', connected: true,
-      bot: { name: '企业微信机器人', appIdMasked: 'bot••••001' },
-      health: { summary: '企业微信 WebSocket 长连接运行正常', lastCheckedAt: Date.now() },
+      bot: { name: uiText('ui.wecom.wecomBot'), appIdMasked: 'bot••••001' },
+      health: { summary: uiText('ui.wecom.wecomWebsocketConnectionIsHealthy'), lastCheckedAt: Date.now() },
     },
     onReconnect() {}, onRequestRemove() {}, onConfirmRemove() {}, onCancelRemove() {},
   }));
   assert.match(markup, /data-im-channel-logo="wecom"/);
   assert.equal((markup.match(/dim-cardAction(?: |")/g) ?? []).length, 2);
-  assert.match(markup, /class="dim-lastChecked"><span>最近检查<\/span>/);
-  assert.doesNotMatch(markup, /消息通道|dim-botMetric/);
+  assert.match(markup, new RegExp(`class="dim-lastChecked"><span>${escapeRe(uiText('ui.channelCardMeta.lastChecked'))}</span>`));
+  assert.doesNotMatch(markup, new RegExp(`${escapeRe(uiText('ui.channelCardMeta.messageChannel'))}|dim-botMetric`));
 });
 
 test('DingTalk bot cards omit the redundant received and replied metric', () => {
@@ -489,7 +495,7 @@ test('DingTalk bot cards omit the redundant received and replied metric', () => 
       botId: 'bot-dingtalk-card',
       state: 'connected',
       connected: true,
-      bot: { name: '钉钉机器人', clientIdMasked: 'ding••••oioy' },
+      bot: { name: uiText('ui.dingtalk.dingtalkBot'), clientIdMasked: 'ding••••oioy' },
       stats: { messagesReceived: 2, messagesReplied: 2 },
       health: { summary: 'Stream 长连接运行正常', lastCheckedAt: '2026-08-15T07:30:49.000Z' },
     },
@@ -501,11 +507,11 @@ test('DingTalk bot cards omit the redundant received and replied metric', () => 
 
   assert.match(markup, /class="ddt-card dim-botCard"/);
   assert.match(markup, /class="ddt-health dim-botHealth"/);
-  assert.match(markup, /class="dim-lastChecked"><span>最近检查<\/span>/);
+  assert.match(markup, new RegExp(`class="dim-lastChecked"><span>${escapeRe(uiText('ui.channelCardMeta.lastChecked'))}</span>`));
   assert.match(markup, /class="ddt-accountFooter dim-cardFooter"/);
-  assert.doesNotMatch(markup, /dim-cardSummary|Stream 长连接运行正常/);
+  assert.doesNotMatch(markup, new RegExp(`dim-cardSummary|${escapeRe(uiText('ui.dingtalk.streamPersistentConnection'))}${escapeRe(uiText('ui.dingtalk.connected'))}`));
   assert.equal((markup.match(/dim-cardAction(?: |")/g) ?? []).length, 2);
-  assert.doesNotMatch(markup, /消息通道|dim-botMetric/);
+  assert.doesNotMatch(markup, new RegExp(`${escapeRe(uiText('ui.channelCardMeta.messageChannel'))}|dim-botMetric`));
   assert.doesNotMatch(markup, /收到 \/ 回复/);
 });
 
@@ -550,12 +556,12 @@ test('all IM channel cards place one-row actions above full-width feedback', asy
     onConfirmRemove() {},
     onCancelRemove() {},
   };
-  const notice = '测试消息已发送，请到对应机器人会话中确认。';
+  const notice = uiText('ui.qq.testMessageSentCheckTheMatching');
   const cards = [
-    ['飞书', FeishuBotCard, { connection: account, testNotice: notice }],
-    ['微信', WeixinAccountCard, { account, feedback: notice }],
-    ['钉钉', DingtalkAccountCard, { account, feedback: notice }],
-    ['企业微信', WecomAccountCard, { account, feedback: notice }],
+    [uiText('ui.feishu.feishu'), FeishuBotCard, { connection: account, testNotice: notice }],
+    [uiText('ui.weixin.wechat'), WeixinAccountCard, { account, feedback: notice }],
+    [uiText('ui.dingtalk.dingtalk'), DingtalkAccountCard, { account, feedback: notice }],
+    [uiText('ui.wecom.wecom'), WecomAccountCard, { account, feedback: notice }],
     ['QQ', QqAccountCard, { account, feedback: notice }],
     ['Slack', SlackAccountCard, { account, testNotice: notice }],
     ['Telegram', TelegramAccountCard, { account, testNotice: notice }],
@@ -623,27 +629,34 @@ test('the bundled DingTalk channel has no local sender approval workflow', async
   );
 });
 
-test('every shipped Chinese client string has an English projection', async () => {
+test('no client source carries a hardcoded translatable string', async () => {
+  // The old shape of this test allowed Chinese in components and checked that a
+  // dictionary could project it to English. Components now name catalogue keys,
+  // so the stronger invariant is that no CJK literal reaches a client source at
+  // all: anything that did would be a string no locale could ever translate.
   const paths = (await readdir(CLIENT_SOURCE_DIRECTORY_URL, { recursive: true }))
     .filter((path) => path.endsWith('.js') && path !== 'i18n.js');
-  const sources = await Promise.all(paths.map((path) =>
-    readFile(new URL(path, CLIENT_SOURCE_DIRECTORY_URL), 'utf8')));
-  const strings = new Set();
-  for (const source of sources) {
+  const offenders = [];
+  for (const path of paths) {
+    const source = await readFile(new URL(path, CLIENT_SOURCE_DIRECTORY_URL), 'utf8');
     for (const match of source.matchAll(/(['"`])((?:\\.|(?!\1)[\s\S])*?)\1/g)) {
-      if (/[\p{Script=Han}]/u.test(match[2])) strings.add(match[2]);
+      if (/\p{Script=Han}/u.test(match[2])) offenders.push(`${path}: ${match[2]}`);
     }
   }
+  assert.deepEqual(offenders, []);
+});
 
-  setImTranslator((key) => en[key] ?? key);
+test('the settings page follows the language the host reports', () => {
+  setImTranslator((key) => (key === 'ui.localeTag' ? 'zh-CN' : key));
   try {
-    const untranslated = [...strings].filter((value) =>
-      /[\p{Script=Han}]/u.test(localizeText(value)));
-    assert.deepEqual(untranslated, []);
-    assert.ok(strings.size > 350);
+    assert.equal(imLocale(), 'zh-CN');
+    assert.equal(t('ui.common.botLabel', { channel: 'Slack' }), 'Slack机器人');
   } finally {
     setImTranslator(null);
   }
+  // With no host translator the page falls back to the default locale.
+  assert.equal(imLocale(), 'en');
+  assert.equal(t('ui.common.botLabel', { channel: 'Slack' }), 'Slack bot');
 });
 
 test('client registers a live bilingual locale seat and directory picker for the IM settings tab', async () => {

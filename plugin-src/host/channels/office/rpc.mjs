@@ -1,5 +1,6 @@
 import { resolveRpcAuthority } from '../../rpc-authority.mjs';
 import { OFFICE_RPC_CHANNEL, OFFICE_RPC_ENDPOINTS } from '../../../../src/channels/office/protocol.mjs';
+import { defaultTranslator } from '../../../../src/i18n/index.mjs';
 
 function record(value) { return value !== null && typeof value === 'object' && !Array.isArray(value); }
 function exact(value, keys) { return record(value) && Object.keys(value).every((key) => keys.includes(key)); }
@@ -31,9 +32,9 @@ export function createOfficeRpcHandler(controller) {
     } catch (error) {
       const code = error?.code === 'invalid-device-token' ? 'invalid-device-token'
         : error?.code === 'office-hook-unavailable' ? 'office-hook-unavailable' : 'office-operation-failed';
-      const message = code === 'invalid-device-token' ? 'AI Office Device Token 无效。'
-        : code === 'office-hook-unavailable' ? 'AI Office Hook 尚未上线或地址不正确。'
-          : error instanceof TypeError ? error.message : 'AI Office 连接操作失败，请稍后重试。';
+      const message = code === 'invalid-device-token' ? defaultTranslator('rpc.officeInvalidDeviceToken')
+        : code === 'office-hook-unavailable' ? defaultTranslator('rpc.officeHookUnavailable')
+          : error instanceof TypeError ? error.message : defaultTranslator('rpc.officeOperationFailed');
       return { ok: false, error: { code, message } };
     }
   };

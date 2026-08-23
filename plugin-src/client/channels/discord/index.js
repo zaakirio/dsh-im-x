@@ -5,6 +5,7 @@ import {
   discordClientApi,
 } from './api.js';
 import { installDiscordStyles } from './styles.js';
+import { t } from '../../i18n.js';
 
 const channel = createTokenChannelSettings({
   channel: 'Discord',
@@ -14,10 +15,10 @@ const channel = createTokenChannelSettings({
   installStyles: installDiscordStyles,
   pageClass: 'ddc-page',
   avatarClass: 'ddc-avatar',
-  connectionLabel: 'Gateway 长连接',
-  tokenPlaceholder: '填写 Discord Developer Portal 的 Bot Token',
-  emptyTitle: '接入 Discord 机器人',
-  emptyDescription: '先在 Developer Portal 创建 Bot 并邀请到服务器，再在这里完成接入。',
+  connectionLabel: t('ui.discord.gatewayPersistentConnection2'),
+  tokenPlaceholder: t('ui.discord.enterTheBotTokenFromThe'),
+  emptyTitle: t('ui.discord.connectADiscordBot'),
+  emptyDescription: t('ui.discord.createABotInTheDeveloper'),
   platformLabel: 'Discord Developer Portal',
 });
 

@@ -13,6 +13,7 @@ import {
   createProductionController,
   createProvisioningBackedController,
 } from '../../../plugin-src/host/channels/feishu/index.mjs';
+import { t as uiText } from '../../../plugin-src/client/i18n.js';
 
 const signal = () => new AbortController().signal;
 
@@ -70,7 +71,7 @@ test('Host plugin registers the real rc.6 Connection RPC shape as loopback-only'
   assert.equal(result.value.state, 'disconnected');
   assert.equal(result.value.connected, false);
   assert.equal(result.value.configured, false);
-  assert.equal(result.value.bot.name, '飞书机器人');
+  assert.equal(result.value.bot.name, uiText('ui.feishu.feishuBot'));
   assert.equal(result.value.health.status, 'offline');
   assert.equal('registration' in result.value, false);
 

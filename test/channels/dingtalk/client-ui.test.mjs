@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { t as uiText } from '../../../plugin-src/client/i18n.js';
+
+function escapeRe(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 const CLIENT_URL = new URL('../../../plugin-src/client/channels/dingtalk/index.js', import.meta.url);
 const STYLES_URL = new URL('../../../plugin-src/client/channels/dingtalk/styles.js', import.meta.url);
@@ -13,18 +18,18 @@ test('standalone client exports a reusable settings component and registration',
   assert.match(source, /export function apply\(ctx\)/);
   assert.match(source, /ctx\.connection\.rpc\.call\(DINGTALK_RPC_CHANNEL/);
   assert.match(source, /id: 'dingtalk'/);
-  assert.match(source, /label: '钉钉'/);
+  assert.match(source, /label: t\('ui\.dingtalk\.dingtalk'\)/);
 });
 
 test('QR guidance describes the complete official DingTalk authorization flow', async () => {
   const source = await readFile(CLIENT_URL, 'utf8');
-  assert.match(source, /使用已加入企业\/组织的钉钉账号扫描左侧二维码/);
-  assert.match(source, /如果钉钉提示尚未加入组织/);
-  assert.match(source, /在授权页点击“一键创建新机器人”/);
-  assert.match(source, /保持本页打开，等待机器人自动连接/);
+  assert.match(source, /ui\.dingtalk\.scanTheQrCodeWithA/);
+  assert.doesNotMatch(source, /verificationUrl|ui\.dingtalk\.openTheBackupLink/);
+  assert.match(source, /ui\.dingtalk\.selectCreateNewBotOnThe/);
+  assert.match(source, /ui\.dingtalk\.keepThisPageOpenWhileThe/);
   assert.doesNotMatch(source, /OpenClaw 品牌|ddt-brandNotice/);
   assert.match(source, /safeQrSource\(provision\.qrCodeDataUrl\)/);
-  assert.doesNotMatch(source, /verificationUrl|打开备用链接/);
+  assert.doesNotMatch(source, new RegExp(`verificationUrl|${escapeRe(uiText('ui.weixin.openAlternateLink'))}`));
   assert.doesNotMatch(source, /dangerouslySetInnerHTML|window\.open\(/);
 });
 

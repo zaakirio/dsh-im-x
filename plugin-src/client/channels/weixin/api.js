@@ -1,4 +1,8 @@
+import { t } from '../../i18n.js';
+
 import { normalizeAgentPresetCatalog, normalizeAgentPresetId, SET_AGENT_PRESET_ENDPOINT } from '../../agent-preset.js';
+
+const CHANNEL_LABEL = 'WeChat';
 
 export const WEIXIN_RPC_CHANNEL = '/weixin';
 export const WEIXIN_ENDPOINTS = Object.freeze({
@@ -59,10 +63,10 @@ function normalizeMessageError(value) {
 
 export function unwrapRpcResult(result) {
   if (!isRecord(result) || typeof result.ok !== 'boolean') {
-    throw new Error('微信服务返回了无法识别的响应');
+    throw new Error(t('ui.common.unrecognizedResponse', { channel: CHANNEL_LABEL }));
   }
   if (!result.ok) {
-    const error = new Error(string(result.error?.message, '微信操作失败'));
+    const error = new Error(string(result.error?.message, t('ui.common.operationFailed', { channel: CHANNEL_LABEL })));
     error.code = string(result.error?.code, 'WEIXIN_RPC_ERROR');
     throw error;
   }
@@ -92,7 +96,7 @@ export function safeVerificationUrl(value) {
 
 export function normalizeProvisioning(value) {
   if (!isRecord(value) || !string(value.attemptId)) {
-    throw new Error('微信扫码服务没有返回有效的绑定任务');
+    throw new Error(t('ui.weixin.wechatDidNotReturnAValid'));
   }
   const status = PROVISION_STATES.has(value.status) ? value.status : 'failed';
   const result = {
@@ -111,7 +115,7 @@ export function normalizeProvisioning(value) {
   if (isRecord(value.error)) {
     result.error = {
       code: string(value.error.code, 'WEIXIN_PROVISION_FAILED'),
-      message: string(value.error.message, '微信绑定没有完成'),
+      message: string(value.error.message, t('ui.weixin.wechatSetupDidNotComplete')),
     };
   }
   return result;
@@ -129,12 +133,12 @@ function normalizeBot(value) {
     workspace: string(value.workspace).slice(0, 4_096),
     agentPreset: normalizeAgentPresetId(value.agentPreset),
     bot: {
-      name: string(value.bot.name, '微信机器人'),
-      accountIdMasked: string(value.bot.accountIdMasked, '已安全保存'),
+      name: string(value.bot.name, t('ui.weixin.wechatBot')),
+      accountIdMasked: string(value.bot.accountIdMasked, t('ui.dingtalk.storedSecurely')),
     },
     health: {
       status: string(value.health?.status, connected ? 'healthy' : 'offline'),
-      summary: string(value.health?.summary, connected ? '微信连接正常' : '微信连接未就绪'),
+      summary: string(value.health?.summary, connected ? t('ui.weixin.wechatConnectionIsHealthy') : t('ui.weixin.wechatConnectionIsNotReady')),
       lastCheckedAt: timestamp(value.health?.lastCheckedAt),
     },
     stats: {
@@ -145,7 +149,7 @@ function normalizeBot(value) {
     error: isRecord(value.error)
       ? {
           code: string(value.error.code, 'WEIXIN_ACCOUNT_ERROR'),
-          message: string(value.error.message, '微信连接未就绪'),
+          message: string(value.error.message, t('ui.weixin.wechatConnectionIsNotReady')),
         }
       : null,
   };
@@ -153,7 +157,7 @@ function normalizeBot(value) {
 
 export function normalizeSnapshot(value) {
   if (!isRecord(value) || !Array.isArray(value.bots)) {
-    throw new Error('微信服务没有返回有效的账号列表');
+    throw new Error(t('ui.weixin.wechatDidNotReturnAValid2'));
   }
   const bots = value.bots.map(normalizeBot).filter(Boolean);
   return {
@@ -174,7 +178,7 @@ export function normalizeSnapshot(value) {
 export function presentError(error) {
   return {
     code: string(error?.code, 'WEIXIN_ERROR'),
-    message: string(error?.message, '微信操作失败，请稍后重试'),
+    message: string(error?.message, t('ui.common.operationFailedRetry', { channel: CHANNEL_LABEL })),
   };
 }
 

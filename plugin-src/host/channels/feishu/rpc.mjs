@@ -15,6 +15,7 @@ import {
   FEISHU_ENDPOINTS,
   FEISHU_RPC_CHANNEL,
 } from '../../../client/channels/feishu/api.js';
+import { defaultTranslator } from '../../../../src/i18n/index.mjs';
 
 export { FEISHU_ENDPOINTS, FEISHU_RPC_CHANNEL };
 export const FEISHU_MULTI_ENDPOINTS = Object.freeze({
@@ -195,7 +196,7 @@ function connectionFacts(connection) {
 function publicBot(bot) {
   const source = bot && typeof bot === 'object' ? bot : {};
   const result = {
-    name: typeof source.name === 'string' && source.name.length > 0 ? source.name : '飞书机器人',
+    name: typeof source.name === 'string' && source.name.length > 0 ? source.name : defaultTranslator('bridge.botLabel', { channel: 'Feishu' }),
   };
   if (typeof source.avatarUrl === 'string') result.avatarUrl = source.avatarUrl;
   if (typeof source.appIdMasked === 'string') result.appIdMasked = source.appIdMasked;
@@ -208,11 +209,11 @@ function publicBot(bot) {
 }
 
 function publicHealth(status, connected) {
-  if (connected) return { status: 'healthy', summary: '长连接运行正常', lastCheckedAt: Date.now() };
+  if (connected) return { status: 'healthy', summary: defaultTranslator('rpc.feishuHealthy'), lastCheckedAt: Date.now() };
   if (status?.configured === true) {
-    return { status: 'offline', summary: '机器人尚未连接', lastCheckedAt: Date.now() };
+    return { status: 'offline', summary: defaultTranslator('rpc.feishuBotNotConnected'), lastCheckedAt: Date.now() };
   }
-  return { status: 'offline', summary: '尚未接入飞书机器人', lastCheckedAt: Date.now() };
+  return { status: 'offline', summary: defaultTranslator('rpc.feishuNoBots'), lastCheckedAt: Date.now() };
 }
 
 function connectionState(status, registration, connected) {
@@ -406,18 +407,18 @@ function validPayload(endpoint, payload) {
   }
   if (endpoint === FEISHU_ENDPOINTS.setWorkspace) {
     return validWorkspacePayload(payload)
-      ? null : '请输入工作区绝对路径。';
+      ? null : defaultTranslator('rpc.workspaceRequired');
   }
   if (endpoint === FEISHU_ENDPOINTS.setAgentPreset) {
     return validAgentPresetPayload(payload)
-      ? null : '请选择 Agent Preset。';
+      ? null : defaultTranslator('rpc.presetRequired');
   }
   if (endpoint === FEISHU_ENDPOINTS.setGroupResponseMode) {
     return hasOnlyKeys(payload, new Set(['botId', 'groupResponseMode']))
       && safeOpaqueId(payload.botId)
       && isFeishuGroupResponseMode(payload.groupResponseMode)
       ? null
-      : '请选择群聊响应方式。';
+      : defaultTranslator('rpc.groupResponseRequired');
   }
   return 'Unknown Feishu endpoint.';
 }

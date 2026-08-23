@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { SlackLogoGlyph } from '../../channel-logos.js';
-import { h } from '../../i18n.js';
+import { h, t } from '../../i18n.js';
 import { createTokenChannelSettings } from '../shared/token-channel.js';
 import {
   SLACK_CREATE_APP_URL,
@@ -38,24 +38,24 @@ export function SlackCredentialPanel({ busy, error, onSubmit, onCancel }) {
     className: 'ddt-card dim-surfaceCard dim-credentialPanel dsl-setup',
     'aria-labelledby': headingId,
   },
-  h('h3', { id: headingId, className: 'dim-credentialTitle' }, '接入 Slack 机器人'),
+  h('h3', { id: headingId, className: 'dim-credentialTitle' }, t('ui.slack.connectASlackBot')),
   h('div', { className: 'dsl-guide' },
     h('div', { className: 'dsl-guideCopy' },
-      h('strong', null, '先用 Manifest 创建并配置 Slack App'),
-      h('p', null, '复制配置后，在 Slack 选择 From a manifest；创建完成后生成 connections:write App Token，并将应用安装到工作区。')),
+      h('strong', null, t('ui.slack.createAndConfigureASlackApp')),
+      h('p', null, t('ui.slack.copyTheManifestAndChooseFrom'))),
     h('div', { className: 'dsl-guideActions' },
       h('button', {
         type: 'button',
         className: 'ddt-button',
         onClick: () => void copyManifest(),
         disabled: busy,
-      }, copied ? h('span', { className: 'dsl-copyState' }, '已复制 Manifest') : '复制 Manifest'),
+      }, copied ? h('span', { className: 'dsl-copyState' }, t('ui.slack.manifestCopied')) : t('ui.slack.copyManifest')),
       h('a', {
         className: 'ddt-button',
         href: SLACK_CREATE_APP_URL,
         target: '_blank',
         rel: 'noreferrer',
-      }, '打开 Slack 创建页'))),
+      }, t('ui.slack.openSlackAppCreation')))),
   h('form', { className: 'dim-credentialForm dim-credentialFormSingle', onSubmit: submit },
     h('div', { className: 'dsl-fields' },
       h('label', { className: 'dim-credentialField' },
@@ -88,7 +88,7 @@ export function SlackCredentialPanel({ busy, error, onSubmit, onCancel }) {
           disabled: busy,
           required: true,
         })),
-      h('p', { className: 'dsl-tokenHint' }, 'Bot Token 来自 OAuth & Permissions；App Token 来自 Basic Information，并且必须包含 connections:write。')),
+      h('p', { className: 'dsl-tokenHint' }, t('ui.slack.getTheBotTokenFromOauth'))),
     error ? h('p', { className: 'dim-credentialError', role: 'alert' }, error.message ?? String(error)) : null,
     h('div', { className: 'ddt-actions dim-viewActions dim-credentialActions' },
       h('button', {
@@ -96,13 +96,13 @@ export function SlackCredentialPanel({ busy, error, onSubmit, onCancel }) {
         className: 'ddt-button',
         'data-kind': 'primary',
         disabled: busy || !botToken.trim() || !appToken.trim(),
-      }, busy ? '正在验证并连接…' : '验证并连接'),
+      }, busy ? t('ui.slack.verifyingAndConnecting') : t('ui.slack.verifyAndConnect')),
       h('button', {
         type: 'button',
         className: 'ddt-button',
         onClick: onCancel,
         disabled: busy,
-      }, '取消'))));
+      }, t('ui.dingtalk.cancel')))));
 }
 
 const channel = createTokenChannelSettings({
@@ -113,17 +113,17 @@ const channel = createTokenChannelSettings({
   installStyles: installSlackStyles,
   pageClass: 'dsl-page',
   avatarClass: 'dsl-avatar',
-  connectionLabel: 'Socket Mode 长连接',
-  emptyTitle: '接入 Slack 机器人',
-  emptyDescription: '使用官方 App Manifest 快速配置机器人，再填写 Bot Token 与 App Token 建立本地 Socket Mode 连接。',
-  platformLabel: 'Slack 工作区',
+  connectionLabel: t('ui.slack.socketModePersistentConnection2'),
+  emptyTitle: t('ui.slack.connectASlackBot'),
+  emptyDescription: t('ui.slack.configureTheBotWithTheOfficial'),
+  platformLabel: t('ui.slack.slackWorkspace'),
   CredentialPanel: SlackCredentialPanel,
   credentialPayload: ({ botToken, appToken }) => ({ botToken, appToken }),
-  credentialAriaLabel: '使用 Manifest 和双 Token 接入 Slack 机器人',
-  credentialOpenLabel: '接入机器人',
-  credentialCloseLabel: '收起接入',
-  credentialNoun: 'Bot Token 与 App Token',
-  emptyActionLabel: '开始接入',
+  credentialAriaLabel: t('ui.slack.connectASlackBotWithA'),
+  credentialOpenLabel: t('ui.slack.connectBot'),
+  credentialCloseLabel: t('ui.slack.hideSetup'),
+  credentialNoun: t('ui.slack.botTokenAndAppToken'),
+  emptyActionLabel: t('ui.slack.startSetup'),
 });
 
 export const SlackSettingsTab = channel.SettingsTab;
