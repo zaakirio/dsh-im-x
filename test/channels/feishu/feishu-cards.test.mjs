@@ -5,6 +5,7 @@ import {
   menuCard,
   menuHelpText,
 } from '../../../src/channels/feishu/feishu-cards.mjs';
+import { defaultTranslator as tr } from '../../../src/i18n/index.mjs';
 
 function buttons(value, result = []) {
   if (Array.isArray(value)) {
@@ -19,7 +20,7 @@ function buttons(value, result = []) {
 
 test('menu appends watchlist and keeps repair number-only', () => {
   const card = JSON.parse(menuCard());
-  assert.match(JSON.stringify(card), /6 · 修复卡片按钮/);
+  assert.ok(JSON.stringify(card).includes(JSON.stringify(tr('feishu.card.menuRepair')).slice(1, -1)));
   const actions = buttons(card).flatMap((button) => (
     button.behaviors?.map((behavior) => behavior?.value?.action) ?? []
   ));
@@ -30,7 +31,7 @@ test('menu appends watchlist and keeps repair number-only', () => {
 test('menu help advertises Agent Preset commands', () => {
   const help = menuHelpText();
   assert.match(help, /\/presetlist/);
-  assert.match(help, /\/preset \[序号或完整ID\]/);
+  assert.ok(help.includes(tr('command.preset.usage')));
   assert.match(help, /\/preset id:<ID>/);
   assert.match(help, /\/preset --default/);
 });

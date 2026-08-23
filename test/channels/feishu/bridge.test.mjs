@@ -2763,7 +2763,7 @@ test('menu repair entry is number-only and reply 6 starts the same repair flow',
   await fx.bridge.accept(event('repair-menu-open', '/m', { senderOpenId: 'ou_owner' }));
   await fx.bridge.waitForIdle();
   const menu = cards(fx.sent)[0].content;
-  assert.match(JSON.stringify(menu), /6 · 修复卡片按钮/);
+  assert.match(JSON.stringify(menu), new RegExp(tr('feishu.card.menuRepair').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.equal(buttonsFromCard(menu).some((button) => callbackAction(button) === 'repair'), false);
 
   await fx.bridge.accept(event('repair-menu-six', '6', { senderOpenId: 'ou_owner' }));
@@ -3055,8 +3055,8 @@ test('reconnect compensation replays missed turn/end and dedups duplicates', asy
   harness._listeners[0].onReconnect();
   await bridge.waitForIdle();
   assert.equal(cards.length, 2);
-  assert.match(JSON.stringify(cards[0]), /已完成/);
-  assert.match(JSON.stringify(cards[1]), /已停止/);
+  assert.match(JSON.stringify(cards[0]), new RegExp(tr('feishu.card.reasonCompleted')));
+  assert.match(JSON.stringify(cards[1]), new RegExp(tr('feishu.card.reasonStopped')));
   assert.equal(state.watchEntry('p2p:ou_owner', 'watched-session').lastSeq, 11);
 
   // Reconnect and an overlapping live frame are both deduplicated by lastSeq.
@@ -3111,7 +3111,7 @@ test('/watch baselines existing history and completion-card buttons keep their r
   await bridge.onCardAction(cardActionEvent('om_card_2', 'sessions', 'ou_owner'));
   await bridge.waitForIdle();
   assert.equal(cards(sent).length, 2);
-  assert.equal(cards(sent).at(-1).content.header.title.content, '📂 会话列表');
+  assert.equal(cards(sent).at(-1).content.header.title.content, tr('feishu.card.sessionsTitle'));
 });
 
 test('a failed completion push keeps its watermark and later activity retries it', async () => {

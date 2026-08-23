@@ -493,7 +493,10 @@ test('session webhook validation accepts only HTTPS DingTalk hosts on the defaul
     'https://user@oapi.dingtalk.com/reply',
     'https://oapi.dingtalk.com:8443/reply',
   ]) {
-    assert.throws(() => normalizeDingtalkSessionWebhook(value), /不受信任/);
+    assert.throws(
+      () => normalizeDingtalkSessionWebhook(value),
+      { code: 'untrusted-url' },
+    );
   }
 });
 

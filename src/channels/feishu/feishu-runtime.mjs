@@ -7,12 +7,13 @@ import {
   connectionTestTargetUnavailable,
   sendRememberedConnectionTest,
 } from '../shared/connection-test.mjs';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
-const CALLBACK_PROBE_SUCCESS_NOTICE = '✅ 修复完成：已实测收到 card.action.trigger，菜单按钮现在可用。';
-const CALLBACK_PROBE_TIMEOUT_NOTICE = '⚠️ 修复验证超时：未收到测试卡按钮的 card.action.trigger，不能确认按钮已修复。请不要重复授权；先检查飞书开放平台的卡片回调配置，确认后再发送 /repair。';
-const CALLBACK_PROBE_SEND_FAILURE_NOTICE = '⚠️ 修复验证失败：无法发送专用测试卡，不能确认 card.action.trigger 已恢复。请不要重复授权；先检查机器人消息权限和连接状态。';
-const CALLBACK_PROBE_ABORT_NOTICE = '⚠️ 修复验证中断：Runtime 已停止，未完成 card.action.trigger 实测，不能确认修复成功。请不要重复授权；先等待机器人恢复连接。';
+const CALLBACK_PROBE_SUCCESS_NOTICE = defaultTranslator('feishu.probe.successNotice');
+const CALLBACK_PROBE_TIMEOUT_NOTICE = defaultTranslator('feishu.probe.timeoutNotice');
+const CALLBACK_PROBE_SEND_FAILURE_NOTICE = defaultTranslator('feishu.probe.sendFailureNotice');
+const CALLBACK_PROBE_ABORT_NOTICE = defaultTranslator('feishu.probe.abortNotice');
 
 function nonEmptyString(value) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -206,7 +207,7 @@ export class FeishuRuntime {
       this.#client = new this.#lark.Client(larkConfig);
       const channel = new VerifiedFeishuChannel({
         client: this.#client,
-        initialText: '已连接 DeepSeek Harness，正在思考…',
+        initialText: defaultTranslator('bridge.connectedThinking'),
       });
       this.#bridge = new FeishuHarnessBridge({
         client: this.#client,
@@ -316,7 +317,7 @@ export class FeishuRuntime {
    */
   async beginCardActionProbe({ expectedOperatorOpenId, timeoutMs = 90_000 } = {}) {
     if (!this.#status.ready || !this.#client) {
-      throw probeError('card_action_probe_unavailable', '飞书机器人尚未连接');
+      throw probeError('card_action_probe_unavailable', defaultTranslator('status.notConnected', { channel: 'Feishu' }));
     }
     const operatorOpenId = nonEmptyString(expectedOperatorOpenId);
     if (!operatorOpenId || operatorOpenId === '*') {
@@ -343,7 +344,7 @@ export class FeishuRuntime {
         CALLBACK_PROBE_SEND_FAILURE_NOTICE,
         'failure',
       );
-      throw probeError('card_action_probe_send_failed', '无法发送飞书卡片回调测试');
+      throw probeError('card_action_probe_send_failed', defaultTranslator('feishu.probe.sendFailed'));
     }
     if (response?.code && response.code !== 0) {
       void this.#sendCardActionProbeNotice(
@@ -351,7 +352,7 @@ export class FeishuRuntime {
         CALLBACK_PROBE_SEND_FAILURE_NOTICE,
         'failure',
       );
-      throw probeError('card_action_probe_send_failed', '无法发送飞书卡片回调测试');
+      throw probeError('card_action_probe_send_failed', defaultTranslator('feishu.probe.sendFailed'));
     }
     const messageId = nonEmptyString(response?.data?.message_id)
       ?? nonEmptyString(response?.message_id);
@@ -361,7 +362,7 @@ export class FeishuRuntime {
         CALLBACK_PROBE_SEND_FAILURE_NOTICE,
         'failure',
       );
-      throw probeError('card_action_probe_send_failed', '飞书未返回测试卡片的消息 ID');
+      throw probeError('card_action_probe_send_failed', defaultTranslator('feishu.probe.noMessageId'));
     }
 
     return new Promise((resolve, reject) => {
@@ -376,7 +377,7 @@ export class FeishuRuntime {
         );
         reject(probeError(
           'card_action_probe_timeout',
-          '在规定时间内未收到飞书卡片按钮回调',
+          defaultTranslator('feishu.probe.noCallback'),
         ));
       }, timeoutMs);
       timeout.unref?.();
@@ -452,7 +453,7 @@ export class FeishuRuntime {
 
   async sendConnectionTest(text) {
     if (!this.#status.ready || !this.#client) {
-      const error = new Error('飞书机器人尚未连接');
+      const error = new Error(defaultTranslator('status.notConnected', { channel: 'Feishu' }));
       error.code = 'test-target-unavailable';
       throw error;
     }
@@ -482,10 +483,10 @@ export class FeishuRuntime {
     return sendRememberedConnectionTest({
       state: this.#state,
       text,
-      channelLabel: '飞书机器人',
+      channelLabel: defaultTranslator('bridge.botLabel', { channel: 'Feishu' }),
       send: async (target, content) => {
         const chatId = typeof target?.chatId === 'string' ? target.chatId.trim() : '';
-        if (!chatId) throw connectionTestTargetUnavailable('飞书机器人');
+        if (!chatId) throw connectionTestTargetUnavailable(defaultTranslator('bridge.botLabel', { channel: 'Feishu' }));
         await send('chat_id', chatId, content);
       },
     });
@@ -503,7 +504,7 @@ export class FeishuRuntime {
         CALLBACK_PROBE_ABORT_NOTICE,
         'abort',
       );
-      probe.reject(probeError('abort', '飞书运行时已停止'));
+      probe.reject(probeError('abort', defaultTranslator('feishu.probe.runtimeStopped')));
     }
     this.#pendingCardActionProbes.clear();
     this.#status.ready = false;

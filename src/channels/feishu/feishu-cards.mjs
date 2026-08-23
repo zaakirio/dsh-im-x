@@ -1,3 +1,5 @@
+import { defaultTranslator } from '../../i18n/index.mjs';
+
 /**
  * Feishu interactive-card builders for the dsh-im menu / session-list /
  * workspace-list UX. All builders return the JSON string the
@@ -56,7 +58,7 @@ function buttonElement(content, actionValue) {
 
 function safeTitle(value) {
   const title = String(value ?? '').replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]+/gu, ' ').replace(/\s+/gu, ' ').trim();
-  return title || '暂无标题';
+  return title || defaultTranslator('session.untitled');
 }
 
 function cardWith(headerText, elements) {
@@ -69,18 +71,18 @@ function cardWith(headerText, elements) {
 
 /** The main command menu (buttons + number-reply fallback). */
 export function menuCard() {
-  return cardWith('🤖 助手菜单', [
-    { tag: 'div', text: markdown('**点击按钮或直接回复数字**') },
-    button('1 · 会话列表', 'sessions'),
-    button('2 · 工作区', 'workspaces'),
-    button('3 · 新会话', 'new'),
-    button('4 · 状态', 'status'),
-    button('5 · 帮助', 'help'),
+  return cardWith(defaultTranslator('feishu.card.menuTitle'), [
+    { tag: 'div', text: markdown(defaultTranslator('feishu.card.menuHint')) },
+    button(defaultTranslator('feishu.card.menuSessions'), 'sessions'),
+    button(defaultTranslator('feishu.card.menuWorkspaces'), 'workspaces'),
+    button(defaultTranslator('feishu.card.menuNew'), 'new'),
+    button(defaultTranslator('feishu.card.menuStatus'), 'status'),
+    button(defaultTranslator('feishu.card.menuHelp'), 'help'),
     // Repair must remain number-driven. Apps that need this command do not
     // have card.action.trigger yet, so rendering it as a callback button would
     // send the user straight back to Feishu's broken callback setup popup.
-    { tag: 'div', text: markdown('**6 · 修复卡片按钮**（请直接回复数字 **6**）') },
-    button('7 · 关注列表', 'watchlist'),
+    { tag: 'div', text: markdown(defaultTranslator('feishu.card.menuRepair')) },
+    button(defaultTranslator('feishu.card.menuWatchlist'), 'watchlist'),
   ]);
 }
 
@@ -89,10 +91,10 @@ export function cardActionProbeCard(nonce) {
   if (typeof nonce !== 'string' || !/^[A-Za-z0-9_-]{16,128}$/.test(nonce)) {
     throw new TypeError('A safe card-action probe nonce is required');
   }
-  return cardWith('🧪 验证卡片按钮', [
+  return cardWith(defaultTranslator('feishu.card.probeTitle'), [
     {
       tag: 'div',
-      text: markdown('授权已提交。请点击下方按钮；机器人真实收到回调后才会判定修复成功。'),
+      text: markdown(defaultTranslator('feishu.card.probeBody')),
     },
     {
       tag: 'column_set',
@@ -103,7 +105,7 @@ export function cardActionProbeCard(nonce) {
         weight: 1,
         elements: [{
           tag: 'button',
-          text: plainText('完成验证'),
+          text: plainText(defaultTranslator('feishu.card.probeButton')),
           type: 'primary',
           width: 'fill',
           behaviors: [{
@@ -118,7 +120,7 @@ export function cardActionProbeCard(nonce) {
 
 /**
  * One page of the workspace's sessions. Each row is a `column_set` pair:
- * the fixed-width ⭐ watch toggle (`⭐关注` / `⭐取关` for already-watched
+ * the fixed-width ⭐ watch toggle (watch, or unwatch for already-watched
  * sessions) followed by the session button that carries the page-local
  * number label (reply-number fallback = bind). Archived sessions are marked
  * in the label. `watchedSessionIds` is a Set-like of ids this conversation
@@ -140,74 +142,86 @@ export function sessionListCard(workspace, sessions, page, total, watchedSession
     ],
   });
   const elements = [
-    { tag: 'div', text: markdown(`**工作区**：\`${workspace}\`\n共 **${total}** 个会话${total > MENU_PAGE_SIZE ? `（第 ${page + 1}/${pageCount} 页）` : ''}`) },
+    {
+      tag: 'div',
+      text: markdown(defaultTranslator('feishu.card.sessionsHeader', {
+        workspace,
+        total,
+        page: total > MENU_PAGE_SIZE
+          ? defaultTranslator('feishu.card.pageSuffix', { page: page + 1, pages: pageCount })
+          : '',
+      })),
+    },
     ...slice.map((session, offset) => {
       // Page-local numbering: number replies resolve against this page.
-      const label = `${offset + 1}. ${safeTitle(session.title)}${session.archived === true ? '（已归档）' : ''}`;
+      const label = `${offset + 1}. ${safeTitle(session.title)}${session.archived === true ? defaultTranslator('session.archivedMarker') : ''}`;
       const watching = watched(session.sessionId);
       return row(
-        buttonElement(watching ? '⭐取关' : '⭐关注', watching ? `unwatch:${session.sessionId}` : `watch:${session.sessionId}`),
+        buttonElement(
+          defaultTranslator(watching ? 'feishu.card.watchRemove' : 'feishu.card.watchAdd'),
+          watching ? `unwatch:${session.sessionId}` : `watch:${session.sessionId}`,
+        ),
         buttonElement(label, `use:${session.sessionId}`),
       );
     }),
   ];
-  if (page > 0) elements.push(button('◀ 上一页', `sessions:${page - 1}`));
-  if (page + 1 < pageCount) elements.push(button('下一页 ▶', `sessions:${page + 1}`));
-  elements.push({ tag: 'div', text: markdown('回复数字（1~N）绑定本页会话。') });
-  return cardWith('📂 会话列表', elements);
+  if (page > 0) elements.push(button(defaultTranslator('feishu.card.previousPage'), `sessions:${page - 1}`));
+  if (page + 1 < pageCount) elements.push(button(defaultTranslator('feishu.card.nextPage'), `sessions:${page + 1}`));
+  elements.push({ tag: 'div', text: markdown(defaultTranslator('feishu.card.sessionsFooter')) });
+  return cardWith(defaultTranslator('feishu.card.sessionsTitle'), elements);
 }
 
 /** The workspace list card (switch-workspace buttons + reply fallback). */
 export function workspaceListCard(paths, current) {
   const elements = paths.length === 0
-    ? [{ tag: 'div', text: markdown('当前 Host 上没有已登记的工作区。') }]
+    ? [{ tag: 'div', text: markdown(defaultTranslator('feishu.card.workspacesEmpty')) }]
     : [
-        { tag: 'div', text: markdown(`回复数字切换工作区，或点击按钮：`) },
+        { tag: 'div', text: markdown(defaultTranslator('feishu.card.workspacesHint')) },
         ...paths.map((path, index) => button(
-          `${index + 1}. ${path}${path === current ? '（当前）' : ''}`,
+          `${index + 1}. ${path}${path === current ? defaultTranslator('workspace.currentMarker') : ''}`,
           `workspace:${path}`,
         )),
       ];
-  return cardWith('🗂 工作区', elements);
+  return cardWith(defaultTranslator('feishu.card.workspacesTitle'), elements);
 }
 
 /** The card-menu help text (number-driven, no command memorization). */
 export function menuHelpText() {
   return [
-    '🤖 助手菜单（回复数字即可，无需记命令）',
+    defaultTranslator('feishu.card.helpTitle'),
     '',
-    '1 · /sessionlist  列出会话（回复数字绑定）',
-    '2 · /workspacelist  列出工作区（回复数字切换）',
-    '3 · /new  开启新会话',
-    '4 · /status  连接状态',
-    '5 · /help  本帮助',
-    '6 · /repair  修复卡片按钮（请回复数字 6）',
-    '7 · /watchlist  关注列表',
+    defaultTranslator('feishu.card.help1'),
+    defaultTranslator('feishu.card.help2'),
+    defaultTranslator('feishu.card.help3'),
+    defaultTranslator('feishu.card.help4'),
+    defaultTranslator('feishu.card.help5'),
+    defaultTranslator('feishu.card.help6'),
+    defaultTranslator('feishu.card.help7'),
     '',
-    '直接发送文字/图片即继续当前会话。',
-    '/session ID 或序号  绑定已有会话',
-    '/watch ID 或序号  关注会话（完成后推送）',
-    '/compact  压缩上下文',
-    '/workspace 绝对路径  切换工作区',
-    '/presetlist  列出可用 Agent Preset',
-    '/preset [序号或完整ID]  查看或设置当前机器人 Agent Preset',
-    '纯数字 ID：/preset id:<ID>',
-    '/preset --default  跟随 Host 默认',
+    defaultTranslator('feishu.card.helpIntro'),
+    defaultTranslator('feishu.card.helpSession'),
+    defaultTranslator('feishu.card.helpWatch'),
+    defaultTranslator('feishu.card.helpCompact'),
+    defaultTranslator('feishu.card.helpWorkspace'),
+    `${defaultTranslator('command.presetlist.usage')}  ${defaultTranslator('command.presetlist.description')}`,
+    `${defaultTranslator('command.preset.usage')}  ${defaultTranslator('command.preset.description')}`,
+    defaultTranslator('bridge.help.presetNumericId'),
+    defaultTranslator('bridge.help.presetDefault'),
   ].join('\n');
 }
 
 /** The watch list for one conversation (unwatch buttons + reply fallback). */
 export function watchListCard(entries) {
   const elements = entries.length === 0
-    ? [{ tag: 'div', text: markdown('当前没有关注的会话。\n`/watch <ID|序号>` 关注后，任务完成会自动推送。') }]
+    ? [{ tag: 'div', text: markdown(defaultTranslator('feishu.card.watchListEmpty')) }]
     : [
-        { tag: 'div', text: markdown('任务完成会自动推送，回复数字或点按钮取消关注：') },
+        { tag: 'div', text: markdown(defaultTranslator('feishu.card.watchListHint')) },
         ...entries.map((entry, index) => button(
           `${index + 1}. ${safeTitle(entry.title)}`,
           `unwatch:${entry.sessionId}`,
         )),
       ];
-  return cardWith('👁 关注列表', elements);
+  return cardWith(defaultTranslator('feishu.card.watchListTitle'), elements);
 }
 
 /**
@@ -215,20 +229,18 @@ export function watchListCard(entries) {
  * turn-end kind (completed / stopped / aborted).
  */
 export function completionCard(sessionId, title, reason) {
-  const reasonText = reason === 'completed'
-    ? '已完成'
-    : reason === 'stopped'
-      ? '已停止'
-      : reason === 'aborted'
-        ? '已中止'
-        : reason === 'cancelled'
-          ? '已取消'
-          : '已结束';
-  return cardWith('✅ 任务完成', [
+  const reasonKeys = {
+    completed: 'feishu.card.reasonCompleted',
+    stopped: 'feishu.card.reasonStopped',
+    aborted: 'feishu.card.reasonAborted',
+    cancelled: 'feishu.card.reasonCancelled',
+  };
+  const reasonText = defaultTranslator(reasonKeys[reason] ?? 'feishu.card.reasonEnded');
+  return cardWith(defaultTranslator('feishu.card.completionTitle'), [
     { tag: 'div', text: markdown(`**${safeTitle(title)}**\n\`${sessionId}\``) },
-    { tag: 'div', text: markdown(`**状态**：${reasonText}`) },
-    button('打开会话列表', 'sessions'),
-    button('工作区', 'workspaces'),
-    { tag: 'div', text: markdown('绑定该会话后可继续追问，输入文字即可。') },
+    { tag: 'div', text: markdown(defaultTranslator('feishu.card.completionStatus', { status: reasonText })) },
+    button(defaultTranslator('feishu.card.openSessions'), 'sessions'),
+    button(defaultTranslator('feishu.card.workspacesButton'), 'workspaces'),
+    { tag: 'div', text: markdown(defaultTranslator('feishu.card.completionFooter')) },
   ]);
 }

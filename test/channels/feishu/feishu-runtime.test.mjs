@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { FeishuRuntime } from '../../../src/channels/feishu/feishu-runtime.mjs';
 import { rememberConnectionTestTarget } from '../../../src/channels/shared/connection-test.mjs';
+import { defaultTranslator as tr } from '../../../src/i18n/index.mjs';
 
 class FakeClient {
   static instances = [];
@@ -278,7 +279,7 @@ test('FeishuRuntime resolves a card-action probe only for the exact message, non
       receive_id: 'ou_owner',
       msg_type: 'text',
       content: JSON.stringify({
-        text: '✅ 修复完成：已实测收到 card.action.trigger，菜单按钮现在可用。',
+        text: tr('feishu.probe.successNotice'),
       }),
     },
   });
@@ -292,9 +293,9 @@ test('FeishuRuntime times out and aborts pending card-action probes with stable 
     (error) => error?.code === 'card_action_probe_timeout',
   );
   await new Promise((resolve) => setImmediate(resolve));
-  assert.match(
+  assert.equal(
     JSON.parse(FakeClient.sent.at(-1).data.content).text,
-    /修复验证超时.*不能确认按钮已修复.*不要重复授权/,
+    tr('feishu.probe.timeoutNotice'),
   );
 
   const pending = runtime.beginCardActionProbe({
@@ -305,9 +306,9 @@ test('FeishuRuntime times out and aborts pending card-action probes with stable 
   await runtime.stop();
   await assert.rejects(pending, (error) => error?.code === 'abort');
   await new Promise((resolve) => setImmediate(resolve));
-  assert.match(
+  assert.equal(
     JSON.parse(FakeClient.sent.at(-1).data.content).text,
-    /修复验证中断.*不能确认修复成功.*不要重复授权/,
+    tr('feishu.probe.abortNotice'),
   );
 });
 
@@ -326,9 +327,9 @@ test('FeishuRuntime reports probe-card send failure without masking its stable e
   );
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(FakeClient.sent.length, 2);
-  assert.match(
+  assert.equal(
     JSON.parse(FakeClient.sent[1].data.content).text,
-    /修复验证失败.*不能确认 card\.action\.trigger 已恢复.*不要重复授权/,
+    tr('feishu.probe.sendFailureNotice'),
   );
   await runtime.stop();
 });

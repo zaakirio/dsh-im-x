@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { extname } from 'node:path';
 
 import { fetchImageBuffer, ImagePromptError } from '../shared/image-prompt.mjs';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
 export const DINGTALK_REGISTRATION_BASE_URL = 'https://oapi.dingtalk.com/';
 export const DINGTALK_API_BASE_URL = 'https://api.dingtalk.com/';
@@ -94,7 +95,7 @@ function secureDingtalkDownloadUrl(value) {
   try {
     url = new URL(value);
   } catch (error) {
-    throw new DingtalkApiError('invalid-image-download', '钉钉服务返回了无效的图片下载地址。', { cause: error });
+    throw new DingtalkApiError('invalid-image-download', defaultTranslator('dingtalk.api.invalidImageDownload'), { cause: error });
   }
   if (url.protocol === 'http:' && (!url.port || url.port === '80')) {
     url.protocol = 'https:';
@@ -113,25 +114,25 @@ function normalizeTrustedUrl(value, { label, requireSubdomain = true } = {}) {
   try {
     url = new URL(value);
   } catch {
-    throw new DingtalkApiError('invalid-url', `${label ?? '钉钉服务'}返回了无效地址。`);
+    throw new DingtalkApiError('invalid-url', defaultTranslator('dingtalk.api.invalidUrl', { label: label ?? defaultTranslator('dingtalk.api.serviceLabel') }));
   }
   const normalizedHost = url.hostname.toLowerCase().replace(/\.$/, '');
   const trustedHost = requireSubdomain
     ? normalizedHost !== 'dingtalk.com' && isDingtalkHost(normalizedHost)
     : isDingtalkHost(normalizedHost);
   if (url.protocol !== 'https:' || !trustedHost || (url.port && url.port !== '443')) {
-    throw new DingtalkApiError('untrusted-url', `${label ?? '钉钉服务'}地址不受信任。`);
+    throw new DingtalkApiError('untrusted-url', defaultTranslator('dingtalk.api.untrustedUrl', { label: label ?? defaultTranslator('dingtalk.api.serviceLabel') }));
   }
   if (url.username || url.password) {
-    throw new DingtalkApiError('untrusted-url', `${label ?? '钉钉服务'}地址不受信任。`);
+    throw new DingtalkApiError('untrusted-url', defaultTranslator('dingtalk.api.untrustedUrl', { label: label ?? defaultTranslator('dingtalk.api.serviceLabel') }));
   }
   return url;
 }
 
 export function normalizeDingtalkSessionWebhook(value) {
   const text = nonEmptyString(value);
-  if (!text) throw new DingtalkApiError('invalid-session-webhook', '钉钉消息没有可用的回复地址。');
-  const url = normalizeTrustedUrl(text, { label: '钉钉回复', requireSubdomain: false });
+  if (!text) throw new DingtalkApiError('invalid-session-webhook', defaultTranslator('dingtalk.api.noReplyTarget'));
+  const url = normalizeTrustedUrl(text, { label: defaultTranslator('dingtalk.api.replyLabel'), requireSubdomain: false });
   url.hash = '';
   return url.toString();
 }
@@ -214,20 +215,20 @@ async function requestJson(fetchImpl, url, {
       }
       throw new DingtalkApiError(
         'http-error',
-        `钉钉服务请求失败（HTTP ${response.status}）。`,
+        defaultTranslator('dingtalk.api.requestFailedHttp', { status: response.status }),
         { status: response.status, providerCode },
       );
     }
     try {
       return await response.json();
     } catch (error) {
-      throw new DingtalkApiError('invalid-response', '钉钉服务返回了无法解析的响应。', { cause: error });
+      throw new DingtalkApiError('invalid-response', defaultTranslator('dingtalk.api.invalidResponse'), { cause: error });
     }
   } catch (error) {
     if (signal?.aborted) throw abortError(signal);
-    if (timedOut) throw new DingtalkApiError('timeout', '钉钉服务请求超时。', { cause: error });
+    if (timedOut) throw new DingtalkApiError('timeout', defaultTranslator('dingtalk.api.timeout'), { cause: error });
     if (error instanceof DingtalkApiError) throw error;
-    throw new DingtalkApiError('network-error', `暂时无法完成钉钉${action}请求。`, { cause: error });
+    throw new DingtalkApiError('network-error', defaultTranslator('dingtalk.api.networkError', { action }), { cause: error });
   } finally {
     if (timer) clearTimeout(timer);
     signal?.removeEventListener('abort', onAbort);
@@ -261,23 +262,23 @@ async function requestMultipart(fetchImpl, url, { body, signal, timeoutMs = 60_0
     if (!response.ok) {
       throw new DingtalkApiError(
         'http-error',
-        `钉钉服务请求失败（HTTP ${response.status}）。`,
+        defaultTranslator('dingtalk.api.requestFailedHttp', { status: response.status }),
         { status: response.status, providerCode: safeProviderCode(value?.code ?? value?.errcode) },
       );
     }
     if (parseError) {
       throw new DingtalkApiError(
         'invalid-response',
-        '钉钉服务返回了无法解析的响应。',
+        defaultTranslator('dingtalk.api.invalidResponse'),
         { cause: parseError },
       );
     }
     return value;
   } catch (error) {
     if (signal?.aborted) throw abortError(signal);
-    if (timedOut) throw new DingtalkApiError('timeout', '钉钉服务请求超时。', { cause: error });
+    if (timedOut) throw new DingtalkApiError('timeout', defaultTranslator('dingtalk.api.timeout'), { cause: error });
     if (error instanceof DingtalkApiError) throw error;
-    throw new DingtalkApiError('network-error', '暂时无法完成钉钉文件上传请求。', { cause: error });
+    throw new DingtalkApiError('network-error', defaultTranslator('dingtalk.api.uploadNetworkError'), { cause: error });
   } finally {
     clearTimeout(timer);
     signal?.removeEventListener('abort', onAbort);
@@ -365,7 +366,7 @@ function assertRegistrationOk(value, action) {
   if (!value || typeof value !== 'object' || value.errcode !== 0) {
     throw new DingtalkApiError(
       'registration-rejected',
-      `钉钉扫码${action}失败。`,
+      defaultTranslator('dingtalk.api.qrActionFailed', { action }),
     );
   }
   return value;
@@ -397,7 +398,7 @@ export function createDingtalkApi({
   }
   if (typeof delay !== 'function') throw new TypeError('delay must be a function');
   const registrationBase = normalizeTrustedUrl(registrationBaseUrl, {
-    label: '钉钉注册服务',
+    label: defaultTranslator('dingtalk.api.registrationLabel'),
     requireSubdomain: false,
   });
   const apiBase = new URL(DINGTALK_API_BASE_URL);
@@ -422,10 +423,10 @@ export function createDingtalkApi({
       const value = await requestJson(fetchImpl, endpoint(apiBase, 'v1.0/oauth2/accessToken'), {
         body: { appKey, appSecret },
         signal,
-        action: '鉴权',
+        action: 'authentication',
       });
       const token = nonEmptyString(value?.accessToken);
-      if (!token) throw new DingtalkApiError('invalid-access-token', '钉钉服务没有返回访问令牌。');
+      if (!token) throw new DingtalkApiError('invalid-access-token', defaultTranslator('dingtalk.api.noAccessToken'));
       const expiresInSeconds = positiveNumber(value?.expireIn ?? value?.expiresIn, 7_200);
       const refreshAfterMs = Math.max(1_000, (expiresInSeconds - 60) * 1_000);
       tokenCache.set(appKey, { token, expiresAt: now() + refreshAfterMs });
@@ -479,7 +480,7 @@ export function createDingtalkApi({
         },
         headers,
         signal,
-        action: 'AI Card 失败收口',
+        action: 'AI Card failure close',
       }),
       cardRequest('v1.0/card/instances', {
         method: 'PUT',
@@ -490,7 +491,7 @@ export function createDingtalkApi({
         },
         headers,
         signal,
-        action: 'AI Card 失败状态',
+        action: 'AI Card failure state',
       }),
     ];
     const results = await Promise.allSettled(requests);
@@ -503,23 +504,23 @@ export function createDingtalkApi({
       const initialized = assertRegistrationOk(await requestJson(
         fetchImpl,
         endpoint(registrationBase, 'app/registration/init'),
-        { body: { source }, signal, action: '初始化' },
-      ), '初始化');
+        { body: { source }, signal, action: 'initialisation' },
+      ), 'initialisation');
       const nonce = nonEmptyString(initialized.nonce);
-      if (!nonce) throw new DingtalkApiError('invalid-registration', '钉钉扫码初始化缺少 nonce。');
+      if (!nonce) throw new DingtalkApiError('invalid-registration', defaultTranslator('dingtalk.api.missingNonce'));
 
       const begun = assertRegistrationOk(await requestJson(
         fetchImpl,
         endpoint(registrationBase, 'app/registration/begin'),
-        { body: { nonce }, signal, action: '创建' },
-      ), '创建');
+        { body: { nonce }, signal, action: 'creation' },
+      ), 'creation');
       const deviceCode = nonEmptyString(begun.device_code);
       const verificationUriComplete = nonEmptyString(begun.verification_uri_complete);
       if (!deviceCode || !verificationUriComplete) {
-        throw new DingtalkApiError('invalid-registration', '钉钉扫码服务返回的信息不完整。');
+        throw new DingtalkApiError('invalid-registration', defaultTranslator('dingtalk.api.incompleteRegistration'));
       }
       const verificationUrl = normalizeTrustedUrl(verificationUriComplete, {
-        label: '钉钉扫码',
+        label: defaultTranslator('dingtalk.api.qrLabel'),
         requireSubdomain: false,
       }).toString();
       return {
@@ -538,11 +539,11 @@ export function createDingtalkApi({
       const polled = assertRegistrationOk(await requestJson(
         fetchImpl,
         endpoint(registrationBase, 'app/registration/poll'),
-        { body: { device_code: code }, signal, action: '状态查询' },
-      ), '状态查询');
+        { body: { device_code: code }, signal, action: 'status query' },
+      ), 'status query');
       const status = nonEmptyString(polled.status)?.toUpperCase();
       if (!status || !REGISTRATION_STATUSES.has(status)) {
-        throw new DingtalkApiError('invalid-registration-status', '钉钉扫码服务返回了无法识别的状态。');
+        throw new DingtalkApiError('invalid-registration-status', defaultTranslator('dingtalk.api.invalidRegistrationStatus'));
       }
       const result = {
         status,
@@ -552,7 +553,7 @@ export function createDingtalkApi({
         result.clientId = nonEmptyString(polled.client_id) ?? undefined;
         result.clientSecret = nonEmptyString(polled.client_secret) ?? undefined;
         if (!result.clientId || !result.clientSecret) {
-          throw new DingtalkApiError('missing-credentials', '钉钉扫码已确认，但没有返回机器人凭据。');
+          throw new DingtalkApiError('missing-credentials', defaultTranslator('dingtalk.api.missingCredentials'));
         }
       }
       return result;
@@ -581,20 +582,20 @@ export function createDingtalkApi({
             body: { downloadCode: fileCode, robotCode: botCode },
             headers: { 'x-acs-dingtalk-access-token': token },
             signal,
-            action: '图片下载地址',
+            action: 'image download address',
           },
         );
       } catch (error) {
         if (signal?.aborted) throw error;
         throw new DingtalkApiError(
           'image-download-address-failed',
-          '钉钉图片下载地址获取失败。',
+          defaultTranslator('dingtalk.api.imageDownloadUrlFailed'),
           { cause: error, status: error?.status, providerCode: error?.providerCode },
         );
       }
       const downloadUrl = nonEmptyString(response?.downloadUrl ?? response?.download_url);
       if (!downloadUrl) {
-        throw new DingtalkApiError('invalid-image-download', '钉钉服务没有返回图片下载地址。');
+        throw new DingtalkApiError('invalid-image-download', defaultTranslator('dingtalk.api.noImageDownloadUrl'));
       }
       try {
         return await fetchImageBuffer(secureDingtalkDownloadUrl(downloadUrl), {
@@ -606,7 +607,7 @@ export function createDingtalkApi({
         if (signal?.aborted || error instanceof ImagePromptError) throw error;
         throw new DingtalkApiError(
           'image-content-download-failed',
-          '钉钉图片内容下载失败。',
+          defaultTranslator('dingtalk.api.imageContentFailed'),
           { cause: error },
         );
       }
@@ -638,13 +639,13 @@ export function createDingtalkApi({
           },
           headers,
           signal,
-          action: 'AI Card 创建',
+          action: 'AI Card creation',
         });
         await cardRequest('v1.0/card/instances/deliver', {
           body: cardDeliverBody(cardInstanceId, normalizedTarget, appKey),
           headers,
           signal,
-          action: 'AI Card 投放',
+          action: 'AI Card delivery',
         });
         delivered = true;
         await cardRequest('v1.0/card/instances', {
@@ -652,7 +653,7 @@ export function createDingtalkApi({
           body: { outTrackId: cardInstanceId, cardData: cardData(content, '2') },
           headers,
           signal,
-          action: 'AI Card 启动',
+          action: 'AI Card start',
         });
         await cardRequest('v1.0/card/streaming', {
           method: 'PUT',
@@ -667,7 +668,7 @@ export function createDingtalkApi({
           },
           headers,
           signal,
-          action: 'AI Card 启动',
+          action: 'AI Card start',
         });
       } catch (error) {
         if (delivered) {
@@ -676,7 +677,7 @@ export function createDingtalkApi({
             clientId: appKey,
             clientSecret: appSecret,
             cardInstanceId,
-            text: '消息处理失败，请稍后重试。',
+            text: defaultTranslator('bridge.messageFailed'),
             signal: cleanupSignal,
           }).catch(() => undefined);
         }
@@ -704,7 +705,7 @@ export function createDingtalkApi({
         },
         headers: { 'x-acs-dingtalk-access-token': token },
         signal,
-        action: 'AI Card 更新',
+        action: 'AI Card update',
       });
       return true;
     },
@@ -730,7 +731,7 @@ export function createDingtalkApi({
         },
         headers,
         signal,
-        action: 'AI Card 完成',
+        action: 'AI Card finish',
       });
       let completed = true;
       const completionRequest = {
@@ -742,7 +743,7 @@ export function createDingtalkApi({
         },
         headers,
         signal,
-        action: 'AI Card 收口',
+        action: 'AI Card close',
       };
       try {
         await cardRequest('v1.0/card/instances', completionRequest);
@@ -767,11 +768,11 @@ export function createDingtalkApi({
         body: { msgtype: 'text', text: { content } },
         headers: { 'x-acs-dingtalk-access-token': token },
         signal,
-        action: '消息回复',
+        action: 'message reply',
       });
       if ((response?.errcode !== undefined && response.errcode !== 0)
         || (response?.code !== undefined && response.code !== 0)) {
-        throw new DingtalkApiError('send-rejected', '钉钉服务拒绝了回复消息。');
+        throw new DingtalkApiError('send-rejected', defaultTranslator('dingtalk.api.sendRejected'));
       }
       return true;
     },
@@ -819,7 +820,7 @@ export function createDingtalkApi({
       if (uploadRejection || !nonEmptyString(uploaded?.media_id)) {
         throw dingtalkArtifactError(new DingtalkApiError(
           'upload-rejected',
-          '钉钉服务拒绝了文件上传。',
+          defaultTranslator('dingtalk.api.uploadRejected'),
           { providerCode: uploadRejection ?? 'missing-media-id' },
         ));
       }
@@ -845,7 +846,7 @@ export function createDingtalkApi({
           body: messageBody,
           headers: { 'x-acs-dingtalk-access-token': token },
           signal,
-          action: '文件消息发送',
+          action: 'file message send',
         });
       } catch (error) {
         throw classifyDingtalkFinalDeliveryError(error, signal);
@@ -854,7 +855,7 @@ export function createDingtalkApi({
       if (sendRejection) {
         throw dingtalkArtifactError(new DingtalkApiError(
           'send-rejected',
-          '钉钉服务拒绝了文件消息。',
+          defaultTranslator('dingtalk.api.fileMessageRejected'),
           { providerCode: sendRejection },
         ));
       }

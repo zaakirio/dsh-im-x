@@ -1286,7 +1286,7 @@ test('an invalid pending reply does not block the valid answer behind it', async
   const bridge = new DingtalkHarnessBridge({
     api: {
       sendText: async (request) => {
-        if (request.text === '请用文字回答当前问题。') {
+        if (request.text === tr('bridge.answerWithText')) {
           invalidNoticeStarted.resolve();
           await releaseInvalidNotice.promise;
         }

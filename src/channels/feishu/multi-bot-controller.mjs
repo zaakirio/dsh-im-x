@@ -14,6 +14,7 @@ import {
   isFeishuGroupResponseMode,
   normalizeFeishuGroupResponseMode,
 } from './group-response-mode.mjs';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
 const ACTIVE_REGISTRATION_STATES = new Set([
   'starting', 'qr_ready', 'polling', 'slow_down', 'domain_switched',
@@ -176,7 +177,7 @@ export class MultiBotDshFeishuController {
       if (config.deletionPending) {
         this.#botErrors.set(config.id, {
           code: 'deletion_pending',
-          message: '机器人正在等待完成本地删除，请重试移除。',
+          message: defaultTranslator('feishu.bot.awaitingDeletion'),
         });
         return;
       }
@@ -186,14 +187,14 @@ export class MultiBotDshFeishuController {
       } catch {
         this.#botErrors.set(config.id, {
           code: 'missing_credentials',
-          message: '无法读取机器人凭据，请检查凭据存储。',
+          message: defaultTranslator('feishu.bot.credentialsUnreadable'),
         });
         return;
       }
       if (!resolved?.value) {
         this.#botErrors.set(config.id, {
           code: 'missing_credentials',
-          message: '机器人凭据缺失，请删除后重新扫码接入。',
+          message: defaultTranslator('feishu.bot.credentialsMissing'),
         });
         return;
       }
@@ -203,7 +204,7 @@ export class MultiBotDshFeishuController {
       } catch {
         this.#botErrors.set(config.id, {
           code: 'connection_failed',
-          message: '机器人暂时无法连接飞书，请重试。',
+          message: defaultTranslator('feishu.provision.cannotReach'),
         });
       }
     })));
@@ -229,8 +230,8 @@ export class MultiBotDshFeishuController {
       source: 'deepseek-harness',
       createOnly: true,
       appPreset: {
-        name: '{user} 的北汇星河 AI 助手',
-        desc: '连接飞书与 DeepSeek Harness，在聊天中使用企业 AI 助手。',
+        name: defaultTranslator('feishu.provision.appName', { user: '{user}' }),
+        desc: defaultTranslator('feishu.provision.appDescription'),
       },
       addons: {
         preset: false,
@@ -465,7 +466,7 @@ export class MultiBotDshFeishuController {
         } catch {
           this.#botErrors.set(botId, {
             code: 'connection_failed',
-            message: '机器人已经绑定，但长连接未就绪，请点击重试。',
+            message: defaultTranslator('feishu.bot.boundNotReady'),
           });
         }
       });
@@ -481,7 +482,7 @@ export class MultiBotDshFeishuController {
       if (config.deletionPending) {
         this.#botErrors.set(botId, {
           code: 'deletion_pending',
-          message: '机器人正在等待完成本地删除，请重试移除。',
+          message: defaultTranslator('feishu.bot.awaitingDeletion'),
         });
         return this.status(botId);
       }
@@ -497,7 +498,7 @@ export class MultiBotDshFeishuController {
       if (!resolved?.value) {
         this.#botErrors.set(botId, {
           code: 'missing_credentials',
-          message: '机器人凭据缺失，请删除后重新扫码接入。',
+          message: defaultTranslator('feishu.bot.credentialsMissing'),
         });
         this.#touch();
         return this.status(botId);
@@ -508,7 +509,7 @@ export class MultiBotDshFeishuController {
       } catch {
         this.#botErrors.set(botId, {
           code: 'connection_failed',
-          message: '机器人暂时无法连接飞书，请重试。',
+          message: defaultTranslator('feishu.provision.cannotReach'),
         });
       }
       this.#touch();
@@ -523,14 +524,14 @@ export class MultiBotDshFeishuController {
       const runtime = this.#runtimes.get(botId);
       if (!isConnected(connectionStatus(runtime))
         || typeof runtime.sendConnectionTest !== 'function') {
-        const error = new Error('飞书机器人尚未连接');
+        const error = new Error(defaultTranslator('status.notConnected', { channel: 'Feishu' }));
         error.code = 'test-target-unavailable';
         throw error;
       }
       return runtime.sendConnectionTest(
         connectionTestMessage(
           `${config.botName}（${maskedAppId(config.appId)}）`,
-          '飞书机器人',
+          defaultTranslator('bridge.botLabel', { channel: 'Feishu' }),
         ),
       );
     });
@@ -817,7 +818,7 @@ export class MultiBotDshFeishuController {
       } catch (error) {
         this.#botErrors.set(record.botId, {
           code: 'connection_failed',
-          message: '群消息权限已开通，但机器人长连接未就绪，请点击重试。',
+          message: defaultTranslator('feishu.bot.groupPermissionNotReady'),
         });
         this.#touch();
         throw this.#callbackRepairError(
@@ -975,7 +976,7 @@ export class MultiBotDshFeishuController {
           // safely retry this forward state later.
           this.#botErrors.set(record.botId, {
             code: 'connection_failed',
-            message: '机器人回调修复已保存，但长连接未就绪，请点击重试。',
+            message: defaultTranslator('feishu.bot.repairSavedNotReady'),
           });
           this.#touch();
           throw this.#callbackRepairError(
@@ -1160,7 +1161,7 @@ export class MultiBotDshFeishuController {
             await this.#withBotTransition(botId, () => this.#stopRuntime(botId));
             this.#botErrors.set(botId, {
               code: 'deletion_pending',
-              message: '机器人正在等待完成本地删除，请重试移除。',
+              message: defaultTranslator('feishu.bot.awaitingDeletion'),
             });
           }
           this.#touch();
@@ -1169,7 +1170,7 @@ export class MultiBotDshFeishuController {
           if (restoreError === error) throw error;
           this.#botErrors.set(botId, {
             code: 'connection_failed',
-            message: '机器人连接更新失败，且原连接无法恢复，请重试。',
+            message: defaultTranslator('feishu.bot.connectionUpdateFailed'),
           });
           this.#touch();
           throw new Error('Unable to restore the previous Feishu bot connection.', {
@@ -1179,7 +1180,7 @@ export class MultiBotDshFeishuController {
       }
       this.#botErrors.set(botId, {
         code: 'connection_failed',
-        message: '机器人已经创建，但长连接未就绪，请点击重试。',
+        message: defaultTranslator('feishu.provision.createdNotReady'),
       });
       this.#touch();
       throw error;
@@ -1243,7 +1244,7 @@ export class MultiBotDshFeishuController {
     } catch (error) {
       this.#botErrors.set(botId, {
         code: 'credential_removal_failed',
-        message: '无法删除机器人凭据，请稍后重试。',
+        message: defaultTranslator('feishu.bot.credentialDeleteFailed'),
       });
       throw new Error('Unable to remove the Feishu credential.', { cause: error });
     }
@@ -1252,7 +1253,7 @@ export class MultiBotDshFeishuController {
     } catch (error) {
       this.#botErrors.set(botId, {
         code: 'state_cleanup_failed',
-        message: '无法删除机器人的本地会话数据，请稍后重试。',
+        message: defaultTranslator('feishu.bot.sessionDeleteFailed'),
       });
       throw new Error('Unable to remove the Feishu bot session state.', { cause: error });
     }

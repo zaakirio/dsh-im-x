@@ -1,7 +1,7 @@
 {
   "name": "@xmanrui/dsh-im",
   "version": "1.1.0",
-  "description": "把九种 IM 机器人和公网 AI Office 接入本机 DeepSeek Harness。 Connect nine IM channels and a public AI Office to a local DeepSeek Harness.",
+  "description": "\u628a\u4e5d\u79cd IM \u673a\u5668\u4eba\u548c\u516c\u7f51 AI Office \u63a5\u5165\u672c\u673a DeepSeek Harness\u3002 Connect nine IM channels and a public AI Office to a local DeepSeek Harness.",
   "keywords": [
     "deepseek-harness",
     "dsh",
@@ -82,7 +82,7 @@
   },
   "scripts": {
     "build": "node plugin-src/client/build.mjs && node plugin-src/host/build.mjs",
-    "test": "node --test test/*.test.mjs test/channels/*/*.test.mjs",
+    "test": "node --test --test-timeout=60000 test/*.test.mjs test/channels/*/*.test.mjs",
     "check": "npm test && npm run build && node scripts/verify-package.mjs"
   },
   "engines": {
