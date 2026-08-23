@@ -6,6 +6,7 @@ import makeWASocket, {
   jidNormalizedUser,
   useMultiFileAuthState,
 } from '@whiskeysockets/baileys';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
 const SILENT_LOGGER = Object.freeze({
   level: 'silent',
@@ -57,7 +58,7 @@ function normalizeIdentity(socket, authState) {
   return {
     accountJid,
     name: typeof source?.name === 'string' && source.name.trim()
-      ? source.name.trim().slice(0, 100) : 'WhatsApp机器人',
+      ? source.name.trim().slice(0, 100) : defaultTranslator('bot.whatsappDefaultName'),
   };
 }
 

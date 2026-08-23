@@ -1,5 +1,7 @@
+import { defaultTranslator } from '../../i18n/index.mjs';
+
 const DEFAULT_UPDATE_INTERVAL_MS = 500;
-const FAILURE_TEXT = '消息处理失败，请稍后重试。';
+const FAILURE_TEXT = defaultTranslator('bridge.messageFailed');
 
 function requiredText(value, name) {
   if (typeof value !== 'string') throw new TypeError(`${name} must be a string`);

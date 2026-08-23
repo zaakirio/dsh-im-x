@@ -1,3 +1,5 @@
+import { defaultTranslator } from '../../i18n/index.mjs';
+
 import { createHash } from 'node:crypto';
 
 const DEFAULT_BASE_URL = 'https://discord.com/api/v10/';
@@ -275,7 +277,7 @@ export async function inspectDiscordToken(token, options = {}) {
   if (!bot?.id || bot?.bot !== true) throw new Error('Discord token does not belong to a bot');
   return {
     platformId: String(bot.id),
-    name: cleanString(bot.global_name) ?? cleanString(bot.username) ?? 'Discord机器人',
+    name: cleanString(bot.global_name) ?? cleanString(bot.username) ?? defaultTranslator('bot.discordDefaultName'),
     username: cleanString(bot.username),
   };
 }

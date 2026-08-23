@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
 const EMPTY_DOCUMENT = Object.freeze({ version: 2, bots: Object.freeze([]) });
 const BOT_ID_PATTERN = /^whatsapp_[a-f0-9]{24}$/;
@@ -23,7 +24,7 @@ export function deriveWhatsappBotId(accountJid) {
 
 export function maskWhatsappAccount(accountJid) {
   const digits = normalizeWhatsappAccountJid(accountJid)?.split('@')[0] ?? '';
-  if (!digits) return 'WhatsApp账号';
+  if (!digits) return defaultTranslator('bot.whatsappDefaultAccount');
   if (digits.length <= 7) return `${digits.slice(0, 2)}•••${digits.slice(-2)}`;
   return `${digits.slice(0, 4)}••••${digits.slice(-4)}`;
 }

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
 const EMPTY_DOCUMENT = Object.freeze({ version: 1, bots: Object.freeze([]) });
 
@@ -30,7 +31,7 @@ export function deriveQqBotIdentity(appId) {
 
 export function maskQqAppId(appId) {
   const value = cleanString(appId) ?? '';
-  if (value.length <= 10) return value ? `${value.slice(0, 3)}•••` : 'QQ机器人';
+  if (value.length <= 10) return value ? `${value.slice(0, 3)}•••` : defaultTranslator('bot.qqDefaultName');
   return `${value.slice(0, 6)}••••${value.slice(-4)}`;
 }
 

@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
 const EMPTY_DOCUMENT = Object.freeze({ version: 1, bots: Object.freeze([]) });
 const STORED_BOT_KEYS = new Set(['clientId', 'secretRef', 'approvedSenders']);
@@ -86,8 +87,8 @@ export function deriveDingtalkSenderKey() {
  */
 export function maskDingtalkSenderId(staffId) {
   const value = cleanString(staffId);
-  if (!value) return '钉钉用户';
-  return '身份已隐藏';
+  if (!value) return defaultTranslator('bot.dingtalkDefaultUser');
+  return defaultTranslator('bot.identityHidden');
 }
 
 /**
@@ -97,7 +98,7 @@ export function maskDingtalkSenderId(staffId) {
  */
 export function maskDingtalkClientId(clientId) {
   const value = cleanString(clientId);
-  if (!value) return '钉钉机器人';
+  if (!value) return defaultTranslator('bot.dingtalkDefaultName');
   if (value.length <= 8) return `${value.slice(0, 2)}••••`;
   return `${value.slice(0, 4)}••••${value.slice(-4)}`;
 }

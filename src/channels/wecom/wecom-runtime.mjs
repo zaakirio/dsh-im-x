@@ -2,6 +2,7 @@ import { WSAuthFailureError, WSClient, WSReconnectExhaustedError } from '@wecom/
 
 import { createWecomBridgeStatus, WecomHarnessBridge } from './wecom-bridge.mjs';
 import { sendRememberedConnectionTest } from '../shared/connection-test.mjs';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
 function timeoutError() {
   const error = new Error('Enterprise WeChat WebSocket authentication timed out');
@@ -202,7 +203,7 @@ export class WecomRuntime {
     return sendRememberedConnectionTest({
       state: this.#state,
       text,
-      channelLabel: '企业微信机器人',
+      channelLabel: defaultTranslator('bot.wecomDefaultName'),
       send: async ({ chatId }, content) => {
         if (!this.#status.ready || !this.#client) {
           throw new Error('Enterprise WeChat runtime is not connected');

@@ -2,9 +2,10 @@ import { createHash } from 'node:crypto';
 
 import { trackOutboundArtifactProviderPromise } from '../shared/semantic/artifact.mjs';
 import { createDeliveryReceipt } from '../shared/semantic/delivery.mjs';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
 const STREAM_ELEMENT_ID = 'stream_md';
-const DEFAULT_INITIAL_TEXT = '已连接 DeepSeek Harness，正在思考…';
+const DEFAULT_INITIAL_TEXT = defaultTranslator('bridge.connectedThinking');
 const MAX_STREAM_CHARS = 28000;
 const MAX_FILE_OPERATION_TIMEOUT_MS = 120_000;
 
@@ -132,7 +133,7 @@ function streamingCard(initialText) {
     schema: '2.0',
     config: {
       streaming_mode: true,
-      summary: { content: '正在生成…' },
+      summary: { content: defaultTranslator('feishu.generating') },
       streaming_config: {
         print_frequency_ms: { default: 70 },
         print_step: { default: 1 },
@@ -214,7 +215,7 @@ export class VerifiedFeishuChannel {
           settings: JSON.stringify({
             config: {
               streaming_mode: false,
-              summary: { content: summaryOf(lastContent) || '回答完成' },
+              summary: { content: summaryOf(lastContent) || defaultTranslator('feishu.answerComplete') },
             },
           }),
           sequence: ++sequence,

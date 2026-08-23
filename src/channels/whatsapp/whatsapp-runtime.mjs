@@ -11,6 +11,7 @@ import { byteLimitLabel, ImagePromptError } from '../shared/image-prompt.mjs';
 import { trackOutboundArtifactProviderPromise } from '../shared/semantic/artifact.mjs';
 import { createWhatsappBridgeStatus, WhatsappHarnessBridge } from './whatsapp-bridge.mjs';
 import { createWhatsappWebSession } from './whatsapp-web-session.mjs';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
 const IMAGE_MEDIA_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 const DEFAULT_MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -527,7 +528,7 @@ export class WhatsappRuntime {
 
   async sendConnectionTest(text) {
     if (!this.#status.ready || !this.#client) {
-      const error = new Error('WhatsApp机器人尚未连接');
+      const error = new Error(defaultTranslator('status.notConnected', { channel: 'WhatsApp' }));
       error.code = 'test-target-unavailable';
       throw error;
     }

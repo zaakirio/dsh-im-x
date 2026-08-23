@@ -458,4 +458,25 @@ export const EN = Object.freeze({
   'slack.socketModeUnavailable': 'The Slack app token cannot open a Socket Mode connection. Confirm Socket Mode is enabled and connections:write is granted.',
   'slack.defaultBotName': 'Slack bot',
   'slack.connectionLabel': ' Socket Mode connection',
+  // --- Default bot and account labels ------------------------------------
+  'bot.dingtalkDefaultName': 'DingTalk bot',
+  'bot.dingtalkDefaultUser': 'DingTalk user',
+  'bot.identityHidden': 'identity hidden',
+  'bot.discordDefaultName': 'Discord bot',
+  'bot.qqDefaultName': 'QQ bot',
+  'bot.wecomDefaultName': 'WeCom bot',
+  'bot.weixinDefaultName': 'WeChat bot',
+  'bot.whatsappDefaultName': 'WhatsApp bot',
+  'bot.whatsappDefaultAccount': 'WhatsApp account',
+  'bot.discordConnectionLabel': ' Gateway connection',
+  'bot.whatsappConnectionLabel': ' Web linked device',
+
+  // --- Channel connection errors -----------------------------------------
+  'discord.invalidToken': 'The Discord bot token is invalid. Enter it again.',
+  'discord.intentsMisconfigured': 'The Discord gateway intents are not configured correctly. Check the bot settings in the Developer Portal.',
+  'weixin.credentialExpired': 'The WeChat login credential has expired. Remove the account and scan again.',
+  'weixin.syncRejected': 'The WeChat message sync request was rejected.',
+  'dingtalk.invalidMessageFormat': 'The DingTalk message format is invalid.',
+  'feishu.generating': 'Generating…',
+  'feishu.answerComplete': 'Answer complete',
 });

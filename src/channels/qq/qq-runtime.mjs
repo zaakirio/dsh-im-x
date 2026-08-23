@@ -5,6 +5,7 @@ import {
   connectionTestTargetUnavailable,
 } from '../shared/connection-test.mjs';
 import { createQqBridgeStatus, QqHarnessBridge } from './qq-bridge.mjs';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
 function timeoutError() {
   const error = new Error('QQ WebSocket did not become ready in time');
@@ -73,7 +74,7 @@ export class QqRuntime {
 
   async sendConnectionTest(text) {
     if (!this.#status.ready || !this.#bot) {
-      throw connectionTestTargetUnavailable('QQ机器人');
+      throw connectionTestTargetUnavailable(defaultTranslator('bot.qqDefaultName'));
     }
     const ownerUserOpenid = typeof this.#config.ownerUserOpenid === 'string'
       ? this.#config.ownerUserOpenid.trim()
@@ -88,7 +89,7 @@ export class QqRuntime {
       : (ownerUserOpenid && ownerUserOpenid !== '*'
         ? { scope: 'c2c', targetId: ownerUserOpenid }
         : null);
-    if (!target) throw connectionTestTargetUnavailable('QQ机器人');
+    if (!target) throw connectionTestTargetUnavailable(defaultTranslator('bot.qqDefaultName'));
     await this.#bot.sendText(target, text);
     return { sent: true };
   }

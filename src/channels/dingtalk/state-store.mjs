@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
 const EMPTY_STATE = Object.freeze({
   version: 1,
@@ -14,7 +15,7 @@ function nonEmptyString(value) {
 }
 
 function displayName(value) {
-  return (nonEmptyString(value) ?? '钉钉用户').slice(0, 100);
+  return (nonEmptyString(value) ?? defaultTranslator('bot.dingtalkDefaultUser')).slice(0, 100);
 }
 
 function normalizePendingSender(value, fallbackRequestId) {

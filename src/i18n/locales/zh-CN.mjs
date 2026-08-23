@@ -436,4 +436,25 @@ export const ZH_CN = Object.freeze({
   'slack.socketModeUnavailable': 'Slack App Token 无法创建 Socket Mode 连接，请确认已启用 Socket Mode 和 connections:write。',
   'slack.defaultBotName': 'Slack机器人',
   'slack.connectionLabel': ' Socket Mode 长连接',
+  // --- Default bot and account labels ------------------------------------
+  'bot.dingtalkDefaultName': '钉钉机器人',
+  'bot.dingtalkDefaultUser': '钉钉用户',
+  'bot.identityHidden': '身份已隐藏',
+  'bot.discordDefaultName': 'Discord机器人',
+  'bot.qqDefaultName': 'QQ机器人',
+  'bot.wecomDefaultName': '企业微信机器人',
+  'bot.weixinDefaultName': '微信机器人',
+  'bot.whatsappDefaultName': 'WhatsApp机器人',
+  'bot.whatsappDefaultAccount': 'WhatsApp账号',
+  'bot.discordConnectionLabel': ' Gateway 长连接',
+  'bot.whatsappConnectionLabel': ' Web 关联设备',
+
+  // --- Channel connection errors -----------------------------------------
+  'discord.invalidToken': 'Discord Bot Token 无效，请重新填写。',
+  'discord.intentsMisconfigured': 'Discord Gateway Intents 配置不正确，请检查 Developer Portal 的 Bot 设置。',
+  'weixin.credentialExpired': '微信登录凭据已失效，请移除账号后重新扫码。',
+  'weixin.syncRejected': '微信消息同步请求被拒绝。',
+  'dingtalk.invalidMessageFormat': '钉钉消息格式无效。',
+  'feishu.generating': '正在生成…',
+  'feishu.answerComplete': '回答完成',
 });

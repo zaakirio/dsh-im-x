@@ -1,3 +1,5 @@
+import { defaultTranslator } from '../../i18n/index.mjs';
+
 import {
   deriveTokenBotIdentity,
   maskPlatformId,
@@ -14,7 +16,7 @@ export function deriveDiscordBotIdentity(platformId) {
 }
 
 export function maskDiscordBotId(platformId) {
-  return maskPlatformId(platformId, 'Discord机器人');
+  return maskPlatformId(platformId, defaultTranslator('bot.discordDefaultName'));
 }
 
 export class DiscordConfigStore extends TokenBotConfigStore {

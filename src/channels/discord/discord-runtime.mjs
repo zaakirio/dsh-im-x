@@ -2,6 +2,7 @@ import { createEditableMessageStream, splitMessageText } from '../shared/editabl
 import { fetchImageBuffer } from '../shared/image-prompt.mjs';
 import { DiscordApi } from './discord-api.mjs';
 import { createDiscordBridgeStatus, DiscordHarnessBridge } from './discord-bridge.mjs';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
 const DISCORD_GATEWAY_INTENTS = (1 << 0) | (1 << 9) | (1 << 12);
 const RECONNECT_DELAYS_MS = Object.freeze([1_000, 3_000, 5_000, 10_000, 30_000]);
@@ -39,12 +40,12 @@ function eventData(event) {
 
 function gatewayCloseError(code) {
   if (code === 4004) {
-    const error = new Error('Discord Bot Token 无效，请重新填写。');
+    const error = new Error(defaultTranslator('discord.invalidToken'));
     error.code = 'discord-401';
     return error;
   }
   if (code === 4013 || code === 4014) {
-    const error = new Error('Discord Gateway Intents 配置不正确，请检查 Developer Portal 的 Bot 设置。');
+    const error = new Error(defaultTranslator('discord.intentsMisconfigured'));
     error.code = 'discord-intents';
     return error;
   }

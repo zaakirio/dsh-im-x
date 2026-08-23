@@ -728,7 +728,7 @@ test('stopping WhatsApp aborts a pending upload without another file or failure 
     ['first.txt'],
   );
   assert.equal(sent.some((content) => content.text?.includes('暂时未能发送')), false);
-  assert.equal(sent.some((content) => content.text === '消息处理失败，请稍后重试。'), false);
+  assert.equal(sent.some((content) => content.text === tr('bridge.messageFailed')), false);
 });
 
 test('WhatsApp runtime answers self-chat without processing its own reply echo', async () => {

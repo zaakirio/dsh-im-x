@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createDingTalkCardStream } from '../../../src/channels/dingtalk/dingtalk-card-stream.mjs';
+import { defaultTranslator as tr } from '../../../src/i18n/index.mjs';
 
 function deferred() {
   let resolve;
@@ -194,6 +195,6 @@ test('a failed final frame closes the delivered card once and requests text fall
 
   assert.equal(fixtureValue.calls.finish.length, 1);
   assert.equal(fixtureValue.calls.fail.length, 1);
-  assert.equal(fixtureValue.calls.fail[0].text, '消息处理失败，请稍后重试。');
+  assert.equal(fixtureValue.calls.fail[0].text, tr('bridge.messageFailed'));
   assert.notEqual(fixtureValue.calls.fail[0].signal, fixtureValue.calls.finish[0].signal);
 });
