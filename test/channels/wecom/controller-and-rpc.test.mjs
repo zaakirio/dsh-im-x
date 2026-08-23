@@ -6,6 +6,7 @@ import {
   createWecomRpcHandler,
   WECOM_ENDPOINTS,
 } from '../../../plugin-src/host/channels/wecom/rpc.mjs';
+import { defaultTranslator as tr } from '../../../src/i18n/index.mjs';
 
 test('Enterprise WeChat QR success stores Secret off-config and starts its runtime', async () => {
   const values = new Map();
@@ -86,7 +87,7 @@ test('Enterprise WeChat Bot ID and Secret binding stores credentials and starts 
   assert.equal(runtimeArgs.secret, 'manual-secret');
   assert.doesNotMatch(JSON.stringify(status), /manual-secret|remote-manual|secretRef/);
   await controller.sendConnectionTest(status.bots[0].botId);
-  assert.match(connectionTestText, /DeepSeek Harness 连接测试成功/);
+  assert.match(connectionTestText, new RegExp(tr('connection.testSuccess', { name: '' }).split('\n')[0]));
   assert.match(connectionTestText, /企业微信机器人（remote••••nual）/);
   await controller.close();
 });

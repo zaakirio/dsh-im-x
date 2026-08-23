@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { MultiBotDshFeishuController } from '../../../src/channels/feishu/multi-bot-controller.mjs';
+import { defaultTranslator as tr } from '../../../src/i18n/index.mjs';
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
@@ -784,7 +785,7 @@ test('connection test uses the selected bot runtime and shared message copy', as
   await fx.controller.initialize();
   assert.deepEqual(await fx.controller.sendConnectionTest(healthy.id), { sent: true });
   assert.deepEqual(fx.runtimes.get(healthy.id)[0].sentTests, [
-    '✅ DeepSeek Harness 连接测试成功\n这条消息由插件页面中的“机器人 healthy（cli_heal••••7890）”机器人卡片发出。',
+    tr('connection.testSuccess', { name: '机器人 healthy（cli_heal••••7890）' }),
   ]);
   await fx.controller.close();
 });

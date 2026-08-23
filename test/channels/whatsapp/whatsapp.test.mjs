@@ -857,7 +857,7 @@ test('WhatsApp controller delegates connection test copy to the current runtime'
   await controller.initialize();
   assert.deepEqual(await controller.sendConnectionTest(config.botId), { sent: true });
   assert.deepEqual(sent, [
-    '✅ DeepSeek Harness 连接测试成功\n这条消息由插件页面中的“Harness WhatsApp（1650••••0123）”机器人卡片发出。',
+    tr('connection.testSuccess', { name: 'Harness WhatsApp（1650••••0123）' }),
   ]);
 });
 

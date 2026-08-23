@@ -5,6 +5,7 @@ import {
   deriveDingtalkBotIdentity,
 } from '../../../src/channels/dingtalk/config-store.mjs';
 import { DingtalkController } from '../../../src/channels/dingtalk/dingtalk-controller.mjs';
+import { defaultTranslator as tr } from '../../../src/i18n/index.mjs';
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
@@ -152,7 +153,7 @@ test('successful QR poll stores secret then config then starts runtime without p
   assert.equal(controller.status().totals.connected, 1);
   await controller.sendConnectionTest(completed.botId);
   assert.equal(runtimes.connectionTests[0].botId, completed.botId);
-  assert.match(runtimes.connectionTests[0].text, /DeepSeek Harness 连接测试成功/);
+  assert.match(runtimes.connectionTests[0].text, new RegExp(tr('connection.testSuccess', { name: '' }).split('\n')[0]));
   assert.match(runtimes.connectionTests[0].text, /钉钉机器人（ding••••vate）/);
   await controller.close();
 });

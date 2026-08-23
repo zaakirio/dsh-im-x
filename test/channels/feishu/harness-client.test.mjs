@@ -14,6 +14,7 @@ import {
   outboundArtifactRegistry,
   releaseOutboundArtifact,
 } from '../../../src/channels/shared/semantic/artifact.mjs';
+import { defaultTranslator as tr } from '../../../src/i18n/index.mjs';
 
 function deferred() {
   let resolve;
@@ -795,5 +796,5 @@ test('HarnessReplyTracker emits tool progress without exposing tool results', ()
 
   assert.deepEqual(tracker.consume([
     { type: 'tool/result', seq: 4, data: { turn: 1, step: 1, secret: 'not rendered' } },
-  ]), { type: 'status', text: '正在整理结果…' });
+  ]), { type: 'status', text: tr('bridge.finalizing') });
 });
