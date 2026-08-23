@@ -1,242 +1,272 @@
 <p align="center">
-  <img src="assets/logo-dsh-im-connecting-readme-3x2.png" alt="DSH-IM — Connecting DeepSeek Harness" width="420" height="280" align="middle">&nbsp;&nbsp;
-  <img src="assets/logo-plugin-phone.png" alt="DSH-IM phone logo" width="280" height="280" align="middle">
+  <img src="assets/logo.svg" alt="dsh-im-x" width="420" height="280">
 </p>
 
 ---
 
 <div align="center">
-  <p><strong>让 DeepSeek Harness 触手可及</strong></p>
-  <p><strong>Connecting DeepSeek Harness</strong></p>
+  <p><strong>DeepSeek Harness, in your language</strong></p>
 
   <p>
-    <img src="https://dsh-im-random-badge.xmanrui-dsh-im.workers.dev" alt="滑动变祖器：今天是梁子或今天是梁圣（随机）">
-    <a href="LICENSE"><img src="https://img.shields.io/github/license/xmanrui/dsh-im" alt="MIT 许可证"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
     <img src="https://img.shields.io/badge/agent-DeepSeek%20Harness-5865f2" alt="DeepSeek Harness">
-    <a href="https://dshfind.com/zh/plugins/xmanrui/dsh-im?ref=badge"><img src="https://dshfind.com/api/badge/xmanrui/dsh-im?lang=zh" alt="dshfind"></a>
-    <a href="https://dshfind.com/zh/plugins/xmanrui/dsh-im"><img src="https://img.shields.io/badge/dshfind-%E5%88%86%E7%B1%BB%E7%AC%AC%E4%B8%80-d97706" alt="dshfind: 分类第一"></a>
+    <img src="https://img.shields.io/badge/node-%3E%3D22.19-5fa04e" alt="Node >= 22.19">
+    <img src="https://img.shields.io/badge/languages-English%20%C2%B7%20%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-8b5cf6" alt="English and Simplified Chinese">
   </p>
 
   <p>
-    <img src="https://img.shields.io/badge/%E5%BE%AE%E4%BF%A1-07C160?logo=wechat&amp;logoColor=white" alt="微信">
-    <img src="https://img.shields.io/badge/%E9%A3%9E%E4%B9%A6-3370FF?logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTcuMiA0LjVoNy42YzEuMiAwIDIuMS41NSAyLjcgMS41OCAxLjA1IDEuOCAxLjU1IDMuNDUgMS41OCA0Ljk1LTIuMDQtLjYyLTQuMi0uMTUtNi4yMiAxLjQ1QzExLjMgOS43IDkuNDIgNy4wNCA3LjIgNC41WiIvPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik0xMC44IDEzLjU1YzMuMy0yLjkzIDUuNzItNC4yNCA5LjQ3LTIuNTItMS4yIDEuNDUtMi4yNyA0LjE4LTMuODYgNS40My0xLjY3IDEuMzEtMy45LjUtNS42MS0uNjR2LTIuMjdaIi8%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTQuNCA4LjM1YzMuNDcgMy42MSA3LjI1IDYuMSAxMC4zMyA1LjcgMS4wNi0uMTQgMi4yLS43MiAzLjQtMS43Mi0xLjA0IDIuNjUtMi42IDQuOC01LjA2IDYtMi40NiAxLjItNS41Ni41Mi03LjQyLS43MkEyLjc2IDIuNzYgMCAwIDEgNC40IDE1LjNWOC4zNVoiLz48L3N2Zz4%3D" alt="飞书">
-    <img src="https://img.shields.io/badge/%E9%92%89%E9%92%89-1677FF?logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTM3LjA1IDIyLjc4M2MtNi43NTgtNS4yMTYtMTQuMzc4LTEyLjEyOC0yMi43My0xOS41MzgtLjY1NS0uNTg1LTEuMjQyLS4zNTQtMS41MzYuNDItMS44OCA0Ljk3My0uMDU4IDkuMzg2IDIuODg5IDExLjkzMnM3LjM2OCA0LjkxMiAxMC4wNTggNi4xNTVjLjEwNS4wNDkuMDEzLjIwMy0uMDkzLjE2My00Ljk1My0yLjE4Mi04LjM5Ny0zLjc2NS0xMy4wNy03LjM2OC0uNDk3LS4zODgtMS4wMS0uMjQyLTEuMDcuNTIxLS4zODQgNC43NDggMi42NTcgOC40ODMgNi4wNTggOS43NDUgMi4xLjc4MSA0LjM5OCAxLjIxMiA2LjUzIDEuNDc0LjEwOS4wMTUuMDg0LjE3OC0uMDI3LjE3OC0yLjc0Ny4wMS02LjA1OC0uNjU0LTguOTM1LTEuNzUxLS42MDYtLjIzMy0uODE4LjI1LS43MjIuNjMzLjQ5MSAyLjAwOCAyLjk3NCA1LjA3NiA2LjkyNiA1LjczYTEyIDEyIDAgMCAwIDIuMjI4LjExNWMuMTY0IDAgLjIwOC4wODkuMTU0LjIxN3EtMi42ODUgNC42LTIuODAzIDQuNzk3Yy0uMDkxLjE1Mi0uMDM2LjI3NS4xNTYuMjc1aDMuNTQzYy4xNjQgMCAuMjY0LjEwNi4xOC4yNDZsLTQuOTU4IDguMTk2Yy0uMTkxLjMyOC4wMzUuNTY1LjM5NS4zMDFzMTUuMjEyLTExLjEzMyAxNS42MzYtMTEuNDQ4Yy4xOTUtLjE0Mi4xNDgtLjMyNy0uMTI0LS4zMjdoLTMuMThjLS4yMDYgMC0uMjUyLS4xNC0uMTExLS4yOC4xNC0uMTQxIDMuNjAyLTMuNTk0IDQuODM3LTQuODg4IDEuMjgzLTEuMzUgMS45MzgtMy44MjUtLjIzMS01LjQ5OCIvPjwvc3ZnPg%3D%3D" alt="钉钉">
-    <img src="https://img.shields.io/badge/%E4%BC%81%E4%B8%9A%E5%BE%AE%E4%BF%A1-3370FF?logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjIuMzUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgZD0iTTE3LjcgMTQuNWMxLjA1LTEuMTIgMS42NS0yLjUyIDEuNjUtNC4wMyAwLTMuODItMy41OC02LjkyLTgtNi45MnMtOCAzLjEtOCA2LjkyIDMuNTggNi45MiA4IDYuOTJjMS4xNyAwIDIuMjgtLjIyIDMuMjgtLjYyIi8%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTE2LjEgMTUuMTVjLjctLjcgMS44My0uNyAyLjUzIDBzLjcgMS44MyAwIDIuNTMtMS44My43LTIuNTMgMC0uNy0xLjgzIDAtMi41M1pNMTkuMjUgMTMuNDVhMS4zNiAxLjM2IDAgMSAxIDEuOTIgMS45MiAxLjM2IDEuMzYgMCAwIDEtMS45Mi0xLjkyWk0xOS41NSAxOC4wNWExLjE2IDEuMTYgMCAxIDEgMS42NCAxLjY0IDEuMTYgMS4xNiAwIDAgMS0xLjY0LTEuNjRaTTE1LjI1IDE4Ljc1YS45Mi45MiAwIDEgMSAxLjMgMS4zLjkyLjkyIDAgMCAxLTEuMy0xLjNaIi8%2BPC9zdmc%2B" alt="企业微信">
-    <img src="https://img.shields.io/badge/QQ-1EBAFC?logo=qq&amp;logoColor=white" alt="QQ">
-    <img src="https://img.shields.io/badge/Slack-4A154B?logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTYgMTVhMiAyIDAgMSAxLTItMmgydjJabTEgMGEyIDIgMCAxIDEgNCAwdjVhMiAyIDAgMSAxLTQgMHYtNVptMi04YTIgMiAwIDEgMSAyLTJ2Mkg5Wm0wIDFhMiAyIDAgMSAxIDAgNEg0YTIgMiAwIDEgMSAwLTRoNVptOCAyYTIgMiAwIDEgMSAyIDJoLTJ2LTJabS0xIDBhMiAyIDAgMSAxLTQgMFY1YTIgMiAwIDEgMSA0IDB2NVptLTIgOGEyIDIgMCAxIDEtMiAydi0yaDJabTAtMWEyIDIgMCAxIDEgMC00aDVhMiAyIDAgMSAxIDAgNGgtNVoiLz48L3N2Zz4%3D" alt="Slack">
     <img src="https://img.shields.io/badge/Telegram-26A5E4?logo=telegram&amp;logoColor=white" alt="Telegram">
+    <img src="https://img.shields.io/badge/Slack-4A154B?logo=slack&amp;logoColor=white" alt="Slack">
     <img src="https://img.shields.io/badge/Discord-5865F2?logo=discord&amp;logoColor=white" alt="Discord">
     <img src="https://img.shields.io/badge/WhatsApp-25D366?logo=whatsapp&amp;logoColor=white" alt="WhatsApp">
+    <img src="https://img.shields.io/badge/Feishu-3370FF" alt="Feishu">
+    <img src="https://img.shields.io/badge/WeChat-07C160?logo=wechat&amp;logoColor=white" alt="WeChat">
+    <img src="https://img.shields.io/badge/WeCom-3370FF" alt="WeCom">
+    <img src="https://img.shields.io/badge/DingTalk-1677FF" alt="DingTalk">
+    <img src="https://img.shields.io/badge/QQ-1EBAFC?logo=qq&amp;logoColor=white" alt="QQ">
   </p>
 
-  <p><strong>简体中文</strong> · <a href="README.en.md">English</a></p>
+  <p><strong>English</strong> · <a href="README.zh-CN.md">简体中文</a></p>
 </div>
 
 ---
 
-## 简介
+## Introduction
 
-通过扫码、App Manifest 或已有机器人凭据把 IM 机器人接入 DeepSeek Harness，并让本机 Harness 主动连接公网 AI Office。一个插件、一个设置入口，统一管理九种 IM 渠道和 AI Office Connector。**每个 IM 渠道都支持接入多个机器人**，各机器人的连接状态、工作区和会话绑定彼此独立。
+Connect IM bots to DeepSeek Harness by scanning a QR code, using an App Manifest, or entering existing bot credentials, and let the local Harness connect outward to a public AI Office.
+One plugin and one settings entry manage nine multi-bot IM channels and the AI Office Connector.
 
-Connect IM bots to DeepSeek Harness by scanning a QR code, using an App Manifest, or entering existing bot credentials, and let the local Harness connect outward to a public AI Office. One plugin and one settings entry manage nine multi-bot IM channels and the AI Office Connector.
+`dsh-im-x` is an English-first fork of [dsh-im](https://github.com/xmanrui/dsh-im) by [xmanrui](https://github.com/xmanrui).
+It keeps every channel and feature of the original and replaces its hardcoded Chinese copy with a real translation layer, so the same bot can talk to an English team and a Chinese team from one install.
+See [Credits](#credits) and [What this fork changes](#what-this-fork-changes).
 
-## 界面
+## Language support
 
-![IM机器人页面](docs/images/imbot.png)
+Every user-facing string comes from a message catalogue rather than being written into channel code.
+English is the default and the source of truth; Simplified Chinese ships alongside it with full coverage.
 
-## 当前内置渠道
+A conversation's language is resolved in this order:
 
-| 渠道 | 接入方式 | 消息与回复 |
+1. `/lang <code>` in the chat. The most specific and most recent thing the user asked for, so it wins. `/lang` on its own reports the current language and lists what is available; `/lang auto` clears the override.
+2. The bot's configured locale. An operator who pinned a language did so deliberately, so a visiting user's phone setting does not silently override it.
+3. The locale the channel reports for the sender, used only when the bot is left on `auto`. Telegram, Slack, and Discord all report one, in three different formats, and each is negotiated down to a catalogue the build actually ships.
+
+Some behaviour follows from this rather than being separate features:
+
+- Approval replies are accepted in every supported language, so `approve`, `deny`, `批准`, and `拒绝` all work no matter which language the prompt was rendered in.
+- Telegram's command menu is registered once per language through `setMyCommands`, so each user sees the menu in their own client language.
+- Relative timestamps in `/sessionlist` are formatted with `Intl` for the active locale instead of a fixed date pattern.
+- The prompt sent for an image with no caption, and the AI Office handoff prompt, are both translated, so the agent is not asked a question in a language the user does not read.
+
+### Adding a language
+
+Add a locale module under `src/i18n/locales/`, register it in `src/i18n/index.mjs`, and give it a display name.
+A parity test then requires the new catalogue to cover every English key and to use the same placeholders, so a partial translation fails the build rather than reaching a user as a mix of two languages.
+
+## Interface
+
+![IM bot settings page](docs/images/imbot.png)
+
+_Screenshot from upstream; the settings page renders in the language the Harness client is set to._
+
+## Built-in channels
+
+| Channel | Setup | Messaging and replies |
 | --- | --- | --- |
-| 飞书 | 扫码创建机器人，或使用 App ID + App Secret 手动绑定 | 长连接接收消息；通过飞书流式卡片显示思考、工具进度和回答 |
-| 微信 | 使用微信扫码绑定机器人 | 腾讯 iLink 长轮询收发消息 |
-| 钉钉 | 扫码创建机器人，或使用 Client ID + Client Secret 手动绑定 | 钉钉 Stream 长连接；通过 AI Card 流式显示回答 |
-| 企业微信 | 使用企业微信 App 扫码创建智能机器人，或使用 Bot ID + Secret 手动绑定 | 官方 WebSocket 长连接；原生显示“正在思考中”、工具执行进度和流式回答 |
-| QQ | 使用手机 QQ 扫码创建机器人，或使用 AppID + AppSecret 手动绑定 | WebSocket 长连接；私聊显示“正在输入”和流式回答，群聊被 @ 后回复 |
-| Slack | 使用预置 App Manifest 创建应用，再填写 Bot Token（`xoxb-`）和 App Token（`xapp-`） | Socket Mode 长连接；私聊直接回复，频道被 @ 后响应，优先使用官方流式消息 API |
-| Telegram | 使用 @BotFather 生成的 Bot Token | Bot API 长轮询；默认私聊直接响应、群聊被提及或回复时响应，也可为每个机器人独立启用私聊白名单安全模式；通过编辑消息流式显示回答 |
-| Discord | 使用 Developer Portal 生成的 Bot Token | Gateway v10 长连接；私信直接回复，服务器频道被提及时响应，通过编辑消息流式显示回答 |
-| WhatsApp | 使用手机 WhatsApp 扫码关联设备 | WhatsApp Web 长连接；显示已读和“正在输入”，再发送最终回答 |
+| Feishu | Create a bot by QR code, or bind one with App ID + App Secret | Persistent connection for incoming messages; streaming cards show thinking, tool progress, and replies |
+| WeChat | Scan a QR code to bind a WeChat bot | Tencent iLink long polling for sending and receiving messages |
+| DingTalk | Create a bot by QR code, or bind one with Client ID + Client Secret | DingTalk Stream connection; streaming replies through AI Cards |
+| WeCom | Create an intelligent bot by QR code, or bind one with Bot ID + Secret | Official WebSocket connection; native thinking state, tool progress, and streaming replies |
+| QQ | Create a bot with mobile QQ QR scanning, or bind one with AppID + AppSecret | WebSocket connection; native typing and streaming replies in private chats, replies when mentioned in groups |
+| Slack | Create an app from the bundled App Manifest, then enter a Bot Token (`xoxb-`) and App Token (`xapp-`) | Socket Mode connection; direct DM replies, mention-only channel replies, and preferred native streaming API |
+| Telegram | Enter a Bot Token generated by @BotFather | Bot API long polling; DMs work by default and groups respond to mentions or replies, while each bot can optionally enable a private-DM allowlist; streaming uses message edits |
+| Discord | Enter a Bot Token generated in the Developer Portal | Gateway v10 connection; direct DM replies, mention-only server replies, and streaming through message edits |
+| WhatsApp | Scan a QR code with mobile WhatsApp to link a device | WhatsApp Web connection; read receipt and typing indicator followed by the final answer |
 
-其他 IM 平台可继续按同一渠道适配器结构接入。
+Other IM platforms can be added through the same channel-adapter structure.
 
-九个内置渠道均支持把 JPEG、PNG、WebP 图片，以及以图片文件方式发送的 GIF，连同可选文字说明发送给 Harness；单张图片上限为 5 MB，单条消息中的图片总大小上限为 20 MB。
+All nine built-in channels can send JPEG, PNG, and WebP images, plus GIFs sent as image files, with optional captions to Harness. Each image is limited to 5 MB, and images in one message are limited to 20 MB in total.
 
-### 结果文件回传
+### Result-file delivery
 
-九个内置渠道均已实现把 Harness 可读取的文件作为渠道原生附件回传。已有文件和当前任务新生成的文件都可以直接发送；该能力对所有已连接机器人默认可用，无需开关或机器人白名单，原有文字、图片、流式回复、命令和会话行为保持不变。
+All nine built-in channels can return any file readable by Harness as a native channel attachment. Existing files and files created by the current task can both be sent directly. The capability is available to every connected bot by default, with no switch or per-bot allowlist, while existing text, image, streaming, command, and Session behavior remains unchanged.
 
-模型调用文件回传工具后，插件把指定文件交给当前渠道的原生附件接口。插件不额外设置文件来源、创建时间、工作区边界、扩展名、内容、数量、大小或有效期规则；文件只需真实存在且可读取。渠道平台仍可能依据自身权限、配额、文件能力或账号等级拒绝发送，插件会按平台返回结果提示。
+After the model calls the file-return tool, the plugin hands the specified file to the channel's native attachment API. The plugin adds no rules for file origin, creation time, workspace boundary, extension, content, count, size, or lifetime; the file only needs to exist and be readable. A channel may still reject delivery according to its own permissions, quota, file capability, or account tier, and the plugin reports that provider result.
 
-| 渠道 | 平台要求 |
+| Channel | Platform requirements |
 | --- | --- |
-| 微信 | 当前绑定协议和会话需支持原生文件消息，实际可发送范围以微信接口返回为准。 |
-| 飞书 | 飞书文件上传接口要求文件非空且不超过平台 30 MB；应用需有租户权限 `im:resource`（“读取与上传图片或文件资源”）。内置扫码流程新建应用时默认申请该权限；已有或手动绑定的应用仍需在开发者后台添加并完成必要审批。飞书开发者后台当前没有单独的 `im:resource:upload` 权限。 |
-| 钉钉 | 应用需开通 `qyapi_base`，机器人需具备文件消息能力；实际格式和大小以当前 OAPI 与机器人能力返回为准。 |
-| 企业微信 | 应用需具备素材上传和文件消息能力，实际可发送范围以企业微信接口返回为准。 |
-| QQ | 机器人需具备文件消息能力，并受 QQ 当日文件上传配额约束；额度耗尽时会明确提示稍后重试。 |
-| Slack | Bot Token 需有 `files:write`；实际大小上限由 Workspace 当前策略决定。已有 App 新增或变更 Scope 后，必须重新授权/安装 App 并重新连接机器人。 |
-| Telegram | 机器人必须能在当前聊天发送文档，实际可发送范围以 Bot API 返回为准。 |
-| Discord | 机器人需有 **Send Messages**、**Attach Files** 和 **Read Message History** 权限；实际附件额度由当前账号与服务器能力决定。 |
-| WhatsApp | 当前绑定会话需支持 Document Message，实际可发送范围以 WhatsApp/Baileys 返回为准。 |
+| WeChat | The current binding protocol and conversation must support native file messages; the WeChat API response determines the actual range. |
+| Feishu | Feishu's file-upload API requires a non-empty file no larger than the platform's 30 MB limit. The app needs the `im:resource` tenant scope (**Read and upload images or other files**). Apps created through the built-in QR flow request it by default; existing or manually connected apps still need it added and approved. The Feishu developer console currently has no separate `im:resource:upload` scope. |
+| DingTalk | The app needs `qyapi_base`, and the bot must support file messages. The current OAPI and bot capability determine the accepted formats and sizes. |
+| WeCom | The app needs media-upload and file-message capability; the WeCom API response determines the actual range. |
+| QQ | The bot needs file-message capability and remains subject to QQ's daily upload quota; the bot reports when the quota is exhausted. |
+| Slack | The Bot Token needs `files:write`; the Workspace's current policy determines the actual size limit. After changing scopes, re-authorize/reinstall the App and reconnect the bot. |
+| Telegram | The bot must be allowed to send documents in the current chat; the Bot API response determines the actual range. |
+| Discord | The bot needs **Send Messages**, **Attach Files**, and **Read Message History**. The current account and server capability determine the actual attachment allowance. |
+| WhatsApp | The linked session must support Document Messages; the WhatsApp/Baileys response determines the actual range. |
 
 ## AI Office Connector
 
-「AI Office」页让本机 Harness 主动连接公网 Office，本机无需公网 IP、端口转发或 WebSocket 服务。Device Token 只写入 Harness 凭据存储；普通配置文件仅保存设备 ID、Office Origin、工作区 alias 和 Instruction Preset alias。Office 只能选择 alias，不会收到本机绝对路径。
+The **AI Office** page lets the local Harness connect outward to a public Office. The machine needs no public IP, forwarded port, or WebSocket server. The Device Token is written only to the Harness credential provider; the ordinary config file contains only the device ID, Office origin, workspace aliases, and instruction-preset aliases. Office selects aliases and never receives local absolute paths.
 
-当前协议版本为 `office-harness.v1`。连接器使用 `POST /api/harness/connector/heartbeat` 完成鉴权和能力握手，再以 `GET /api/harness/connector/stream` 建立 SSE 下行；设置页会从 Office Base URL 自动展示全部固定 Hook，并在断线后按退避策略自动重连。
+The current protocol is `office-harness.v1`. The connector authenticates and advertises capabilities with `POST /api/harness/connector/heartbeat`, then opens the downstream event plane with `GET /api/harness/connector/stream` over SSE. The settings page derives every fixed hook from the Office Base URL and reconnects with backoff after a disconnect.
 
-Office 的 `job.available` 会触发本机拉取任务、校验 Workspace/Preset alias、领取 90 秒租约并每 30 秒续租。连接器创建独立 Harness Session，把状态、工具名和增量文字安全回传 Office，终态只允许写入一次。Harness 发起的工具审批或补充问题会进入 Office 人工面板；批准、拒绝或文字答案再经 SSE 回到原 Session，断线时由租约与 Heartbeat 恢复。
+A `job.available` event makes the local connector fetch the payload, validate Workspace/Preset aliases, claim a 90-second lease, and renew it every 30 seconds. It creates an isolated Harness Session, reports safe status/tool/text progress, and writes a terminal result exactly once. Tool approvals and follow-up questions surface in Office; approve, reject, and text answers return over SSE to the original Session. Heartbeats and leases recover from dropped connections.
 
-Heartbeat 成功响应必须是 JSON：`{"ok":true,"protocolVersion":"office-harness.v1"}`。这使「连接测试通过」代表命中了兼容的 Office Connector，而不只是某个碰巧返回 200 的网址。
+A successful heartbeat response must be JSON: `{"ok":true,"protocolVersion":"office-harness.v1"}`. This makes a successful connection test proof of a compatible Office Connector instead of any URL that happens to return 200.
 
-## 安装
+## Installation
 
-推荐从 npm 安装已发布的稳定版本：
-
-```sh
-dsh plugin --profile web add -w @xmanrui/dsh-im
-```
-
-重启 `dsh web`，然后打开「设置 → 插件 → IM机器人」。
-
-如需试用尚未发布到 npm 的最新代码，可以改用 GitHub 源安装器：
+Install the published stable release from npm (recommended):
 
 ```sh
-npx -y github:xmanrui/dsh-im install
+dsh plugin --profile web add -w dsh-im-x
 ```
 
-GitHub 源安装会直接拉取并构建 Git 依赖；pnpm 10 及以上版本可能要求先在 profile 的 `pnpm-workspace.yaml` 中允许该依赖执行构建脚本。普通用户建议优先使用 npm 稳定版。
+Restart `dsh web`, then open **Settings → Plugins → IM Bot**.
 
-安装后，在对应渠道页面按照内置引导完成扫码或凭据配置。所有 Secret 和 Token 只提交给本机 Harness Host，并写入受保护的凭据存储；状态接口和机器人列表不会回传这些凭据。
+To try the latest code before it is published to npm, use the GitHub-source installer instead:
 
-如果本机必须通过正向代理访问飞书，请在启动 `dsh web` 前把 `HTTPS_PROXY` 设置为包含协议的 HTTP 代理 URL（例如 `http://proxy:8080`；也支持小写 `https_proxy`，并兼容使用 `HTTP_PROXY` 作为回退），修改后重启 Host。飞书注册和凭据验证会复用 SDK 的代理感知 HTTP 客户端，消息长连接会显式通过这个代理建立 WebSocket；长连接目前不读取 `ALL_PROXY` 或 `NO_PROXY`。
+```sh
+npx -y dsh-im-x install
+```
 
-| 默认行为 | 说明 |
+A GitHub-source installation fetches and builds a Git dependency directly. With pnpm 10 or newer, the profile may first need an `allowBuilds` entry in `pnpm-workspace.yaml`. Most users should prefer the stable npm release.
+
+After installation, follow the built-in instructions on each channel page to scan a QR code or enter credentials. Secrets and Tokens are sent only to the local Harness Host and stored through its protected credential provider; status responses and bot lists never return them.
+
+If this machine must use a forward proxy to reach Feishu, set `HTTPS_PROXY` to a full HTTP proxy URL before starting `dsh web` (for example, `http://proxy:8080`; lowercase `https_proxy` is also supported, with `HTTP_PROXY` accepted as a fallback), then restart the Host after changing it. Feishu registration and credential verification reuse the SDK's proxy-aware HTTP client, while the message WebSocket explicitly uses that proxy; the WebSocket path does not currently read `ALL_PROXY` or `NO_PROXY`.
+
+| Default behavior | Description |
 | --- | --- |
-| 机器人工作区 | 每个机器人独立保存工作区。新机器人默认使用 Host 当时的工作目录；之后可在机器人卡片中修改。 |
-| Agent Preset | 每个机器人可在设置页卡片中选择 Agent Preset。未选择时跟随 Host 的 `agent-presets.default`；渠道级 `config.agentPreset` 只作为该渠道之后新接入机器人的默认值。切换不会修改或清空已有会话；若当前聊天已有会话，需先发送 `/new`，再发送一条普通消息，才会按新选择创建会话。 |
+| Bot workspace | Each bot stores its workspace independently. New bots start with the Host's current working directory, which can later be changed from the bot card. |
+| Agent Preset | Each bot can choose an Agent Preset on its settings card. When none is chosen, new Sessions follow the Host's `agent-presets.default`. A channel-level `config.agentPreset` is only the default for later new bots on that channel. Changing the preset never modifies or clears existing Sessions; if the current chat already has a Session, send `/new` and then a regular message to create one with the new selection. |
 
-每个 Telegram 机器人都可以在自己的卡片中切换访问模式。旧机器人和新接入机器人均默认使用**兼容模式**：私聊直接响应，群聊仅在提及机器人或回复机器人消息时响应。只有主动切换到**安全模式（私聊白名单）**后，机器人才会忽略全部群聊，并只接受该机器人白名单中的数字 User ID。白名单每行一个 ID、按机器人独立保存；切回兼容模式时会保留但不使用，再切回安全模式即可继续使用。安全模式的空白名单会拒绝该机器人的所有入站消息。
+Each Telegram bot has its own access-mode control on its bot card. Existing and newly connected bots both default to **Compatible mode**: DMs receive replies, while group messages require a mention of or reply to the bot. Restrictions apply only after explicitly switching that bot to **Safe mode (private-chat allowlist)**. Safe mode ignores every group message and admits only numeric User IDs in that bot's allowlist. Enter one ID per line. Switching back to Compatible mode retains the allowlist without enforcing it, so it is available when Safe mode is enabled again. An empty allowlist in Safe mode rejects all inbound messages for that bot.
 
-## 机器人命令
+## Bot commands
 
-| 命令 | 作用 |
+| Command | Description |
 | --- | --- |
-| `/help` | 显示机器人支持的命令和用法。 |
-| `/new` | 解除当前聊天的会话绑定，让下一条普通消息开启全新 Harness 会话。 |
-| `/status` | 检查当前机器人与 DeepSeek Harness 的连接状态。 |
-| `/models` | 按序号列出当前配置的全部可用模型。 |
-| `/model` | 查看当前聊天绑定会话正在使用的模型。 |
-| `/model <序号或 Provider/模型ID>` | 切换当前聊天绑定会话的模型。 |
-| `/presetlist` | 按序号列出 Host 当前可用的 Agent Preset，并标记 Host 默认项和当前机器人的选择。 |
-| `/preset` | 查看当前机器人的新会话 Agent Preset 设置。 |
-| `/preset <序号或 Preset ID>` | 设置当前机器人的 Agent Preset；纯数字 ID 使用 `/preset id:<ID>`。 |
-| `/preset --default` | 清除当前机器人的显式选择，让后续新 Session 跟随 Host 默认。 |
-| `/stop` | 立即停止当前聊天正在运行的任务，并保留尚未开始的排队消息。 |
-| `/steer <补充指令>` | 把补充指令立即加入当前聊天正在运行的任务。 |
-| `/compact` | 立即压缩当前聊天绑定会话的较早上下文。 |
-| `/workspace <工作区绝对路径>` | 切换当前机器人的 Harness 工作区。 |
-| `/workspacelist` | 列出当前 Harness Host 上仍然存在的工作区绝对路径。 |
-| `/sessionlist [工作区序号或绝对路径]` | 列出指定工作区登记的所有会话 ID 和标题；省略参数时使用当前工作区。 |
-| `/session <Session ID>` | 将当前聊天绑定到指定的已有 Harness 会话。 |
-| 交互式提问 | 回复选项序号、选项文字或自定义文字；多选时用逗号分隔。 |
-| 远程审批 | 回复 `批准` / `拒绝` / `同意` / `不同意` / `yes` / `no`。 |
+| `/help` | Show the commands and usage supported by the bot. |
+| `/new` | Unbind the current chat so its next ordinary message starts a new Harness Session. |
+| `/status` | Check the connection between the current bot and DeepSeek Harness. |
+| `/models` | List every currently configured model with a number. |
+| `/model` | Show the model used by the Session bound to this chat. |
+| `/model <number or provider/model-id>` | Switch the model for the Session bound to this chat. |
+| `/presetlist` | List the Host's currently available Agent Presets, marking the Host default and this bot's selection. |
+| `/preset` | Show this bot's Agent Preset setting for new Sessions. |
+| `/preset <number or Preset ID>` | Set this bot's Agent Preset; use `/preset id:<ID>` for a numeric ID. |
+| `/preset --default` | Clear this bot's explicit selection so later new Sessions follow the Host default. |
+| `/stop` | Immediately stop this chat's running task while preserving work that has not started. |
+| `/steer <additional instruction>` | Inject an additional instruction into this chat's running task. |
+| `/compact` | Immediately compact older context in the Session bound to the current chat. |
+| `/workspace <absolute workspace path>` | Switch the current bot's Harness workspace. |
+| `/workspacelist` | List workspace absolute paths that still exist on the current Harness Host. |
+| `/sessionlist [workspace number or absolute path]` | List every registered session ID and title in the selected workspace; omit the argument to use the current workspace. |
+| `/session <Session ID>` | Bind the current chat to an existing Harness session. |
+| Interactive question | Reply with an option number, option label, or custom text; separate multiple choices with commas. |
+| `/lang` | Show the language of this chat and the languages available. |
+| `/lang <code>` | Switch this chat to that language; `/lang auto` clears the override. |
+| Remote approval | Reply with `approve` / `deny` / `yes` / `no`. Chinese decision words (`批准` / `拒绝` / `同意` / `不同意`) are accepted too, in any language. |
 
-示例：先发送 `/models`，再发送 `/model 2` 切换到列表中的第 2 个模型；先发送 `/presetlist`，再发送 `/preset 2` 为当前机器人选择第 2 个 Agent Preset。其他命令示例：`/help`、`/new`、`/status`、`/model deepseek-official/deepseek-v4-pro`、`/preset marketing-jeep`、`/preset --default`、`/steer 只检查配置文件`、`/stop`、`/compact`、`/workspace /Users/alice/projects/my-app`、`/sessionlist 2`、`/sessionlist /Users/alice/projects/my-app` 或 `/session session-id`
+Example: send `/models`, then `/model 2` to switch to the second model in the list; send `/presetlist`, then `/preset 2` to select the second Agent Preset for this bot. Other examples: `/help`, `/new`, `/status`, `/model deepseek-official/deepseek-v4-pro`, `/preset marketing-jeep`, `/preset --default`, `/steer inspect only the configuration file`, `/stop`, `/compact`, `/workspace /Users/alice/projects/my-app`, `/sessionlist 2`, `/sessionlist /Users/alice/projects/my-app`, or `/session session-id`
 
-Slack 桌面端若未注册同名的原生 Slash Command，会拦截直接以 `/` 开头的消息。此时请加一个前导空格发送，例如 ` /presetlist` 或 ` /preset 2`；插件命令层会去除首尾空白，执行效果与无空格命令相同。
+If the Slack desktop app has no native Slash Command registered with the same name, it intercepts messages that begin directly with `/`. Send the command with one leading space instead, for example ` /presetlist` or ` /preset 2`; the plugin command layer trims surrounding whitespace, so it executes exactly like the unspaced form.
 
-### 命令说明
+### Command details
 
-- `/help` 不需要参数，也不会创建会话；它会返回当前机器人支持的完整命令列表。
-- `/status` 不需要参数，也不会向模型发送消息或改变会话绑定；它用于确认当前机器人能够连接 DeepSeek Harness。
-- `/new` 只解除当前聊天在 dsh-im 中保存的会话绑定，不会删除、清空或归档旧 Session。下一条普通消息会在当前工作区创建并绑定一个新 Session。任务正在运行或等待问题、审批时，应先完成交互或使用 `/stop`，再使用 `/new`。
-- `/models` 不需要参数，也不会创建会话。它为 Harness 当前配置的全部可用模型分配序号，同时显示可稳定复制的 `Provider/模型ID`；某个 Provider 查询失败时，其他 Provider 的结果仍会显示。
-- `/model` 不带参数时只查看当前会话模型；带参数时接受 `/models` 列出的序号或完整模型 ID，例如 `/model 2`。完整 ID 必须精确匹配。聊天尚无会话时，有效的切换命令会创建并绑定一个空白会话，但不会触发模型回复。切换只影响当前会话；Harness 还会尝试把它保存为以后新会话的默认模型，已有其他会话不受影响。
-- 正在运行任务或等待审批、问题回答时不能切换模型；请等待完成，或先使用 `/stop`。含图片的会话无法切换到不支持图片输入的模型。
-- `/presetlist` 不需要参数，也不会创建会话。它每次都读取 Host 当前可用的 Agent Preset，显示名称、稳定 ID、Host 默认项和当前机器人的选择；已删除或损坏的当前选择会保留并标记为“已不可用”，不会被自动清除。列表只公开安全的名称和 ID，不公开 Preset 路径、错误或其他 Host 内部字段。
-- `/preset` 不带参数时查看当前机器人的“新会话设置”，不是查看或修改当前 Session。带参数时接受最近一次 `/presetlist` 在当前聊天中显示的序号或完整 ID；纯数字 ID 使用 `/preset id:<ID>`。选择序号时会先按该次列表解析 ID，再用 Host 最新目录复验，目录已经变化时会要求重新列出。
-- `/preset --default` 清除当前机器人的显式覆盖值，让以后新建的 Session 在创建时跟随 Host 当前默认；显式选择一个恰好等于 Host 默认的 ID 则会固定该 ID。目录暂时不可读时仍可恢复为跟随 Host 默认。
-- Agent Preset 修改是机器人级配置，会影响该机器人所有聊天以后创建的新 Session，但不会修改、停止、解绑或重建已有 Session，也不会自动执行 `/new`。若当前聊天已有会话，继续发送消息仍使用原 Session；发送 `/new` 后的下一条普通消息才会按新设置创建 Session。任务正在运行或等待交互时也可查询或修改 Preset，因为命令不会触碰当前 Session。
-- `/stop` 和 `/steer` 只控制当前聊天自己发起的运行任务，即使多个聊天绑定同一个 Session，也不会有意控制其他聊天的任务。`/stop` 不删除会话或历史，并保留尚未开始的排队消息；重复发送是安全的。
-- `/steer` 只接受文字，可包含多行；它不会创建新会话或第二个任务。没有运行任务时请直接发送普通消息；等待审批或问题回答时请先处理交互，或使用 `/stop`。
-- `/compact` 只作用于当前聊天已经绑定的 Harness 会话，不会把命令发送给模型。当前聊天尚未创建会话、会话正在生成回复或没有可压缩历史时，机器人会直接返回对应状态。
-- 只接受已经存在的绝对目录；路径无效时机器人会返回具体提示和正确用法。
-- `/workspacelist` 不需要参数。它合并 Harness 全局登记项与当前机器人的路径；当前路径仍存在且可安全显示时会排在首位并标记为“当前”。结果可直接复制到 `/workspace` 命令。
-- `/sessionlist` 的数字参数按命令执行时与 `/workspacelist` 相同的最新顺序解析；也可使用绝对路径直接指定工作区。结果会回显最终选中的路径。
-- `/sessionlist` 会列出该工作区登记的所有会话。已归档会话会标记为“已归档”；空白会话和子代理会话在它们归属该工作区时也会列出；没有标题的会话显示为“暂无标题”。结果中的 ID 可直接用于 `/session Session ID`。
-- `/session` 只接受一个由 `/sessionlist` 获得的 Session ID。它不会新建会话或立即向模型发送消息；绑定成功后，当前聊天的后续消息会继续该会话。普通归档会话可以绑定但不会自动取消归档，子代理会话不能绑定。
-- `/session` 会自动定位会话唯一所属的工作区。同工作区绑定只替换当前聊天的映射；跨工作区绑定会切换该机器人的工作区、清除该机器人所有聊天的旧会话映射，再绑定当前聊天，因此会影响该机器人的其他聊天。已经开始生成的回复仍可完成。
-- 工作区切换和会话绑定只会清除或替换 dsh-im 的聊天映射，不会删除、清空或归档任何旧 Session 内容；旧 Session 仍可再次列出和绑定。
-- 任何已在对应平台可见范围内、能够正常向机器人发消息的用户都可以执行这些命令，不区分管理员和普通用户。Telegram 兼容模式遵循原有私聊及群聊提及/回复规则；安全模式只允许当前机器人白名单中的私聊用户执行，群聊命令始终忽略。
-- Agent Preset 名称和 ID 来自同一个 Harness Host，且任何有命令权限的用户都能修改该机器人所有聊天未来新 Session 的 Preset；请只向可信用户开放 `/presetlist` 和 `/preset`。
-- 工作区列表来自 Harness Host 的全局登记信息，可能包含其他机器人、其他渠道或非 IM 项目的本机绝对路径。请将机器人可见范围限制给可信用户。
-- 会话列表同样来自该全局 Harness Host；会话 ID 和标题可能属于其他机器人、其他渠道或非 IM 项目，并可能包含敏感元数据。开放命令前请确保所有可见用户都可信。
-- 任何能执行 `/session` 的用户都能接续所选会话，并通过后续消息写入会话或触发其可用工具。请只向可信用户开放机器人及其会话列表。
-- 切换成功后只清除当前机器人的旧 Harness 会话映射，不影响其他机器人。
-- 新工作区对后续消息生效；已经开始生成的回复会继续完成。
+- `/help` takes no arguments and never creates a Session. It returns the complete command list supported by the current bot, in that chat's language.
+- `/lang` takes no arguments and reports the chat's current language plus the languages this build ships. `/lang <code>` pins one for this chat only and confirms in the language just selected; `/lang auto` clears the override so the bot setting and the channel-reported locale apply again. It never creates a Session or prompts the model.
+- `/status` takes no arguments, never prompts the model, and does not change the Session binding. It confirms that the current bot can reach DeepSeek Harness.
+- `/new` only removes the current chat's saved Session binding; it never deletes, empties, or archives the old Session. The next ordinary message creates and binds a new Session in the current workspace. If a task is running or waiting for a question or approval, finish the interaction or use `/stop` before `/new`.
+- `/models` takes no arguments and never creates a Session. It assigns a number to every currently configured Harness model and also shows its stable, copyable `provider/model-id`. If one provider fails, models from the remaining providers are still shown.
+- Bare `/model` only displays the current Session model. A model can be selected by the number or exact full ID returned by `/models`, for example `/model 2`. When the chat has no Session yet, a valid switch creates and binds a blank Session without prompting the model. The switch affects only that Session; Harness also attempts to save it as the default for future Sessions, while other existing Sessions remain unchanged.
+- A model cannot be switched while a task is running or waiting for an approval or question answer. Wait for it to finish or use `/stop` first. A Session containing images cannot switch to a model that does not accept image input.
+- `/presetlist` takes no arguments and never creates a Session. It reads the Host's currently available Agent Presets every time, showing their names, stable IDs, the Host default, and this bot's selection. A selected Preset that has been deleted or become broken is retained and marked unavailable instead of being cleared automatically. Only safe names and IDs are shown; paths, errors, and other Host internals are never exposed.
+- Bare `/preset` shows this bot's setting for future new Sessions; it does not inspect or change the current Session. With an argument, it accepts a number from the most recent `/presetlist` in this chat or an exact ID; use `/preset id:<ID>` for a numeric ID. A numbered selection resolves the ID from that displayed list and then validates it against the latest Host catalog, asking for a fresh list if it has changed.
+- `/preset --default` clears this bot's explicit override so future Sessions resolve the Host default when they are created. Explicitly selecting an ID that currently matches the Host default pins that ID instead. Following the Host default remains available even while the catalog cannot be read.
+- An Agent Preset change is bot-wide: it affects future new Sessions in every chat for this bot, but never modifies, stops, unbinds, or rebuilds an existing Session and never runs `/new` automatically. If this chat already has a Session, ordinary messages keep using it; the first ordinary message after `/new` creates a Session with the new setting. Presets can still be queried or changed while a task is running or awaiting interaction because the command does not touch that Session.
+- `/stop` and `/steer` control only a running task started by this chat. Even when multiple chats bind the same Session, they do not intentionally control another chat's task. `/stop` does not delete the Session or its history, preserves queued work that has not started, and is safe to repeat.
+- `/steer` accepts text only, including multiple lines. It neither creates another Session nor starts a second task. Send an ordinary message when no task is running; while an approval or question is pending, answer it first or use `/stop`.
+- `/compact` acts only on the Harness Session already bound to the current chat and is never sent to the model. The bot reports the applicable status when the chat has no Session yet, the Session is generating a reply, or there is no compactable history.
+- The path must be an existing absolute directory. The bot returns an actionable error and the correct usage when validation fails.
+- `/workspacelist` takes no arguments. It combines the Harness global registry with the current bot's path. When that current path still exists and is safe to display, it appears first and is marked as current. Any listed path can be copied directly into `/workspace`.
+- A numeric `/sessionlist` argument uses the same freshly resolved order as `/workspacelist` at command execution time. An absolute path can also select a workspace directly, and the result echoes the resolved path.
+- `/sessionlist` includes every session registered to the selected workspace. Archived sessions are marked as archived; blank and subagent sessions are included when they belong to that workspace; sessions without a title are shown as `No title yet`. Any listed ID can be passed directly to `/session Session ID`.
+- `/session` accepts exactly one Session ID obtained from `/sessionlist`. It neither creates a session nor immediately prompts the model; later messages in the current chat continue the bound session. Regular archived sessions can be bound without being unarchived, while subagent sessions cannot be bound.
+- `/session` locates the session's unique workspace automatically. Binding inside the current workspace replaces only this chat's mapping. A cross-workspace binding switches the bot workspace, clears the old session mappings for all of that bot's chats, and then binds this chat, so it affects the bot's other chats. A reply already being generated may still finish.
+- Workspace switches and session bindings only clear or replace this plugin's chat mappings. They never delete, empty, or archive old Session contents; an old Session can still be listed and bound again.
+- Any user within the platform bot's visibility scope who can normally message it can run these commands; there is no separate administrator role. Telegram Compatible mode follows the original DM and group mention/reply rules. Safe mode admits only private users in that bot's allowlist and always ignores group commands.
+- Agent Preset names and IDs come from the same Harness Host, and any command-authorized user can change the Preset used by all future new Sessions across this bot's chats. Expose `/presetlist` and `/preset` only to trusted users.
+- The list comes from the Harness Host's global registry and can include local absolute paths for other bots, other channels, or non-IM projects. Restrict the bot's visibility to trusted users.
+- Session results also come from the global Harness Host. Session IDs and titles can belong to other bots, other channels, or non-IM projects, and may contain sensitive metadata. Enable these commands only when every user in the bot's visibility scope is trusted.
+- Any user who can run `/session` can continue the selected session and use later messages to write to it or invoke its available tools. Expose the bot and session list only to trusted users.
+- A successful switch clears only the current bot's old Harness session mappings and does not affect other bots.
+- The new workspace applies to subsequent messages; a reply that has already started generating is allowed to finish.
 
-## 其它功能
+## Other features
 
-- **图片识别**：九个内置渠道都可以把 JPEG、PNG、WebP，以及以图片文件方式发送的 GIF 交给 Harness；图片可以附带文字说明。单张图片上限为 5 MB，单条消息中的图片总大小上限为 20 MB。
-- **在机器人卡片切换工作区**：设置页中的每张机器人卡片都会显示当前 Harness 工作区。可以直接填写已有目录的绝对路径，也可以打开目录选择器。切换只清除该机器人的旧聊天映射，不会删除、清空或归档旧 Session；已经开始的回复可以继续完成，后续消息使用新工作区。
-- **在机器人卡片选择 Agent Preset**：设置页中的每张机器人卡片都可以选择 Host 已有的 Agent Preset，或跟随 Host 默认。切换只作用于该机器人，并且只影响之后新建的会话；已有会话和正在生成的回复不受影响。
-- **检查连接并发送测试消息**：机器人在线时，点击卡片上的「检查连接」会检查平台连接，并向该机器人最近记录的私聊发送一条“DeepSeek Harness 连接测试成功”消息；WhatsApp 会发送到账号自聊。测试消息不会创建 Harness Session，也不会调用模型。机器人必须至少收到过一条私聊才能记住测试目标，否则页面会提示尚无可用的测试会话。
-- **重试连接和移除接入**：机器人离线时，卡片上的操作会变为「重试连接」；不再使用时可以点击「移除接入」。这些操作都只作用于所选机器人，不影响其他机器人或渠道。
-- **多机器人独立管理**：同一渠道可以接入多个机器人。每个机器人分别保存凭据、连接状态、工作区、Agent Preset 和聊天会话映射，卡片上的工作区、Preset、连接检查、重试和移除操作互不影响。
-- **流式回复和进度提示**：插件会按各平台能力显示正在思考、工具执行和逐步生成的回答；不支持原生流式接口的平台会通过编辑消息、卡片更新或最终消息完成回复。
+- **Image understanding**: all nine built-in channels can send JPEG, PNG, WebP, and GIF files sent as images to Harness, with an optional text description. Each image is limited to 5 MB, and all images in one message are limited to 20 MB in total.
+- **Switch workspaces from a bot card**: every bot card on the settings page shows its current Harness workspace. Enter an existing absolute directory path directly or open the directory picker. Switching clears only that bot's old chat mappings; it never deletes, empties, or archives old Sessions. Replies already in progress may finish, while later messages use the new workspace.
+- **Choose an Agent Preset from a bot card**: every bot card can select one of the Host's existing Agent Presets, or follow the Host default. The change applies only to that bot and only to later new Sessions; existing Sessions and replies already in progress are left unchanged.
+- **Check the connection and send a test message**: when a bot is online, clicking **Check connection** verifies the platform connection and sends a “DeepSeek Harness connection test succeeded” message to the bot's most recently remembered direct conversation; WhatsApp uses the account's self-chat. The test neither creates a Harness Session nor invokes the model. The bot must have received at least one direct message before it has a remembered test target; otherwise the page reports that no test conversation is available yet.
+- **Retry a connection or remove an integration**: when a bot is offline, its card action changes to **Retry connection**. Use **Remove integration** when the bot is no longer needed. Each action affects only the selected bot and leaves other bots and channels unchanged.
+- **Manage multiple bots independently**: a channel can have multiple connected bots. Credentials, connection state, workspace, Agent Preset, and chat-to-Session mappings are kept separately for every bot, so card actions do not affect sibling bots.
+- **Streaming replies and progress**: the plugin uses each platform's available capabilities to show thinking state, tool progress, and incremental answers. Platforms without a native streaming API complete replies through message edits, card updates, or a final message.
 
-## 设计
+## Design
 
-- Harness 中只注册一个「IM机器人」设置页，其中包含九个 IM 渠道和一个 AI Office Connector；
-- 九个渠道及 Office Connector 的 Host、客户端与运行时源码都在本仓库维护，不依赖外部独立插件；
-- 设置页跟随 DeepSeek Harness 的语言选择，在中文和 English 之间即时切换；
-- 左侧使用 Logo 切换微信、飞书、钉钉、企业微信、QQ、Slack、Telegram、Discord、WhatsApp 和 AI Office，不使用启用/停用开关；
-- 九个 IM 渠道保持独立的 RPC、凭据、连接监督和会话映射；Office Connector 另行维护设备凭据、Job 租约、审批等待与并发上限；
-- 浏览器只获得二维码、Manifest、脱敏状态，以及用户为当前 Telegram 机器人主动保存的访问模式和白名单 User ID；手动输入的 Secret 或 Token 仅单向提交给本机 Host，任何 RPC 响应都不会返回 App Secret、`bot_token`、钉钉 `client_secret`、企业微信 Secret、QQ `app_secret`、Slack Bot/App Token、Telegram/Discord Bot Token、WhatsApp 关联设备密钥、AI Office Device Token，或从平台消息中观察到的其他原始用户标识。
+- Registers one **IM Bot** settings page containing nine IM channels and one AI Office Connector.
+- Maintains the Host, client, and runtime sources for all nine channels and the Office Connector in this repository without external standalone plugins.
+- Resolves every conversation's language from a `/lang` override, the bot's configured locale, or the locale the channel reports, and renders all copy from a shared message catalogue.
+- Uses logos for WeChat, Feishu, DingTalk, WeCom, QQ, Slack, Telegram, Discord, WhatsApp, and AI Office navigation without enable/disable switches.
+- Keeps RPC endpoints, credentials, connection supervision, and session mappings isolated by IM channel; the Office Connector separately owns Device credentials, Job leases, approval waits, and concurrency limits.
+- Returns only QR codes, the public Slack Manifest, redacted status data, and the access mode and allowlist User IDs that the user explicitly saved for the current Telegram bot. Manually entered secrets and Tokens travel one way to the local Host; no RPC response returns App Secrets, `bot_token`, DingTalk `client_secret`, WeCom Secrets, QQ `app_secret`, Slack Bot/App Tokens, Telegram/Discord Bot Tokens, WhatsApp linked-device keys, AI Office Device Tokens, or other raw user identifiers observed from platform messages.
 
-## 本地开发
+## Local development
 
 ```sh
 npm install
 npm run check
-node bin/dsh-im.mjs install --source .
+node bin/dsh-im-x.mjs install --source .
 ```
 
-`npm run check` 运行单元测试、构建 Host/Client 产物，并验证发布包不包含凭据或独立渠道设置页注册。
+`npm run check` lints, runs unit tests, builds the Host and Client artifacts, and verifies that the published package contains neither credentials nor standalone channel settings-page registrations.
 
-IM 管理 RPC 默认仅接受回环浏览器。如果 Web profile 在受信任的局域网内对外提供服务，可在该 profile 的 `cordis.patch.yml` 中显式开放给 Connection 已信任的 Host authority：
+IM management RPCs accept loopback browsers by default. When a Web profile is deliberately served on a trusted LAN, opt the plugin into the Host authorities already trusted by Connection in that profile's `cordis.patch.yml`:
 
 ```yaml
-- id: xmanrui-dsh-im
+- id: dsh-im-x
   config:
     rpcAuthority: trusted-host
 ```
 
-`trusted-host` 只复用 Harness 的 Host／Origin 防护，不是用户认证。启用后，能访问该局域网地址的人也能查看机器人状态、扫码或提交应用凭据、重连和删除机器人；只应在可信网络中使用。
+`trusted-host` reuses Harness's Host/Origin fence; it is not user authentication. Anyone who can reach that LAN authority can inspect bot status, scan or submit application credentials, reconnect bots, and remove bots. Enable it only on a trusted network.
 
 ---
 
-## 联系方式
+## What this fork changes
 
-欢迎通过邮箱、微信或小红书联系我。
+Everything the original does still works; the differences are in how copy and language are handled.
 
-<table>
-  <tr>
-    <th align="center">邮箱</th>
-    <th align="center">微信</th>
-    <th align="center">小红书</th>
-  </tr>
-  <tr>
-    <td align="center" valign="middle">
-      <a href="mailto:longmanr307@gmail.com">longmanr307@gmail.com</a>
-    </td>
-    <td align="center" valign="top">
-      <a href="docs/images/weixin.jpg"><img src="docs/images/weixin.jpg" alt="微信二维码" width="240"></a>
-    </td>
-    <td align="center" valign="top">
-      <a href="docs/images/xhs.jpg"><img src="docs/images/xhs.jpg" alt="小红书二维码" width="240"></a>
-    </td>
-  </tr>
-</table>
+- **A real translation layer.** Upstream wrote user-facing Chinese directly into channel code, and translated only the settings page, at render time, through a dictionary keyed by Chinese source strings plus regex reverse-parsers. This fork resolves every string from a keyed catalogue instead, so copy no longer depends on pattern-matching prose.
+- **English by default, and actually switchable.** `/lang`, per-bot locales, and channel locale detection are described under [Language support](#language-support).
+- **One command surface.** `/help` and the native command menus channels register both come from a single command registry, replacing six drifting copies of the command list.
+- **Errors carry codes, not prose.** Failures raised deep in storage, download, and validation paths now carry a code and render at the boundary that knows the conversation's language, instead of a pre-rendered sentence.
+- **Locale-independent logic.** A few behaviours keyed off Chinese text and would have broken silently once translated: Slack filtered streaming progress by matching the Chinese "using X…" string, and approvals only accepted Chinese decision words. Both now key off structured data.
+- **Lint and a test timeout.** The repo gained `eslint` with `no-undef`, which catches stale identifiers that only throw on one channel path, and `npm test` runs with a timeout so a hanging test fails instead of blocking forever.
+
+Size limits, platform requirements, credential handling, and the RPC surface are unchanged from upstream.
+
+## Credits
+
+This project is a fork of **[dsh-im](https://github.com/xmanrui/dsh-im)** by **[xmanrui](https://github.com/xmanrui)**, with contributions from [C3H3-AI](https://github.com/C3H3-AI).
+
+All nine channel integrations, the AI Office Connector, the semantic message and interaction model, and the plugin architecture are the original author's work. This fork adds an internationalisation layer on top and does not claim authorship of the underlying design.
+
+The original project is MIT licensed, and that licence and copyright are retained in [LICENSE](LICENSE). If you want the upstream project, use it directly: it is actively maintained and is the right choice for a Chinese-language deployment.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

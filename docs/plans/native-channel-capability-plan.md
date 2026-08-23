@@ -1,3 +1,9 @@
+> **Retained upstream document.** This is the original `dsh-im` channel
+> capability plan by [xmanrui](https://github.com/xmanrui), kept verbatim in
+> Chinese as the historical design record for the nine channel integrations.
+> It is not maintained by this fork and its status lines refer to upstream
+> releases. For how this fork differs, see the README.
+
 # dsh-im 渠道原生能力建设方案
 
 > 总体策略：**横向建设统一语义，纵向逐个渠道打磨；按用户价值推进，按渠道特性落地。**

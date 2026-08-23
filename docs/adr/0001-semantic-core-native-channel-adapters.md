@@ -4,28 +4,37 @@ date: 2026-08-21
 updated: 2026-08-23
 ---
 
-# 统一语义核心与渠道原生适配
+# A shared semantic core with native channel adapters
 
-dsh-im 采用“横向建设统一语义，纵向逐个渠道打磨；按用户价值推进，按渠道特性落地”的架构与产品策略。核心层表达消息、引用、会话、交互、产物和进度等业务语义；渠道适配器依据机器人实例的实际能力进行原生呈现，不支持时执行明确降级。迁移采用增量包裹和等价接管：现有渠道行为构成最低基线，新路径可以改善体验，但不得通过删除、降级或转移既有能力来换取新能力。项目不再以 `content + images + sendText` 作为长期公共边界，也不为每个渠道复制 Harness 业务流程。
+dsh-im-x follows the architecture and product strategy inherited from dsh-im: "build shared semantics horizontally and polish channels one at a time vertically; sequence by user value and land by channel characteristics."
+The core layer expresses business semantics — messages, quoting, sessions, interactions, artifacts, and progress. Channel adapters present those natively according to what a bot instance can actually do, and fall back explicitly when it cannot.
+Migration is incremental wrapping and parity cutover: existing channel behavior is the floor, and a new path may improve the experience but must not trade an existing capability away by deleting, degrading, or relocating it.
+The project no longer treats `content + images + sendText` as a long-term public boundary, and does not duplicate Harness business flows per channel.
 
-## Considered Options
+## Alternatives considered
 
-- **最低公分母模型**：扩展快，但持续丢失按钮、引用、文件、语音、线程和富呈现等高价值能力。
-- **每个渠道独立实现**：单点体验可控，但会复制会话、审批、安全和错误处理逻辑，长期无法保持一致性。
-- **按渠道用户量排序**：看似容易生成开发顺序，但本地开源项目缺少可靠且必要的跨用户统计；现有使用量也无法代表尚未被满足的用户价值，容易让长尾渠道和高价值能力长期得不到验证。
-- **直接替换旧桥接层**：代码收敛更快，但容易同时改变命令、会话、权限、队列、流式和异常处理等已经可用的行为，且发生回归时难以定位和回滚。
-- **统一语义 + 原生适配**：公共业务规则只实现一次，渠道差异保留在边界内；需要维护能力矩阵和适配器契约，但最符合产品差异化目标。
+- **Lowest-common-denominator model**: fast to extend, but continually loses high-value capabilities such as buttons, quoting, files, voice, threads, and rich presentation.
+- **A separate implementation per channel**: gives precise control of one experience, but duplicates session, approval, security, and error-handling logic and cannot stay consistent over time.
+- **Ordering by channel user count**: looks like an easy way to derive a development order, but a local open-source project has no reliable or necessary cross-user statistics, and existing usage does not represent unmet user value. It leaves long-tail channels and high-value capabilities unverified.
+- **Replacing the old bridge layer outright**: converges the code faster, but tends to change command, session, permission, queueing, streaming, and error-handling behavior that already works, and makes regressions hard to locate and roll back.
+- **Shared semantics plus native adaptation**: common business rules are implemented once and channel differences stay inside the boundary. It requires maintaining a capability matrix and an adapter contract, but best fits the product's differentiation goal.
 
 ## Consequences
 
-- 新能力必须先定义用户语义、降级规则和验收标准，再进入渠道 SDK 实现。
-- 真实 Issue 作为能力切片的需求入口；每个 Issue 只落地其闭环所需的最小公共语义，同时完成对应渠道的原生实现、降级和验收，不先建设整套大一统框架，也不留下脱离公共语义的临时补丁。
-- 能力切片依据用户核心任务价值排序，不依据渠道用户量排序。
-- 每项能力选择渠道适配性最高的平台作为标杆渠道，用于验证统一语义和状态机；其他渠道再依据自身原生机制、权限和稳定性决定原生实现或明确降级。
-- 渠道能力按机器人实例和权限动态判断，不能仅凭平台名称宣称支持。
-- 出站产物必须由受信工具显式登记并绑定 Session/Turn；现有文件和新建文件语义相同，不要求当前 Turn 创建。助手回答中的路径、Markdown 本地链接和工作区扫描结果不能自动触发文件发送。
-- 每个渠道必须先建立可追溯的行为基线；新路径达到语义等价或更优、全量回归通过且可以回滚后，才能接管生产消息。
-- 明确降级只适用于原本不具备的新能力或运行时临时故障，不能作为迁移时撤掉既有原生能力的理由。
-- 可以在等价接管稳定后删除重复实现，但不得删除用户可观察功能、控制命令、状态语义或安全边界。
-- 在高优先级能力完成前，不以继续增加渠道数量作为主要目标。
-- 当前共享桥接器、九渠道命令与会话能力、飞书专属卡片能力以及 AI Office Connector 都是迁移资产；新语义路径只能增量包裹并等价接管，不能把成熟实现当作可直接替换的早期原型。
+- A new capability must define its user semantics, fallback rules, and acceptance criteria before any channel SDK work begins.
+- Real issues are the entry point for capability slices. Each issue lands only the minimum shared semantics its round trip needs, together with the native implementation, fallback, and acceptance for the channels involved. It neither builds an entire unified framework up front nor leaves temporary patches outside the shared semantics.
+- Capability slices are ordered by the value of the user's core task, not by channel user count.
+- Each capability picks the best-fitting platform as its reference channel, to validate the shared semantics and state machine. Other channels then decide between a native implementation and an explicit fallback based on their own mechanisms, permissions, and stability.
+- Channel capability is determined dynamically per bot instance and permission set; support is never claimed from a platform name alone.
+- An outbound artifact must be explicitly registered by a trusted tool and bound to a session and turn. Existing files and newly created files have the same semantics; the current turn need not have created the file. Paths in an assistant's answer, local Markdown links, and workspace scan results must never trigger a file send on their own.
+- Every channel must first have a traceable behavior baseline. A new path takes over production messages only once it is semantically equivalent or better, passes full regression, and can be rolled back.
+- Explicit fallback applies only to genuinely absent new capabilities or transient runtime failures. It is never a reason to withdraw an existing native capability during migration.
+- Duplicate implementations may be deleted once a parity cutover is stable, but user-observable features, control commands, state semantics, and security boundaries may not.
+- Adding more channels is not the primary goal until the high-priority capabilities are done.
+- The shared bridge, the nine channels' command and session capabilities, Feishu's card-specific capabilities, and the AI Office Connector are all migration assets. A new semantic path may only wrap them incrementally and cut over at parity; a mature implementation must not be treated as an early prototype to replace wholesale.
+
+## Language
+
+Every user-facing string is resolved from a keyed message catalogue, with English as the source of truth and one module per locale (`src/i18n/`). Channel code names a key and never contains the sentence.
+This is a boundary, not a convenience: a conversation's language is a property of the conversation, resolved from a per-chat override, then the bot's configured locale, then the locale the channel reports for the sender.
+Logic must not key off rendered copy. Filtering, matching, or branching on a translated string breaks silently in every language it was not written for, so decisions use structured data — an update's kind, an error's code, a catalogue key — instead.

@@ -6,7 +6,7 @@ const root = resolve(import.meta.dirname, '..');
 const required = [
   'lib/index.js',
   'lib/client.js',
-  'bin/dsh-im.mjs',
+  'bin/dsh-im-x.mjs',
   'cordis.patch.yml',
   'README.md',
   'THIRD_PARTY_NOTICES.md',
@@ -43,7 +43,7 @@ const [client, host, patch, manifestText, lockText, hostSource, clientSource, ex
   readFile(resolve(root, 'package-lock.json'), 'utf8'),
   readFile(resolve(root, 'plugin-src/host/index.mjs'), 'utf8'),
   readFile(resolve(root, 'plugin-src/client/index.js'), 'utf8'),
-  stat(resolve(root, 'bin/dsh-im.mjs')),
+  stat(resolve(root, 'bin/dsh-im-x.mjs')),
 ]);
 const manifest = JSON.parse(manifestText);
 const lock = JSON.parse(lockText);
@@ -82,13 +82,13 @@ if (forbiddenDshLockPaths.length > 0) {
   );
 }
 
-if (!client.includes('id: "@xmanrui/dsh-im"')) {
-  throw new Error('client bundle does not register the dsh-im loader id');
+if (!client.includes('id: "dsh-im-x"')) {
+  throw new Error('client bundle does not register the dsh-im-x loader id');
 }
 if (!client.includes('id: "im"')
   || !client.includes('label: () => t("IM\\u673A\\u5668\\u4EBA")')
   || !client.includes('locale: IM_LOCALE_NAMESPACE')
-  || !client.includes('IM_LOCALE_NAMESPACE = "dsh-im"')) {
+  || !client.includes('IM_LOCALE_NAMESPACE = "dsh-im-x"')) {
   throw new Error('client bundle does not register the localized IM settings tab');
 }
 if ((client.match(/ctx\.slots\.inject\("settings\.plugins\.tab"/g) ?? []).length !== 1) {
@@ -119,10 +119,10 @@ if (/@xmanrui\/dsh-(?:feishu|weixin|dingtalk)/.test(
 )) {
   throw new Error('source or package metadata still depends on an external channel plugin');
 }
-if (!patch.includes("name: '@xmanrui/dsh-im'") || /dsh-(?:feishu|weixin|dingtalk)/.test(patch)) {
-  throw new Error('bundle patch must activate only dsh-im');
+if (!patch.includes("name: 'dsh-im-x'") || /dsh-(?:feishu|weixin|dingtalk)/.test(patch)) {
+  throw new Error('bundle patch must activate only dsh-im-x');
 }
-for (const name of ['@xmanrui/dsh-feishu', '@xmanrui/dsh-weixin', '@xmanrui/dsh-dingtalk']) {
+for (const name of ['@xmanrui/dsh-im', '@xmanrui/dsh-feishu', '@xmanrui/dsh-weixin', '@xmanrui/dsh-dingtalk']) {
   if (manifest.dependencies?.[name]) {
     throw new Error(`${name} must not remain an external dependency`);
   }
@@ -155,8 +155,8 @@ for (const [name, version] of Object.entries(bundledBuildDependencies)) {
 if (lock.packages?.['node_modules/protobufjs']?.dev !== true) {
   throw new Error('protobufjs must remain build-only in the package lock');
 }
-if (manifest.bin?.['dsh-im'] !== 'bin/dsh-im.mjs') {
-  throw new Error('package manifest must publish the dsh-im executable');
+if (manifest.bin?.['dsh-im-x'] !== 'bin/dsh-im-x.mjs') {
+  throw new Error('package manifest must publish the dsh-im-x executable');
 }
 if (/(?:from\s*|import\s*\(|require\s*\()\s*["'](?:@larksuiteoapi\/node-sdk|@whiskeysockets\/baileys|https-proxy-agent|protobufjs)(?:\/[^"']*)?["']/.test(host)) {
   throw new Error('host bundle must not import a bundled SDK, proxy agent, or protobufjs at runtime');
@@ -167,4 +167,4 @@ if (/private-bot-token|must-be-rolled-back|DEEPSEEK_API_KEY=/.test(client + host
 }
 await import(pathToFileURL(resolve(root, 'lib/index.js')).href);
 
-console.log('Verified dsh-im package artifacts.');
+console.log('Verified dsh-im-x package artifacts.');

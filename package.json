@@ -1,7 +1,7 @@
 {
-  "name": "@xmanrui/dsh-im",
-  "version": "1.1.0",
-  "description": "\u628a\u4e5d\u79cd IM \u673a\u5668\u4eba\u548c\u516c\u7f51 AI Office \u63a5\u5165\u672c\u673a DeepSeek Harness\u3002 Connect nine IM channels and a public AI Office to a local DeepSeek Harness.",
+  "name": "dsh-im-x",
+  "version": "1.0.0",
+  "description": "Connect nine IM channels and a public AI Office to a local DeepSeek Harness, in your language. An English-first fork of dsh-im by xmanrui.",
   "keywords": [
     "deepseek-harness",
     "dsh",
@@ -10,23 +10,27 @@
     "im",
     "instant-messaging",
     "chatbot",
+    "i18n",
+    "telegram",
+    "slack",
+    "discord",
+    "whatsapp",
     "feishu",
     "lark",
     "wechat",
     "wecom",
     "dingtalk",
     "qq",
-    "slack",
-    "telegram",
-    "discord",
-    "whatsapp",
     "ai-office"
   ],
   "author": {
-    "name": "xmanrui",
-    "url": "https://github.com/xmanrui"
+    "name": "Zaakir"
   },
   "contributors": [
+    {
+      "name": "xmanrui",
+      "url": "https://github.com/xmanrui"
+    },
     {
       "name": "C3H3-AI",
       "url": "https://github.com/C3H3-AI"
@@ -34,17 +38,11 @@
   ],
   "license": "MIT",
   "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/xmanrui/dsh-im.git"
-  },
-  "homepage": "https://github.com/xmanrui/dsh-im#readme",
-  "bugs": "https://github.com/xmanrui/dsh-im/issues",
   "publishConfig": {
     "access": "public"
   },
   "bin": {
-    "dsh-im": "bin/dsh-im.mjs"
+    "dsh-im-x": "bin/dsh-im-x.mjs"
   },
   "main": "./lib/index.js",
   "exports": {
@@ -62,7 +60,7 @@
     "src",
     "LICENSE",
     "README.md",
-    "README.en.md",
+    "README.zh-CN.md",
     "THIRD_PARTY_NOTICES.md"
   ],
   "dsh": {
@@ -83,7 +81,8 @@
   "scripts": {
     "build": "node plugin-src/client/build.mjs && node plugin-src/host/build.mjs",
     "test": "node --test --test-timeout=60000 test/*.test.mjs test/channels/*/*.test.mjs",
-    "check": "npm test && npm run build && node scripts/verify-package.mjs"
+    "check": "npm run lint && npm test && npm run build && node scripts/verify-package.mjs",
+    "lint": "eslint ."
   },
   "engines": {
     "node": ">=22.19"

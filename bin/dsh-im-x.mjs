@@ -5,9 +5,15 @@ import { homedir, tmpdir } from 'node:os';
 import { isAbsolute, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-const PACKAGE_NAME = '@xmanrui/dsh-im';
-const DEFAULT_SOURCE = 'github:xmanrui/dsh-im';
+const PACKAGE_NAME = 'dsh-im-x';
+const DEFAULT_SOURCE = 'dsh-im-x';
+/**
+ * Packages this plugin replaces. The upstream project and its per-channel
+ * predecessors are all removed on install so two copies cannot both connect
+ * the same bots.
+ */
 const LEGACY_PACKAGES = [
+  '@xmanrui/dsh-im',
   '@xmanrui/dsh-feishu',
   '@xmanrui/dsh-weixin',
   '@xmanrui/dsh-dingtalk',
@@ -15,12 +21,12 @@ const LEGACY_PACKAGES = [
 
 function usage() {
   console.log(`Usage:
-  dsh-im install [--profile web] [--source <package-spec>]
-  dsh-im uninstall [--profile web]
+  dsh-im-x install [--profile web] [--source <package-spec>]
+  dsh-im-x uninstall [--profile web]
 
 Examples:
-  npx -y github:xmanrui/dsh-im install
-  dsh-im install --source .`);
+  npx -y dsh-im-x install
+  dsh-im-x install --source .`);
 }
 
 function takeOption(args, name, fallback) {

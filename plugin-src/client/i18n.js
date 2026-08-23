@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-export const IM_LOCALE_NAMESPACE = 'dsh-im';
+export const IM_LOCALE_NAMESPACE = 'dsh-im-x';
 
 const EN = Object.freeze({
   '$locale': 'en',

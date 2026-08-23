@@ -1,73 +1,82 @@
-# DeepSeek Harness IM
+# dsh-im-x
 
-本上下文描述 dsh-im 如何把不同即时通信平台中的用户意图和 DeepSeek Harness 的工作过程连接起来。项目的核心价值不是渠道数量，而是让用户在所在渠道中自然、可靠地完成 Harness 任务。
+This context describes how dsh-im-x connects user intent in different instant-messaging platforms to the work DeepSeek Harness performs.
+The point of the project is not the number of channels; it is that a user can complete a Harness task naturally and reliably from wherever they already are, in whichever language they read.
 
 ## Language
 
-**语义消息（Semantic Message）**：
-不依赖具体 IM 平台、能够完整表达用户输入及其上下文的一条消息，包括内容、引用关系和会话位置。
-_Avoid_: 统一文本、通用消息体
+**Semantic Message**:
+One message that fully expresses a user's input and its context — content, quoting, and conversation position — without depending on any particular IM platform.
+_Avoid_: unified text, generic message body
 
-**语义交互（Semantic Interaction）**：
-Harness 等待用户完成的一次有状态操作，例如审批、单选、多选或补充输入。
-_Avoid_: 按钮事件、命令回复
+**Semantic Interaction**:
+A stateful action Harness is waiting for the user to complete, such as an approval, a single choice, a multiple choice, or supplementary input.
+_Avoid_: button event, command reply
 
-**产物（Artifact）**：
-Harness 任务读取或产生、需要在 Harness 与用户所在渠道之间安全传递的文件或媒体。
-_Avoid_: 附件路径、下载地址
+**Artifact**:
+A file or piece of media a Harness task reads or produces that must travel safely between Harness and the user's channel.
+_Avoid_: attachment path, download URL
 
-**产物来源（Artifact Provenance）**：
-证明一个现有或新建的出站产物由当前 Harness Session/Turn 通过受信工具结果显式登记的可验证记录；它证明交付意图和路由，不要求文件必须由当前 Turn 创建。
-_Avoid_: 回答里的路径、最新文件
+**Artifact Provenance**:
+Verifiable evidence that an existing or newly created outbound artifact was explicitly registered by the current Harness session or turn through a trusted tool result. It proves delivery intent and routing; it does not require the file to have been created by the current turn.
+_Avoid_: a path in an answer, the newest file
 
-**会话路由（Conversation Route）**：
-唯一确定消息所属机器人、聊天及话题或线程的会话位置。
-_Avoid_: Chat ID、会话 Key
+**Conversation Route**:
+The conversation position that uniquely identifies the bot, chat, and topic or thread a message belongs to.
+_Avoid_: chat ID, session key
 
-**渠道能力（Channel Capability）**：
-某个机器人实例在当前权限和运行条件下可以可靠提供的原生输入、交互或呈现能力。
-_Avoid_: 平台支持、SDK 功能
+**Channel Capability**:
+The native input, interaction, or presentation a specific bot instance can reliably provide under its current permissions and runtime conditions.
+_Avoid_: platform support, SDK feature
 
-**原生呈现（Native Presentation）**：
-渠道依据自身交互习惯呈现同一语义，例如卡片、按钮、消息编辑、流式回复或输入状态。
-_Avoid_: 特殊适配、渠道特例
+**Native Presentation**:
+The way a channel presents the same semantics according to its own interaction conventions — cards, buttons, message edits, streamed replies, or typing state.
+_Avoid_: special handling, channel exception
 
-**呈现意图（Presentation Intent）**：
-Harness 输出在进入渠道前必须保留的内容结构和格式含义，例如纯文本、Markdown、进度、交互或产物；它不指定某个平台的控件或语法。
-_Avoid_: 回答字符串、Telegram Rich Message、统一富文本
+**Presentation Intent**:
+The content structure and formatting meaning a Harness output must retain before it enters a channel: plain text, Markdown, progress, interaction, or artifact. It does not name any platform's widget or syntax.
+_Avoid_: answer string, Telegram rich message, unified rich text
 
-**渠道原生动作（Native Channel Action）**：
-渠道为承载一次语义任务而执行的平台专属操作，例如创建 Discord Thread、更新飞书卡片或上传附件；它属于渠道边界，不要求其他渠道提供同名操作。
-_Avoid_: 公共命令、通用渠道方法
+**Native Channel Action**:
+A platform-specific operation a channel performs to carry one semantic task, such as creating a Discord thread, updating a Feishu card, or uploading an attachment. It belongs to the channel boundary and does not require other channels to offer the same operation.
+_Avoid_: common command, generic channel method
 
-**选择呈现（Selection Presentation）**：
-单选或多选在渠道中的实际实现形态，只能表述为原生控件、组合交互或文字降级；判断能力时必须同时说明呈现形式和已经验证的范围。
-_Avoid_: 支持多选、能力允许时、统一选择器
+**Selection Presentation**:
+How a single or multiple choice is actually realised in a channel: a native control, a composed interaction, or an explicit text fallback. Any capability claim must state both the presentation form and the scope that has been verified.
+_Avoid_: supports multi-select, when capability allows, unified picker
 
-**明确降级（Explicit Fallback）**：
-渠道缺少所需能力时，保持业务语义并向用户说明限制的替代体验。
-_Avoid_: 兼容模式、静默忽略
+**Explicit Fallback**:
+The alternative experience used when a channel lacks a required capability, which preserves the business semantics and tells the user what the limitation is.
+_Avoid_: compatibility mode, silent ignore
 
-**能力切片（Capability Slice）**：
-围绕一个完整用户价值，从统一语义、安全策略到各渠道原生呈现和验收的端到端建设单元。
-_Avoid_: 渠道任务、接口改造
+**Capability Slice**:
+The end-to-end unit of work around one complete piece of user value, from shared semantics and security policy through to each channel's native presentation and acceptance.
+_Avoid_: channel task, interface change
 
-**标杆渠道（Reference Channel）**：
-一项能力切片中最先完成真实客户端闭环、其原生机制最适合验证该语义和体验的渠道。标杆渠道按能力选择，不是永久主渠道。
-_Avoid_: 主渠道、默认渠道
+**Reference Channel**:
+The channel within a capability slice that first completes a real client round trip, and whose native mechanisms best verify that semantics and experience. A reference channel is chosen per capability; it is not a permanent primary channel.
+_Avoid_: primary channel, default channel
 
-**用户价值优先级（User Value Priority）**：
-依据核心任务完成度、语义准确性、移动端操作成本以及安全与可靠性，决定能力切片的建设先后顺序。
-_Avoid_: 功能数量排序、渠道用户量排序
+**User Value Priority**:
+The order in which capability slices are built, decided by core task completion, semantic accuracy, mobile interaction cost, and safety and reliability.
+_Avoid_: ordering by feature count, ordering by channel user count
 
-**渠道适配性（Channel Fit）**：
-某项语义能力与渠道原生机制、权限覆盖、接口稳定性和可测试性之间的匹配程度，用于选择标杆渠道并决定原生实现或明确降级。
-_Avoid_: 渠道排名、平台先进程度
+**Channel Fit**:
+How well a semantic capability matches a channel's native mechanisms, permission coverage, interface stability, and testability. Used to choose the reference channel and to decide between a native implementation and an explicit fallback.
+_Avoid_: channel ranking, platform sophistication
 
-**渠道行为基线（Channel Behavior Baseline）**：
-语义迁移开始前，某个渠道已经向用户提供的任务流程、控制能力、状态语义和原生体验的可验证集合；后续实现可以改善它，但不能使其中任何能力消失或退化。
-_Avoid_: 当前代码、旧实现、测试现状
+**Channel Behavior Baseline**:
+The verifiable set of task flows, controls, state semantics, and native experience a channel already provides to users before a semantic migration begins. A later implementation may improve on it, but must not make any of it disappear or regress.
+_Avoid_: current code, old implementation, current tests
 
-**等价接管（Parity Cutover）**：
-新语义路径在覆盖渠道行为基线、通过回归并具备回滚能力后，才取得某项消息或能力的唯一处理权。
-_Avoid_: 直接替换、重写完成
+**Parity Cutover**:
+A new semantic path takes sole ownership of a message or capability only after it covers the channel behavior baseline, passes regression, and has a rollback.
+_Avoid_: direct replacement, rewrite finished
+
+**Message Catalogue**:
+The single keyed source of every user-facing string, with English as the source of truth and one module per locale. Channel code names a key; it never contains the sentence.
+_Avoid_: translation dictionary, string table, i18n helper
+
+**Conversation Locale**:
+The language one conversation is rendered in, resolved from a per-chat override, then the bot's configured locale, then the locale the channel reports for the sender. It is a property of the conversation, not of the process.
+_Avoid_: current language, global language, user language
