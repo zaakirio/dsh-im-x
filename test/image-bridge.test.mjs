@@ -163,7 +163,7 @@ test('an image caption cannot answer a pending Harness question', async () => {
   });
   assert.equal(imageLoads, 0);
   assert.equal(interactionResult, undefined);
-  assert.equal(sent.at(-1), '请用文字回答当前问题。');
+  assert.equal(sent.at(-1), tr('bridge.answerWithText'));
 
   await bridge.accept({
     messageId: 'question-answer',

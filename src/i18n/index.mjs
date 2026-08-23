@@ -1,5 +1,5 @@
 import { createTranslatorFactory } from './translator.mjs';
-import { DEFAULT_LOCALE, negotiateLocale } from './locale-tags.mjs';
+import { DEFAULT_LOCALE } from './locale-tags.mjs';
 import { EN } from './locales/en.mjs';
 import { ZH_CN } from './locales/zh-CN.mjs';
 

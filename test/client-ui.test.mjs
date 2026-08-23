@@ -54,7 +54,6 @@ import {
   IM_LOCALE_NAMESPACE,
   localizeText,
   setImTranslator,
-  zh,
 } from '../plugin-src/client/i18n.js';
 
 const STYLES_URL = new URL('../plugin-src/client/styles.js', import.meta.url);

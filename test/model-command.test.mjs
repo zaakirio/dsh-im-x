@@ -5,6 +5,7 @@ import {
   isModelCommand,
   runModelCommand,
 } from '../src/channels/shared/model-command.mjs';
+import { defaultTranslator as tr } from '../src/i18n/index.mjs';
 
 const CATALOG = Object.freeze({
   groups: [
@@ -127,7 +128,7 @@ test('/models lists the global catalog without creating a Session', async () => 
   assert.match(result.message, /1\. deepseek-official\/deepseek-v4-flash/);
   assert.match(result.message, /2\. deepseek-official\/deepseek-v4-pro/);
   assert.match(result.message, /3\. openrouter\/anthropic\/claude-sonnet-4/);
-  assert.match(result.message, /切换模型：\/model <序号>/);
+  assert.ok(result.message.includes(tr('model.switchHint')));
   assert.deepEqual(calls, [
     ['sessionFor', 'direct:one'],
     ['listModels', { signal }],
@@ -148,20 +149,20 @@ test('/models marks the current Session model and contains provider-local failur
   const { harness, state } = fixture({ initialSessionId: 'session-one', sessionCatalog });
   const result = await runModelCommand('/models', harness, state, 'direct:one');
 
-  assert.match(result.message, /2\. deepseek-official\/deepseek-v4-pro（当前）/);
+  assert.ok(result.message.includes(`2. deepseek-official/deepseek-v4-pro${tr('model.currentMarker')}`));
   assert.match(result.message, /Private Provider/);
   assert.doesNotMatch(result.message, /private\.example|secret=abc/);
 });
 
 test('/models validates its no-argument and text-only syntax', async () => {
   const { harness, state } = fixture();
-  assert.match(
+  assert.equal(
     (await runModelCommand('/models openai', harness, state, 'direct:one')).message,
-    /不带参数/,
+    tr('model.usageList'),
   );
-  assert.match(
+  assert.equal(
     (await runModelCommand('/models', harness, state, 'direct:one', { hasImages: true })).message,
-    /仅支持纯文字/,
+    tr('model.textOnly'),
   );
 });
 
@@ -189,7 +190,7 @@ test('/models splits a long catalog into lossless 1,800-character messages', asy
 test('/model reports current state without creating or selecting', async () => {
   const missing = fixture();
   const noSession = await runModelCommand('/model', missing.harness, missing.state, 'direct:one');
-  assert.match(noSession.message, /还没有会话/);
+  assert.ok(noSession.message.includes(tr('model.noSessionYet')));
   assert.equal(missing.calls.some(([name]) => name === 'createSession'), false);
 
   const existingFixture = fixture({ initialSessionId: 'session-one' });
@@ -241,7 +242,7 @@ test('/model rejects invalid model numbers without creating or selecting a Sessi
     const { calls, harness, state } = fixture();
     const result = await runModelCommand(`/model ${requested}`, harness, state, 'direct:one');
 
-    assert.match(result.message, /模型序号无效/, requested);
+    assert.ok(result.message.includes(tr('model.invalidIndex', { requested })), requested);
     assert.match(result.message, /\/models/, requested);
     assert.equal(calls.some(([name]) => name === 'createSession'), false, requested);
     assert.equal(calls.some(([name]) => name === 'selectModel'), false, requested);
@@ -257,12 +258,12 @@ test('/model rejects unknown IDs before creating a Session', async () => {
     'direct:one',
   );
 
-  assert.match(result.message, /没有找到模型/);
+  assert.ok(result.message.includes(tr('model.notFoundHint')));
   assert.equal(calls.some(([name]) => name === 'createSession'), false);
   assert.equal(calls.some(([name]) => name === 'selectModel'), false);
-  assert.match(
+  assert.equal(
     (await runModelCommand('/model missing-slash', harness, state, 'direct:one')).message,
-    /用法/,
+    tr('model.usage'),
   );
 });
 
@@ -277,7 +278,7 @@ test('/model creates and selects a blank Session before exposing its binding', a
     { signal, control: 'control-one' },
   );
 
-  assert.match(result.message, /模型已切换为/);
+  assert.ok(result.message.startsWith(tr('model.switched', { model: '' }).split('\n')[0]));
   assert.equal(boundId(), 'session-created');
   const operations = calls.map(([name]) => name);
   assert.ok(operations.indexOf('listModels') < operations.indexOf('createSession'));
@@ -303,7 +304,7 @@ test('a failed first model selection leaves the conversation unbound', async () 
     'direct:one',
   );
 
-  assert.match(result.message, /当前不可用|图片/);
+  assert.equal(result.message, tr('model.error.unavailable'));
   assert.equal(boundId(), null);
   assert.equal(calls.some(([name]) => name === 'createSession'), true);
   assert.equal(calls.some(([name]) => name === 'selectModel'), true);
@@ -328,7 +329,7 @@ test('two concurrent first model switches share one created Session', async () =
     ),
   ]);
 
-  assert.ok(results.every(({ message }) => /模型已切换为/.test(message)));
+  assert.ok(results.every(({ message }) => message.startsWith(tr('model.switched', { model: '' }).split('\n')[0])));
   assert.equal(boundId(), 'session-created');
   assert.equal(calls.filter(([name]) => name === 'createSession').length, 1);
   assert.equal(calls.filter(([name]) => name === 'setSession').length, 1);
@@ -360,7 +361,7 @@ test('a concurrent external binding is preserved after selecting an unbound Sess
   releaseSelection.resolve();
 
   const result = await switching;
-  assert.match(result.message, /会话已发生变化.*重试/);
+  assert.equal(result.message, tr('model.error.sessionChanged'));
   assert.equal(fixtureValue.boundId(), 'session-bound-elsewhere');
   assert.equal(fixtureValue.calls.some((call) => (
     call[0] === 'setSession' && call[2] === 'session-created'
@@ -376,7 +377,7 @@ test('/model refuses pending interactions and active or running Sessions', async
     'direct:one',
     { pendingInteraction: true },
   );
-  assert.match(pendingResult.message, /等待你的回答或审批/);
+  assert.equal(pendingResult.message, tr('model.awaitingInteraction'));
   assert.equal(pending.calls.some(([name]) => name === 'selectModel'), false);
 
   for (const state of [{ running: true }, { activeTurn: true }]) {
@@ -388,7 +389,7 @@ test('/model refuses pending interactions and active or running Sessions', async
       'direct:one',
       { control: 'owner-one' },
     );
-    assert.match(result.message, /当前任务正在运行/);
+    assert.equal(result.message, tr('model.error.turnRunning'));
     assert.equal(active.calls.some(([name]) => name === 'models'), false);
     assert.equal(active.calls.some(([name]) => name === 'selectModel'), false);
   }
@@ -420,18 +421,18 @@ test('model command failures use safe user-facing messages', async () => {
     selection.state,
     'direct:one',
   );
-  assert.match(failed.message, /当前不可用|图片/);
+  assert.equal(failed.message, tr('model.error.unavailable'));
   assert.doesNotMatch(failed.message, /sk-private/);
 
   const listing = fixture({ globalCatalog: new Error('private endpoint') });
   const unavailable = await runModelCommand('/models', listing.harness, listing.state, 'direct:one');
-  assert.match(unavailable.message, /暂时无法获取模型列表/);
+  assert.equal(unavailable.message, tr('model.error.listFailed'));
   assert.doesNotMatch(unavailable.message, /private endpoint/);
 
   const bad = fixture({ globalCatalog: { groups: null, failures: [] } });
-  assert.match(
+  assert.equal(
     (await runModelCommand('/models', bad.harness, bad.state, 'direct:one')).message,
-    /暂时无法获取模型列表/,
+    tr('model.error.listFailed'),
   );
 });
 

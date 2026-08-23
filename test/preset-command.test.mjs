@@ -8,6 +8,7 @@ import {
   runPresetCommand,
 } from '../src/channels/shared/preset-command.mjs';
 import { withSessionBindingLock } from '../src/channels/shared/session-binding-lock.mjs';
+import { defaultTranslator as tr } from '../src/i18n/index.mjs';
 
 const CATALOG = Object.freeze({
   defaultId: 'standard',
@@ -65,15 +66,15 @@ test('/presetlist dynamically lists, annotates, and snapshots presets without up
   const signal = new AbortController().signal;
   const result = await runPresetCommand('/PRESETLIST', harness, state, 'direct:one', { signal });
 
-  assert.match(result.message, /当前机器人用于新会话/);
-  assert.match(result.message, /Host 默认：Standard（standard）/);
-  assert.match(result.message, /1\. Standard（standard）（Host 默认）/);
-  assert.match(result.message, /2\. Coding（coding）（当前选择）/);
+  assert.ok(result.message.includes(tr('preset.currentHeader')));
+  assert.ok(result.message.includes(tr('preset.hostDefault', { value: tr('preset.itemText', { label: 'Standard', id: 'standard' }) })));
+  assert.ok(result.message.includes(`1. ${tr('preset.itemText', { label: 'Standard', id: 'standard' })}${tr('preset.markers', { markers: tr('preset.markerHostDefault') })}`));
+  assert.ok(result.message.includes(`2. ${tr('preset.itemText', { label: 'Coding', id: 'coding' })}${tr('preset.markers', { markers: tr('preset.markerSelected') })}`));
   assert.match(result.message, /\/preset --default/);
   assert.deepEqual(calls, [['agentPresetSettings', { signal }]]);
 
   const selected = await runPresetCommand('/preset 2', harness, state, 'direct:one');
-  assert.match(selected.message, /Coding（coding）/);
+  assert.match(selected.message, new RegExp(tr('preset.itemText', { label: 'Coding', id: 'coding' }).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.deepEqual(calls.at(-1), ['updateAgentPreset', 'coding', {}]);
 });
 
@@ -81,8 +82,8 @@ test('/presetlist shows following Host default as the effective preset', async (
   const { harness, state } = fixture();
   const result = await runPresetCommand('/presetlist', harness, state, 'direct:one');
 
-  assert.match(result.message, /跟随 Host 默认：Standard（standard）/);
-  assert.match(result.message, /Standard（standard）（Host 默认，当前生效）/);
+  assert.ok(result.message.includes(tr('preset.followsHostDefaultWith', { preset: tr('preset.itemText', { label: 'Standard', id: 'standard' }) })));
+  assert.ok(result.message.includes(`${tr('preset.itemText', { label: 'Standard', id: 'standard' })}${tr('preset.markers', { markers: [tr('preset.markerHostDefault'), tr('preset.markerActive')].join(tr('preset.markerJoin')) })}`));
 });
 
 test('/presetlist filters invalid, duplicate, and broken entries and sanitizes labels', async () => {
@@ -98,8 +99,8 @@ test('/presetlist filters invalid, duplicate, and broken entries and sanitizes l
   const { harness, state } = fixture({ catalog });
   const result = await runPresetCommand('/presetlist', harness, state, 'direct:one');
 
-  assert.match(result.message, /可用 Agent Preset（1）/);
-  assert.match(result.message, /Safe Preset（safe）/);
+  assert.ok(result.message.includes(tr('preset.availableCount', { count: 1 })));
+  assert.match(result.message, new RegExp(tr('preset.itemText', { label: 'Safe Preset', id: 'safe' }).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.doesNotMatch(result.message, /Duplicate|Invalid|Broken|secret|\u202e/);
 });
 
@@ -107,8 +108,8 @@ test('/preset reports an explicit unavailable current preset without changing it
   const { calls, harness, state, selected } = fixture({ agentPreset: 'removed' });
   const result = await runPresetCommand('/preset', harness, state, 'direct:one');
 
-  assert.match(result.message, /removed（已不可用）/);
-  assert.match(result.message, /已有会话不会受此设置影响/);
+  assert.ok(result.message.includes(tr('preset.noLongerAvailable', { id: 'removed' })));
+  assert.ok(result.message.includes(tr('preset.existingUnaffected')));
   assert.equal(selected(), 'removed');
   assert.equal(calls.some(([name]) => name === 'updateAgentPreset'), false);
 });
@@ -118,13 +119,13 @@ test('/preset and /presetlist expose an unavailable Host default safely', async 
   const current = fixture({ catalog });
   assert.match(
     (await runPresetCommand('/preset', current.harness, current.state, 'direct:one')).message,
-    /跟随 Host 默认（Host 默认当前不可用）/,
+    new RegExp(tr('preset.followsHostDefaultUnavailable').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
   );
 
   const listed = fixture({ catalog });
   assert.match(
     (await runPresetCommand('/presetlist', listed.harness, listed.state, 'direct:one')).message,
-    /Host 默认：removed-default（当前不可用）/,
+    new RegExp(tr('preset.hostDefault', { value: tr('preset.defaultUnavailable', { id: 'removed-default' }) }).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
   );
 });
 
@@ -132,20 +133,20 @@ test('numeric selection requires a snapshot for the same state and conversation 
   const first = fixture();
   assert.match(
     (await runPresetCommand('/preset 1', first.harness, first.state, 'direct:one')).message,
-    /先执行 \/presetlist/,
+    /\/presetlist/,
   );
   assert.equal(first.calls.length, 0);
 
   await runPresetCommand('/presetlist', first.harness, first.state, 'direct:one');
   assert.match(
     (await runPresetCommand('/preset 1', first.harness, first.state, 'direct:two')).message,
-    /先执行 \/presetlist/,
+    /\/presetlist/,
   );
 
   const otherState = {};
   assert.match(
     (await runPresetCommand('/preset 1', first.harness, otherState, 'direct:one')).message,
-    /先执行 \/presetlist/,
+    /\/presetlist/,
   );
 });
 
@@ -157,12 +158,12 @@ test('numeric selection rejects an expired snapshot and requires a new /presetli
 
   now += PRESET_LIST_SNAPSHOT_TTL_MS - 1;
   const stillFresh = await runPresetCommand('/preset 1', harness, state, 'direct:one');
-  assert.match(stillFresh.message, /Standard（standard）/);
+  assert.match(stillFresh.message, new RegExp(tr('preset.itemText', { label: 'Standard', id: 'standard' }).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 
   now += 1;
   const expired = await runPresetCommand('/preset 1', harness, state, 'direct:one');
 
-  assert.match(expired.message, /请先执行 \/presetlist/);
+  assert.equal(expired.message, tr('preset.error.listFirst'));
   assert.equal(calls.filter(([name]) => name === 'updateAgentPreset').length, 1);
 });
 
@@ -181,9 +182,9 @@ test('numeric snapshots are capacity-bounded and evicted in LRU order', async ()
   );
 
   const evicted = await runPresetCommand('/preset 1', harness, state, 'direct:1');
-  assert.match(evicted.message, /请先执行 \/presetlist/);
+  assert.equal(evicted.message, tr('preset.error.listFirst'));
   const retained = await runPresetCommand('/preset 1', harness, state, 'direct:0');
-  assert.match(retained.message, /Standard（standard）/);
+  assert.match(retained.message, new RegExp(tr('preset.itemText', { label: 'Standard', id: 'standard' }).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.equal(calls.filter(([name]) => name === 'updateAgentPreset').length, 2);
 });
 
@@ -214,7 +215,7 @@ test('/preset rejects invalid and out-of-range numeric selections without updati
 
   for (const requested of ['0', '4', '9007199254740992']) {
     const result = await runPresetCommand(`/preset ${requested}`, harness, state, 'direct:one');
-    assert.match(result.message, /序号.*无效|序号不存在/, requested);
+    assert.ok([tr('preset.error.invalidIndex'), tr('preset.error.indexMissing')].includes(result.message), requested);
   }
   assert.equal(calls.filter(([name]) => name === 'updateAgentPreset').length, 0);
 });
@@ -227,7 +228,7 @@ test('/preset accepts exact IDs and id: for a purely numeric ID', async () => {
     direct.state,
     'direct:one',
   );
-  assert.match(directResult.message, /Marketing（marketing）/);
+  assert.match(directResult.message, new RegExp(tr('preset.itemText', { label: 'Marketing', id: 'marketing' }).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.deepEqual(direct.calls.at(-1), ['updateAgentPreset', 'marketing', {}]);
 
   const numericCatalog = {
@@ -241,7 +242,7 @@ test('/preset accepts exact IDs and id: for a purely numeric ID', async () => {
     numeric.state,
     'direct:one',
   );
-  assert.match(numericResult.message, /Numeric（123）/);
+  assert.ok(numericResult.message.includes(tr('preset.itemText', { label: 'Numeric', id: '123' })));
   assert.deepEqual(numeric.calls.at(-1), ['updateAgentPreset', '123', {}]);
 });
 
@@ -260,7 +261,7 @@ test('/preset --default clears the override without first reading the catalog', 
     { signal },
   );
 
-  assert.match(result.message, /跟随 Host 默认/);
+  assert.ok(result.message.includes(tr('preset.followsHostDefault')));
   assert.equal(selected(), null);
   assert.deepEqual(calls, [['updateAgentPreset', null, { signal }]]);
   assert.doesNotMatch(result.message, /private/);
@@ -279,8 +280,8 @@ test('/preset updates even while an interaction is pending and never consults Se
     { pendingInteraction: true, control: { owner: 'one' } },
   );
 
-  assert.match(result.message, /已设置为/);
-  assert.match(result.message, /先发送 \/new/);
+  assert.ok(result.message.includes(tr('preset.updated')));
+  assert.ok(result.message.includes(tr('preset.updatedNote')));
   assert.deepEqual(calls, [['updateAgentPreset', 'coding', {}]]);
 });
 
@@ -314,14 +315,18 @@ test('preset commands validate syntax and reject images without calling the harn
   const { calls, harness, state } = fixture();
   for (const command of ['/presetlist extra', '/preset coding extra', '/preset id:abc']) {
     const result = await runPresetCommand(command, harness, state, 'direct:one');
-    assert.match(result.message, /用法|格式无效/, command);
+    assert.ok(
+      [tr('preset.usage'), tr('preset.usageList'), tr('preset.error.invalidId')]
+        .some((expected) => result.message.includes(expected)),
+      command,
+    );
   }
 
   for (const command of ['/preset', '/presetlist', '/preset coding']) {
     const result = await runPresetCommand(command, harness, state, 'direct:one', {
       hasImages: true,
     });
-    assert.match(result.message, /仅支持纯文字/, command);
+    assert.equal(result.message, tr('preset.textOnly'), command);
   }
   assert.equal(calls.length, 0);
 });
@@ -336,7 +341,7 @@ test('fresh validation failures and internal errors use safe messages', async ()
     unavailable.state,
     'direct:one',
   );
-  assert.match(unavailableResult.message, /不存在或当前不可用/);
+  assert.equal(unavailableResult.message, tr('preset.error.unavailable'));
   assert.doesNotMatch(unavailableResult.message, /private|secret/);
 
   const missingError = new Error('bot details');
@@ -344,7 +349,7 @@ test('fresh validation failures and internal errors use safe messages', async ()
   const missing = fixture({ updateError: missingError });
   assert.match(
     (await runPresetCommand('/preset coding', missing.harness, missing.state, 'direct:one')).message,
-    /机器人状态已发生变化/,
+    new RegExp(tr('preset.error.stale')),
   );
 
   const listing = fixture({ settingsError: new Error('private catalog endpoint') });
@@ -354,7 +359,7 @@ test('fresh validation failures and internal errors use safe messages', async ()
     listing.state,
     'direct:one',
   );
-  assert.match(listingResult.message, /暂时无法获取 Agent Preset 列表/);
+  assert.equal(listingResult.message, tr('preset.error.listFailed'));
   assert.doesNotMatch(listingResult.message, /private catalog endpoint/);
 });
 
@@ -369,7 +374,7 @@ test('cancelled and malformed harness results fail safely', async () => {
       cancelled.state,
       'direct:one',
     )).message,
-    /列表已取消/,
+    new RegExp(tr('preset.error.listCancelled')),
   );
 
   const badHarness = {
@@ -378,7 +383,7 @@ test('cancelled and malformed harness results fail safely', async () => {
     },
   };
   const result = await runPresetCommand('/preset', badHarness, {}, 'direct:one');
-  assert.match(result.message, /暂时无法获取 Agent Preset 设置/);
+  assert.equal(result.message, tr('preset.error.currentFailed'));
 });
 
 test('/presetlist splits long output into lossless 1,800-character messages', async () => {

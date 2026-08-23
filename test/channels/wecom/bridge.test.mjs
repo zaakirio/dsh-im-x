@@ -188,7 +188,7 @@ test('Enterprise WeChat executes /compact for the bound Session without promptin
   await bridge.accept(frame({ msgid: 'compact-wecom', text: { content: '/compact' } }));
 
   assert.deepEqual(executed, [{ sessionId: 'session-existing', line: '/compact' }]);
-  assert.equal(transport.streamed.at(-1).content, '暂无可压缩的历史记录。');
+  assert.equal(transport.streamed.at(-1).content, tr('compact.result.noHistory'));
   assert.equal(transport.streamed.at(-1).finish, true);
   assert.deepEqual(transport.active, []);
 });
@@ -248,7 +248,7 @@ test('Enterprise WeChat lists models and presets without prompting and advertise
   assert.equal(creates, 0);
 
   await bridge.accept(frame({ msgid: 'preset-current-wecom', text: { content: '/preset' } }));
-  assert.match(transport.streamed.at(-1).content, /跟随 Host 默认/);
+  assert.match(transport.streamed.at(-1).content, new RegExp(tr('preset.followsHostDefault')));
   assert.equal(asks, 0);
   assert.equal(creates, 0);
 
@@ -263,7 +263,7 @@ test('Enterprise WeChat lists models and presets without prompting and advertise
   await bridge.accept(frame({ msgid: 'preset-default-wecom', text: { content: '/preset --default' } }));
   assert.deepEqual(presetUpdates, ['preset-002', null]);
   assert.equal(transport.streamed.length, defaultReplyStart + 1);
-  assert.match(transport.streamed.at(-1).content, /跟随 Host 默认/);
+  assert.match(transport.streamed.at(-1).content, new RegExp(tr('preset.followsHostDefault')));
   assert.equal(transport.streamed.at(-1).finish, true);
   assert.equal(asks, 0);
   assert.equal(creates, 0);
@@ -303,8 +303,8 @@ test('Enterprise WeChat messages stream Harness progress and finalize once', asy
 
   await bridge.accept(frame());
   assert.deepEqual(replies, [
-    { streamId: 'stream-1', content: '正在思考中…', finish: false },
-    { streamId: 'stream-1', content: '正在使用网页搜索…', finish: false },
+    { streamId: 'stream-1', content: tr('bridge.thinking'), finish: false },
+    { streamId: 'stream-1', content: tr('bridge.usingTool', { name: '网页搜索' }), finish: false },
     { streamId: 'stream-1', content: '回答中', finish: false },
     { streamId: 'stream-1', content: '最终回答', finish: true },
   ]);
@@ -549,8 +549,8 @@ test('Enterprise WeChat finalizes an existing progress stream when Harness fails
 
   await bridge.accept(frame());
   assert.deepEqual(replies, [
-    { streamId: 'stream-failure', content: '正在思考中…', finish: false },
-    { streamId: 'stream-failure', content: '消息处理失败，请稍后重试。', finish: true },
+    { streamId: 'stream-failure', content: tr('bridge.thinking'), finish: false },
+    { streamId: 'stream-failure', content: tr('bridge.messageFailed'), finish: true },
   ]);
   assert.equal(store.seen.has('msg-1'), true);
 });
@@ -787,8 +787,8 @@ test('Enterprise WeChat accepts only an exact approval decision and never forwar
     msgid: 'approval-fuzzy',
     text: { content: '可以' },
   }));
-  await eventually(() => outputTexts().slice(outputCountBeforeFuzzyReply).some((text) => text.includes('回复')
-    && text.includes('批准') && text.includes('拒绝')));
+  await eventually(() => outputTexts().slice(outputCountBeforeFuzzyReply)
+    .some((text) => text.includes(tr('approval.prompt'))));
   assert.deepEqual(responses, []);
   assert.deepEqual(prompts, ['启动审批']);
 
@@ -885,7 +885,7 @@ test('a failed Enterprise WeChat interaction response can be retried', async () 
   const prompt = bridge.accept(frame({ msgid: 'retry-start' }));
   await eventually(() => transport.active.length === 1);
   await bridge.accept(frame({ msgid: 'retry-first', text: { content: '1' } }));
-  assert.equal(transport.streamed.some(({ content }) => content.includes('回答提交失败')), true);
+  assert.equal(transport.streamed.some(({ content }) => content.includes(tr('bridge.answerSubmitRetry'))), true);
 
   const second = bridge.accept(frame({ msgid: 'retry-second', text: { content: '2' } }));
   await Promise.all([prompt, second]);
@@ -931,7 +931,7 @@ test('an externally resolved Enterprise WeChat answer is not submitted as a new 
 
   assert.deepEqual(prompts, ['请回答']);
   assert.equal(transport.streamed.some(({ messageId, content }) => (
-    messageId === 'resolved-answer' && content === '这个问题已在其他客户端处理，无需再次回答。'
+    messageId === 'resolved-answer' && content === tr('bridge.interactionResolved')
   )), true);
 });
 
@@ -986,7 +986,7 @@ test('an Enterprise WeChat answer reports resolution when respond loses an in-fl
   assert.deepEqual(prompts, ['请回答']);
   assert.equal(transport.streamed.filter(({ messageId, content }) => (
     messageId === 'respond-race-answer'
-      && content === '这个问题已在其他客户端处理，无需再次回答。'
+      && content === tr('bridge.interactionResolved')
   )).length, 1);
 });
 
@@ -1017,7 +1017,7 @@ test('a recovered orphan question is cancelled without exposing its content', as
     body.markdown.content.includes('不应显示的旧问题')
   )), false);
   assert.equal(transport.active.some(({ body }) => (
-    body.markdown.content.includes('遗留的待回答问题')
+    body.markdown.content.includes(tr('bridge.recoveredInteractionCancelled'))
   )), true);
 });
 
@@ -1150,7 +1150,7 @@ test('a second answer stays claimed while its Enterprise WeChat question awaits 
   assert.equal(responseCalls, 0);
   assert.equal(streamed.filter(({ messageId, content }) => (
     messageId === 'second-ack-answer'
-      && content === '这个问题已在其他客户端处理，无需再次回答。'
+      && content === tr('bridge.interactionResolved')
   )).length, 1);
 });
 
@@ -1194,7 +1194,7 @@ test('only the initiating actor can answer an Enterprise WeChat group question',
   await eventually(() => transport.active.some(({ chatId }) => chatId === 'group-1'));
   assert.match(
     transport.active.find(({ chatId }) => chatId === 'group-1').body.markdown.content,
-    /群聊中请 @机器人 后发送答案/,
+    new RegExp(tr('question.mentionHint')),
   );
   const outsider = bridge.accept(frame({
     msgid: 'group-outsider',
@@ -1257,7 +1257,7 @@ test('aborting Enterprise WeChat work cancels its pending question without a fai
   assert.equal(cancellations[0].result.ok, false);
   assert.equal(cancellations[0].result.error.code, 'cancelled');
   assert.equal(cancellations[0].responseOptions.signal.aborted, false);
-  assert.equal(transport.streamed.some(({ content }) => content === '消息处理失败，请稍后重试。'), false);
+  assert.equal(transport.streamed.some(({ content }) => content === tr('bridge.messageFailed')), false);
 });
 
 test('Enterprise WeChat sends registered files after the final text and continues after one file fails', async (t) => {
@@ -1331,7 +1331,7 @@ test('Enterprise WeChat sends registered files after the final text and continue
   assert.equal(uploads[0].bytes.toString(), 'first bytes');
   assert.equal(uploads[1].bytes.toString(), '<h1>second</h1>');
   assert.equal(active.length, 1);
-  assert.match(active[0].content, /first\.txt.*暂时未能/);
+  assert.match(active[0].content, new RegExp(tr('artifact.wecom.generic', { name: 'first.txt' }).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.doesNotMatch(active[0].content, /private provider detail/);
   assert.equal(status.artifactsSent, 1);
   assert.equal(status.artifactSendErrors, 1);
@@ -1434,7 +1434,7 @@ test('Enterprise WeChat returns the authoritative receipt and one safe notice wh
   assert.deepEqual(finalStreamTexts, ['文字结果']);
   assert.equal(attemptedActiveTexts.length, 2, 'must not append a generic error after the safe notice');
   assert.equal(visibleActiveTexts.length, 1);
-  assert.match(visibleActiveTexts[0], /暂时无法读取或准备发送.*仍可访问/);
+  assert.match(visibleActiveTexts[0], new RegExp(tr('artifact.error.unavailable', { name: 'mismatch.txt' }).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.deepEqual(receipt, {
     schemaVersion: 1,
     deliveryId: 'wecom-all-fail',
@@ -1486,7 +1486,7 @@ test('Enterprise WeChat keeps the generic error when no answer or file failure n
   await bridge.accept(frame({ msgid: 'wecom-no-visible-failure' }));
 
   assert.equal(attemptedActiveTexts.length, 2);
-  assert.deepEqual(finalStreamTexts, ['文字结果', '消息处理失败，请稍后重试。']);
+  assert.deepEqual(finalStreamTexts, ['文字结果', tr('bridge.messageFailed')]);
 });
 
 test('Enterprise WeChat reports an unacknowledged file message as uncertain', async (t) => {
@@ -1514,7 +1514,7 @@ test('Enterprise WeChat reports an unacknowledged file message as uncertain', as
 
   await bridge.accept(frame({ msgid: 'wecom-uncertain-file' }));
 
-  assert.match(active[0], /发送结果未能确认.*先检查聊天内是否已收到.*不要立即重试/);
+  assert.match(active[0], new RegExp(tr('artifact.error.uncertain', { name: 'uncertain.txt' }).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 });
 
 test('Enterprise WeChat cancellation interrupts an in-flight file send and skips later files', async (t) => {
@@ -1561,7 +1561,7 @@ test('Enterprise WeChat cancellation interrupts an in-flight file send and skips
 
   assert.deepEqual(uploads, ['first.txt']);
   assert.equal(active.some((text) => text.includes('发送结果未能确认')), false);
-  assert.equal(active.some((text) => text === '消息处理失败，请稍后重试。'), false);
+  assert.equal(active.some((text) => text === tr('bridge.messageFailed')), false);
 });
 
 test('Enterprise WeChat uses a neutral final text for a file-only Turn', async (t) => {
@@ -1594,7 +1594,7 @@ test('Enterprise WeChat uses a neutral final text for a file-only Turn', async (
 
   await bridge.accept(frame({ msgid: 'wecom-file-only' }));
 
-  assert.deepEqual(finalTexts, ['结果文件已生成。']);
+  assert.deepEqual(finalTexts, [tr('artifact.generated')]);
   assert.deepEqual(files, [{ chatId: 'member-1', type: 'file', mediaId: 'media-only' }]);
 });
 

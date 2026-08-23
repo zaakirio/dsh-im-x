@@ -458,8 +458,7 @@ test('close waits for a delayed callback probe before its final runtime drain', 
     callbackProbe: async () => probeGate,
   });
   await fx.controller.initialize();
-  const started = fx.controller.startCallbackRepair(existing.id);
-  const attemptId = started.registration.attempt;
+  fx.controller.startCallbackRepair(existing.id);
   await waitFor(() => fx.registrationRuns.length === 1);
   const run = fx.registrationRuns.shift();
   run.options.onQRCodeReady({ url: callbackRepairQrUrl(existing.appId), expireIn: 60 });

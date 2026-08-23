@@ -193,7 +193,7 @@ test('DingTalk returns a registered result file through the native robot convers
     { robotCode: 'robot-code' },
   ));
 
-  assert.deepEqual(order, ['text:结果文件已生成。', 'file:result.pdf']);
+  assert.deepEqual(order, [`text:${tr('artifact.generated')}`, 'file:result.pdf']);
   assert.equal(bridge.status.artifactsSent, 1);
   assert.deepEqual(receipt, {
     schemaVersion: 1,
@@ -253,13 +253,13 @@ test('DingTalk gives safe, actionable file delivery failure guidance', async (t)
       name: 'uncertain delivery',
       code: 'artifact-delivery-uncertain',
       fileName: 'dingtalk-uncertain.pdf',
-      expected: '结果文件「dingtalk-uncertain.pdf」发送结果未能确认，请先检查聊天内是否已收到，不要立即重试。',
+      expected: tr('artifact.uncertainShort', { name: 'dingtalk-uncertain.pdf' }),
     },
     {
       name: 'missing permission',
       code: 'artifact-permission-required',
       fileName: 'dingtalk-permission.pdf',
-      expected: '结果文件「dingtalk-permission.pdf」已生成，但钉钉应用或机器人缺少文件消息权限。请开通应用 qyapi_base 权限，并确认机器人具备文件消息发送能力。',
+      expected: tr('artifact.dingtalk.permission', { name: 'dingtalk-permission.pdf' }),
     },
   ];
 
@@ -459,9 +459,9 @@ test('DingTalk distinguishes download-address failures from temporary-file failu
   for (const [code, expected] of [
     [
       'image-download-address-failed',
-      '钉钉未能换取图片下载地址，请重新发送；若持续失败，请检查机器人的“企业内机器人发送消息权限”。',
+      tr('image.error.dingtalkDownloadCodeFailed'),
     ],
-    ['image-content-download-failed', '钉钉返回的图片临时地址无法读取，请重新发送。'],
+    ['image-content-download-failed', tr('image.error.dingtalkTemporaryUrlUnreadable')],
   ]) {
     const fixture = stateFixture();
     const sent = [];
@@ -514,7 +514,7 @@ test('DingTalk executes /compact for the bound Session without prompting the mod
   await bridge.accept(message('compact-dingtalk', '/compact'));
 
   assert.deepEqual(executed, [{ sessionId: 'session-compact', line: '/compact' }]);
-  assert.equal(sent.at(-1).text, '暂无可压缩的历史记录。');
+  assert.equal(sent.at(-1).text, tr('compact.result.noHistory'));
 });
 
 test('DingTalk lists models and presets without prompting and advertises fast commands', async () => {
@@ -572,7 +572,7 @@ test('DingTalk lists models and presets without prompting and advertises fast co
   assert.equal(fixture.sessions.size, 0);
 
   await bridge.accept(message('preset-current-dingtalk', '/preset'));
-  assert.match(sent.at(-1).text, /跟随 Host 默认/);
+  assert.match(sent.at(-1).text, new RegExp(tr('preset.followsHostDefault')));
   assert.equal(asks, 0);
   assert.equal(creates, 0);
 
@@ -586,7 +586,7 @@ test('DingTalk lists models and presets without prompting and advertises fast co
   await bridge.accept(message('preset-default-dingtalk', '/preset --default'));
   assert.deepEqual(presetUpdates, ['preset-002', null]);
   assert.equal(sent.length, defaultReplyStart + 1);
-  assert.match(sent.at(-1).text, /跟随 Host 默认/);
+  assert.match(sent.at(-1).text, new RegExp(tr('preset.followsHostDefault')));
   assert.equal(asks, 0);
   assert.equal(creates, 0);
   assert.equal(fixture.sessions.size, 0);
@@ -808,9 +808,9 @@ test('commands stay local and unsafe session webhooks are rejected before Harnes
     sessionWebhook: 'https://oapi.dingtalk.com.attacker.example/reply?private=one',
   }));
   assert.equal(asked, 0);
-  assert.equal(sent[0], '已开启新会话。请发送你的问题。');
+  assert.equal(sent[0], tr('bridge.newSession'));
   assert.equal(sent.length, 1);
-  assert.equal(bridge.status.lastError, '钉钉消息没有安全的回复地址。');
+  assert.equal(bridge.status.lastError, tr('bridge.error.noSafeReplyTarget', { channel: 'DingTalk' }));
 });
 
 test('a DingTalk reply answers a pending Harness question before the original turn queue', async () => {
@@ -883,7 +883,7 @@ test('a DingTalk reply answers a pending Harness question before the original tu
   releaseTurn.resolve();
   await first;
   assert.equal(sent.length, 2);
-  assert.match(sent[0].text, /DeepSeek Harness 需要你补充信息/);
+  assert.match(sent[0].text, new RegExp(tr('question.header')));
   assert.equal(sent[1].text, '已按测试环境继续。');
   assert.equal(bridge.status.messagesReceived, 2);
   assert.equal(bridge.status.messagesReplied, 1);
@@ -1015,8 +1015,7 @@ test('DingTalk handles approval replies on the fast lane and presents approvals 
   await bridge.accept(message('approval-invalid', '好的'));
   assert.deepEqual(decisions, []);
   assert.deepEqual(asked, [{ sessionId: 'session-approval', text: '发起两个审批' }]);
-  assert.match(sent.at(-1).text, /批准/);
-  assert.match(sent.at(-1).text, /拒绝/);
+  assert.match(sent.at(-1).text, new RegExp(tr('approval.prompt').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 
   await bridge.accept(message('approval-allow', '批准'));
   assert.deepEqual(decisions, [{
@@ -1142,7 +1141,7 @@ test('question replays are deduplicated and an unrenderable approval is safely r
       outcome: 'rejected',
     },
   });
-  assert.equal(sent.some(({ text }) => text.includes('无法完整展示')), true);
+  assert.equal(sent.some(({ text }) => text.includes(tr('approval.cannotDisplay'))), true);
   assert.equal(sent.at(-1).text, '交互已取消');
 });
 
@@ -1265,7 +1264,7 @@ test('a queued next prompt stays separate when question submission must be retri
     .finally(() => { nextSettled = true; });
   releaseFirstSubmit.resolve();
   await firstAnswer;
-  await eventually(() => sent.some(({ text }) => text.includes('回答提交失败')));
+  await eventually(() => sent.some(({ text }) => text.includes(tr('bridge.answerSubmitRetry'))));
   assert.equal(nextSettled, false);
   assert.deepEqual(asked, ['启动可重试交互']);
 
@@ -1407,7 +1406,7 @@ test('an answer resolved elsewhere is not reinterpreted as a later prompt', asyn
   await Promise.all([answer, first, later]);
   assert.deepEqual(asked, ['启动外部解决竞态', '后来的普通问题']);
   assert.equal(asked.includes('原本的问题答案'), false);
-  assert.equal(sent.some(({ text }) => text.includes('已在其他客户端处理')), true);
+  assert.equal(sent.some(({ text }) => text.includes(tr('bridge.interactionResolved'))), true);
 });
 
 test('an orphan question is cancelled without exposing it to a new conversation', async () => {
@@ -1454,7 +1453,7 @@ test('an orphan question is cancelled without exposing it to a new conversation'
     },
   });
   assert.equal(sent.some(({ text }) => text.includes('旧会话中的敏感问题内容')), false);
-  assert.equal(sent.some(({ text }) => text.includes('遗留的待回答问题')), true);
+  assert.equal(sent.some(({ text }) => text.includes(tr('bridge.recoveredInteractionCancelled'))), true);
   assert.equal(sent.at(-1).text, '新的消息已继续');
 });
 
@@ -1661,7 +1660,7 @@ test('group questions tell users to mention the bot and ignore unmentioned answe
     isInAtList: true,
   }));
   await eventually(() => sent.some(({ text }) => text.includes('群聊问题')));
-  assert.match(sent[0].text, /群聊中请 @机器人/);
+  assert.match(sent[0].text, new RegExp(tr('question.mentionHint')));
 
   await bridge.accept(message('group-unmentioned', '这条不算答案', {
     ...group,

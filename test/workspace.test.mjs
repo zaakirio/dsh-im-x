@@ -1023,7 +1023,7 @@ test('/sessionlist supports the current workspace, list numbers, and absolute pa
   const current = await runWorkspaceCommand('/SESSIONLIST', harness);
   assert.ok(current.message.includes(tr('session.workspaceLine', { workspace: defaultWorkspace })));
   assert.ok(current.message.includes(tr('session.countHeader', { count: 3 })));
-  assert.match(current.message, /1\. 安全标题 伪造 4\. injected\n   ID: session-current/);
+  assert.match(current.message, /1\. 安全标题 伪造 4\. injected\n {3}ID: session-current/);
   assert.doesNotMatch(current.message, /\u202e|\n4\. injected/);
   assert.ok(current.message.includes(`2. ${tr('session.untitled')}${tr('session.archivedMarker')}\n   ID: session-archived`));
   assert.ok(current.message.includes(`3. ${tr('session.titleUnavailable')}\n   ID: session-missing-summary`));
@@ -1069,7 +1069,7 @@ test('/sessionlist returns actionable and safe errors', async (t) => {
     new RegExp(tr('workspace.notDirectory')),
   );
   assert.equal((await runWorkspaceCommand('/sessionlist', {})).message, tr('session.listUnsupported'));
-  assert.match((await runWorkspaceCommand('/sessionlist', {
+  assert.equal((await runWorkspaceCommand('/sessionlist', {
     currentWorkspace() { return defaultWorkspace; },
     async listWorkspaceSessions() { throw new Error('private Harness detail'); },
   })).message, tr('session.listFailed'));
@@ -1318,8 +1318,9 @@ test('workspace RPC validates payloads and returns the updated public status', a
   const missing = await handler(TOKEN_BOT_ENDPOINTS.setWorkspace, {
     botId: 'bot_one', workspace: join(root, 'missing'),
   });
+  // The code is the contract across the RPC boundary; the settings UI renders
+  // its own copy from it, so the message stays developer-facing.
   assert.equal(missing.error.code, 'workspace-not-found');
-  assert.ok(missing.error.message.includes(tr('workspace.indexMissing')));
 });
 
 test('BotWorkspaceStore persists per-bot agent presets without changing workspaces', async (t) => {

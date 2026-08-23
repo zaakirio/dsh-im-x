@@ -34,6 +34,9 @@ import {
   materializeOutboundArtifact,
   releaseOutboundArtifact,
 } from '../shared/semantic/artifact.mjs';
+import { helpText } from '../shared/bot-commands.mjs';
+import { bridgeTranslatorFactory } from '../shared/conversation-locale.mjs';
+import { defaultTranslator } from '../../i18n/index.mjs';
 import {
   createArtifactFailureReceipt,
   createDeliveryReceipt,
@@ -41,9 +44,7 @@ import {
   providerMessageIdsFor,
 } from '../shared/semantic/delivery.mjs';
 
-const CARD_INITIAL_TEXT = '已连接 DeepSeek Harness，正在思考…';
-const CARD_ERROR_TEXT = '消息处理失败，请稍后重试。';
-const INTERACTION_RESOLVED_TEXT = '这个问题已在其他客户端处理，无需再次回答。';
+
 
 const CHANNEL_LABEL = 'DingTalk';
 
@@ -79,23 +80,23 @@ function safeErrorDiagnostic(error) {
   return chain;
 }
 
-function dingtalkImageErrorUserMessage(error) {
+function dingtalkImageErrorUserMessage(error, t = defaultTranslator) {
   let current = error;
   const seen = new Set();
   while (current && typeof current === 'object' && !seen.has(current)) {
     seen.add(current);
     if (current.code === 'image-download-address-failed') {
-      return '钉钉未能换取图片下载地址，请重新发送；若持续失败，请检查机器人的“企业内机器人发送消息权限”。';
+      return t('image.error.dingtalkDownloadCodeFailed');
     }
     if (current.code === 'invalid-image-download') {
-      return '钉钉没有返回图片下载地址，请重新发送。';
+      return t('image.error.dingtalkNoDownloadUrl');
     }
     if (current.code === 'image-content-download-failed') {
-      return '钉钉返回的图片临时地址无法读取，请重新发送。';
+      return t('image.error.dingtalkTemporaryUrlUnreadable');
     }
     current = current.cause;
   }
-  return imagePromptUserMessage(error);
+  return imagePromptUserMessage(error, t);
 }
 
 function senderStaffId(message) {
@@ -203,35 +204,30 @@ function fileTarget(message, sender, clientId) {
   return { type: 'user', userId: sender, robotCode };
 }
 
-function artifactFailureText(fileName, error) {
-  const name = String(fileName ?? '结果文件').replace(/[\r\n]+/g, ' ').trim() || '结果文件';
-  switch (error?.code) {
-    case 'artifact-delivery-uncertain':
-      return `结果文件「${name}」发送结果未能确认，请先检查聊天内是否已收到，不要立即重试。`;
-    case 'artifact-permission-required':
-      return `结果文件「${name}」已生成，但钉钉应用或机器人缺少文件消息权限。请开通应用 qyapi_base 权限，并确认机器人具备文件消息发送能力。`;
-    case 'artifact-too-large':
-      return `结果文件「${name}」超过当前钉钉机器人可发送的文件大小，未发送。`;
-    case 'artifact-rate-limited':
-      return `结果文件「${name}」暂时被钉钉限流，未能发送，请稍后重试。`;
-    case 'artifact-provider-rejected':
-      return `结果文件「${name}」已生成，但钉钉拒绝了该文件消息，请检查文件类型和机器人文件消息配置。`;
-    case 'artifact-invalid':
-    case 'artifact-changed':
-    case 'artifact-unavailable':
-      return `结果文件「${name}」暂时无法读取或准备发送，请确认文件仍可访问后重试。`;
-    default:
-      return `结果文件「${name}」已生成，但暂时未能通过钉钉发送，请稍后重试。`;
-  }
+const DINGTALK_ARTIFACT_ERROR_KEYS = Object.freeze({
+  'artifact-delivery-uncertain': 'artifact.uncertainShort',
+  'artifact-permission-required': 'artifact.dingtalk.permission',
+  'artifact-too-large': 'artifact.dingtalk.tooLarge',
+  'artifact-rate-limited': 'artifact.dingtalk.rateLimited',
+  'artifact-provider-rejected': 'artifact.dingtalk.rejected',
+  'artifact-invalid': 'artifact.error.unavailable',
+  'artifact-changed': 'artifact.error.unavailable',
+  'artifact-unavailable': 'artifact.error.unavailable',
+});
+
+function artifactFailureText(fileName, error, t = defaultTranslator) {
+  const fallback = t('artifact.fallbackName');
+  const name = String(fileName ?? fallback).replace(/[\r\n]+/g, ' ').trim() || fallback;
+  return t(DINGTALK_ARTIFACT_ERROR_KEYS[error?.code] ?? 'artifact.dingtalk.generic', { name });
 }
 
-function progressText(update) {
+function progressText(update, t = defaultTranslator) {
   if (update?.type === 'text' && nonEmptyString(update.text)) return update.text;
   if (update?.type === 'tool') {
-    if (update.name === 'web_search') return '_正在搜索网络并整理信息…_';
-    return `_正在使用 ${nonEmptyString(update.name) ?? '工具'}…_`;
+    if (update.name === 'web_search') return `_${t('bridge.searchingWeb')}_`;
+    return `_${t('bridge.usingTool', { name: nonEmptyString(update.name) ?? t('bridge.toolFallback') })}_`;
   }
-  return `_${nonEmptyString(update?.text) ?? '正在处理…'}_`;
+  return `_${nonEmptyString(update?.text) ?? t('bridge.processing')}_`;
 }
 
 function canClaimInteractionReply(message, pending, sender) {
@@ -288,6 +284,7 @@ export class DingtalkHarnessBridge {
   #clientSecret;
   #harness;
   #state;
+  #translatorFor;
   #status;
   #logger;
   #replyTimeoutMs;
@@ -312,6 +309,7 @@ export class DingtalkHarnessBridge {
     replyTimeoutMs = 600_000,
     maxMessageChars = 4_000,
     signal,
+    locale,
   }) {
     if (!api || typeof api.sendText !== 'function') throw new TypeError('DingTalk API is required');
     if (!nonEmptyString(clientId) || !nonEmptyString(clientSecret)) {
@@ -329,6 +327,7 @@ export class DingtalkHarnessBridge {
     this.#replyTimeoutMs = replyTimeoutMs;
     this.#maxMessageChars = maxMessageChars;
     this.#signal = signal;
+    this.#translatorFor = bridgeTranslatorFactory({ state, locale });
     ensureStats(this.#status);
     this.#refreshPendingSenders();
   }
@@ -389,9 +388,10 @@ export class DingtalkHarnessBridge {
         commandRunner,
       ).catch((error) => {
         if (error?.code === 'turn-stopped' || this.#signal?.aborted) return;
-        this.#status.lastError = '钉钉命令处理失败。';
+        const t = this.#translatorFor(key, message);
+        this.#status.lastError = t('bridge.error.commandFailed', { channel: CHANNEL_LABEL });
         this.#logger.error?.('[dsh-dingtalk] failed to process a command', safeErrorDiagnostic(error));
-        return this.#send(sessionWebhook, CARD_ERROR_TEXT).catch(() => undefined);
+        return this.#send(sessionWebhook, t('bridge.messageFailed')).catch(() => undefined);
       }).finally(() => {
         this.#acceptedMessageIds.delete(messageId);
         this.#commandTasks.delete(task);
@@ -418,6 +418,7 @@ export class DingtalkHarnessBridge {
     });
     if (approvalReply) {
       let current;
+      const approvalTranslator = this.#translatorFor(key, message);
       current = approvalReply.process(async () => {
           if (this.#state.hasSeen(messageId)) return false;
           await this.#state.markSeen(messageId);
@@ -426,13 +427,13 @@ export class DingtalkHarnessBridge {
           if (!sessionWebhook) {
             increment(this.#status, 'messagesRejected');
             this.#status.lastRejectedAt = new Date().toISOString();
-            this.#status.lastError = '钉钉消息没有安全的回复地址。';
+            this.#status.lastError = approvalTranslator('bridge.error.noSafeReplyTarget', { channel: CHANNEL_LABEL });
           }
           return true;
         })
         .catch((error) => {
           if (this.#signal?.aborted) return;
-          this.#status.lastError = '钉钉审批处理失败。';
+          this.#status.lastError = approvalTranslator('bridge.error.approvalFailed', { channel: CHANNEL_LABEL });
           this.#logger.error?.('[dsh-dingtalk] failed to process an approval reply', error);
         })
         .finally(() => {
@@ -502,6 +503,7 @@ export class DingtalkHarnessBridge {
   }
 
   async #processFastCommand(message, messageId, key, sessionWebhook, prompt, runner) {
+    const t = this.#translatorFor(key, message);
     this.#signal?.throwIfAborted();
     if (this.#state.hasSeen(messageId)) return;
     await this.#state.markSeen(messageId);
@@ -518,6 +520,7 @@ export class DingtalkHarnessBridge {
         pendingInteraction: this.#pendingInteractions.has(key)
           || this.#approvals.hasPending(key),
         control: { owner: this, key },
+        t,
       },
     );
     if (result?.stopped) {
@@ -533,6 +536,7 @@ export class DingtalkHarnessBridge {
   }
 
   async #process(message, messageId, sender, key, { alreadyRecorded = false } = {}) {
+    const t = this.#translatorFor(key, message);
     this.#signal?.throwIfAborted();
     if (!alreadyRecorded) {
       if (this.#state.hasSeen(messageId)) return;
@@ -552,7 +556,7 @@ export class DingtalkHarnessBridge {
     } catch {
       increment(this.#status, 'messagesRejected');
       this.#status.lastRejectedAt = new Date().toISOString();
-      this.#status.lastError = '钉钉消息没有安全的回复地址。';
+      this.#status.lastError = t('bridge.error.noSafeReplyTarget', { channel: CHANNEL_LABEL });
       return;
     }
 
@@ -568,7 +572,7 @@ export class DingtalkHarnessBridge {
     let cardStarted = false;
     try {
       if (!text && !hasImages) {
-        await this.#send(sessionWebhook, '目前支持文字和图片消息。');
+        await this.#send(sessionWebhook, t('bridge.textAndImagesOnly'));
         return;
       }
 
@@ -579,16 +583,16 @@ export class DingtalkHarnessBridge {
       }
       if (isPlainText && !hasImages && command === '/status') {
         await this.#harness.ensureRunning({ signal: this.#signal });
-        await this.#send(sessionWebhook, '钉钉机器人与 DeepSeek Harness 连接正常。');
+        await this.#send(sessionWebhook, t('bridge.statusOk', { channel: CHANNEL_LABEL }));
         return;
       }
       if (isPlainText && !hasImages && command === '/new') {
         await this.#state.clearSession(key);
-        await this.#send(sessionWebhook, '已开启新会话。请发送你的问题。');
+        await this.#send(sessionWebhook, t('bridge.newSession'));
         return;
       }
       const workspaceCommand = isPlainText && !hasImages
-        ? await runWorkspaceCommand(text, this.#harness, key)
+        ? await runWorkspaceCommand(text, this.#harness, key, { t })
         : null;
       if (workspaceCommand) {
         for (const reply of workspaceCommand.messages ?? [workspaceCommand.message]) {
@@ -624,7 +628,7 @@ export class DingtalkHarnessBridge {
           signal: this.#signal,
           logger: this.#logger,
         });
-        cardStarted = await cardStream.start(CARD_INITIAL_TEXT);
+        cardStarted = await cardStream.start(t('bridge.connectedThinking'));
       }
       const { answer, artifacts = [] } = await askInWorkspaceSession({
         harness: this.#harness,
@@ -638,9 +642,10 @@ export class DingtalkHarnessBridge {
           signal: this.#signal,
           control: { owner: this, key },
           onUpdate: cardStarted
-            ? (update) => cardStream.push(progressText(update))
+            ? (update) => cardStream.push(progressText(update, t))
             : undefined,
           onInteraction: (interaction) => this.#handleInteraction(interaction, {
+            t,
             key,
             actor: sender,
             sessionWebhook,
@@ -651,7 +656,7 @@ export class DingtalkHarnessBridge {
       });
       const answerText = typeof answer === 'string' && answer.trim()
         ? answer
-        : artifacts.length > 0 ? '结果文件已生成。' : answer;
+        : artifacts.length > 0 ? t('artifact.generated') : answer;
       let textDeliveryError = null;
       let textReceipt = null;
       let streamed = false;
@@ -678,6 +683,7 @@ export class DingtalkHarnessBridge {
         messageId,
         artifacts,
         textReceipt,
+        t,
       );
       if (textDeliveryError && !delivery.userVisible) throw textDeliveryError;
       increment(this.#status, 'messagesReplied');
@@ -686,17 +692,17 @@ export class DingtalkHarnessBridge {
       return delivery.receipt;
     } catch (error) {
       if (error?.code === 'turn-stopped') {
-        if (cardStarted) await cardStream.finish('已停止。').catch(() => undefined);
+        if (cardStarted) await cardStream.finish(t('bridge.stopped')).catch(() => undefined);
         return;
       }
       if (this.#signal?.aborted) return;
-      this.#status.lastError = '钉钉消息处理失败。';
+      this.#status.lastError = t('bridge.error.messageFailed', { channel: CHANNEL_LABEL });
       this.#logger.error?.(
         '[dsh-dingtalk] failed to process an inbound message',
         safeErrorDiagnostic(error),
       );
       try {
-        const errorText = dingtalkImageErrorUserMessage(error) ?? CARD_ERROR_TEXT;
+        const errorText = dingtalkImageErrorUserMessage(error, t) ?? t('bridge.messageFailed');
         const streamed = cardStarted && await cardStream.finish(errorText);
         if (!streamed) await this.#send(sessionWebhook, errorText);
       } catch {
@@ -709,12 +715,13 @@ export class DingtalkHarnessBridge {
   }
 
   async #processInteractionReply(message, messageId, sender, key, expected) {
+    const t = this.#translatorFor(key, message);
     this.#signal?.throwIfAborted();
     const current = this.#pendingInteractions.get(key);
     const claimed = expected.claimedReplyMessageId === messageId;
     if (!current || current !== expected || current.submitting) {
       if (claimed && (!current || current !== expected)) {
-        return this.#discardResolvedInteractionReply(message, messageId);
+        return this.#discardResolvedInteractionReply(message, messageId, key);
       }
       return this.#enqueueMessage(message, messageId, sender, key, { releaseMessageId: false });
     }
@@ -734,14 +741,14 @@ export class DingtalkHarnessBridge {
     } catch {
       increment(this.#status, 'messagesRejected');
       this.#status.lastRejectedAt = new Date().toISOString();
-      this.#status.lastError = '钉钉消息没有安全的回复地址。';
+      this.#status.lastError = t('bridge.error.noSafeReplyTarget', { channel: CHANNEL_LABEL });
       return;
     }
 
     const text = message?.msgtype === 'text' ? nonEmptyString(message?.text?.content) : null;
     if (!text) {
       try {
-        await this.#send(sessionWebhook, '请用文字回答当前问题。');
+        await this.#send(sessionWebhook, t('bridge.answerWithText'));
       } catch {
         this.#logger.error?.('[dsh-dingtalk] failed to reject a non-text interaction reply');
       }
@@ -752,7 +759,7 @@ export class DingtalkHarnessBridge {
     if (!pending || pending !== expected || pending.submitting) {
       if (claimed && (!pending || pending !== expected)) {
         try {
-          await this.#send(sessionWebhook, INTERACTION_RESOLVED_TEXT);
+          await this.#send(sessionWebhook, t('bridge.interactionResolved'));
         } catch {
           this.#logger.error?.('[dsh-dingtalk] failed to send an expired interaction notice');
         }
@@ -768,7 +775,7 @@ export class DingtalkHarnessBridge {
       try {
         await this.#presentInteraction(pending);
       } catch {
-        this.#status.lastError = '钉钉交互问题发送失败。';
+        this.#status.lastError = t('bridge.error.interactionSendFailed', { channel: CHANNEL_LABEL });
         this.#logger.error?.('[dsh-dingtalk] failed to retry an interaction question');
         pending.interaction.reconnect?.();
       }
@@ -787,7 +794,7 @@ export class DingtalkHarnessBridge {
       try {
         await this.#presentInteraction(pending);
       } catch {
-        this.#status.lastError = '钉钉交互问题发送失败。';
+        this.#status.lastError = t('bridge.error.interactionSendFailed', { channel: CHANNEL_LABEL });
         this.#logger.error?.('[dsh-dingtalk] failed to send the next interaction question');
         pending.interaction.reconnect?.();
       }
@@ -811,7 +818,7 @@ export class DingtalkHarnessBridge {
       if (error?.code === 'interaction-not-pending') {
         this.#clearPendingInteraction(key, pending.interactionId);
         try {
-          await this.#send(sessionWebhook, INTERACTION_RESOLVED_TEXT);
+          await this.#send(sessionWebhook, t('bridge.interactionResolved'));
         } catch {
           this.#logger.error?.('[dsh-dingtalk] failed to send an expired interaction notice');
         }
@@ -820,10 +827,10 @@ export class DingtalkHarnessBridge {
       pending.submitting = false;
       pending.answers.pop();
       pending.index -= 1;
-      this.#status.lastError = '回答提交失败。';
+      this.#status.lastError = t('bridge.error.answerSubmitFailed');
       this.#logger.error?.('[dsh-dingtalk] failed to answer a Harness interaction');
       try {
-        await this.#send(sessionWebhook, '回答提交失败，请重新发送当前问题的答案。');
+        await this.#send(sessionWebhook, t('bridge.answerSubmitRetry'));
       } catch {
         this.#logger.error?.('[dsh-dingtalk] failed to send an interaction retry notice');
       }
@@ -831,6 +838,7 @@ export class DingtalkHarnessBridge {
   }
 
   async #handleInteraction(interaction, {
+    t = defaultTranslator,
     key,
     actor,
     sessionWebhook,
@@ -869,7 +877,7 @@ export class DingtalkHarnessBridge {
         },
       });
       try {
-        await this.#send(sessionWebhook, '检测到这个 Session 中遗留的待回答问题，已安全取消并继续处理你刚才的消息。');
+        await this.#send(sessionWebhook, t('bridge.recoveredInteractionCancelled'));
       } catch {
         this.#logger.error?.('[dsh-dingtalk] failed to send an interaction recovery notice');
       }
@@ -941,7 +949,8 @@ export class DingtalkHarnessBridge {
     pending.needsPresentation = false;
   }
 
-  async #discardResolvedInteractionReply(message, messageId) {
+  async #discardResolvedInteractionReply(message, messageId, key) {
+    const t = this.#translatorFor(key, message);
     if (this.#state.hasSeen(messageId)) return;
     await this.#state.markSeen(messageId);
     increment(this.#status, 'messagesReceived');
@@ -955,7 +964,7 @@ export class DingtalkHarnessBridge {
       return;
     }
     try {
-      await this.#send(sessionWebhook, INTERACTION_RESOLVED_TEXT);
+      await this.#send(sessionWebhook, t('bridge.interactionResolved'));
     } catch {
       this.#logger.error?.('[dsh-dingtalk] failed to send an expired interaction notice');
     }
@@ -1015,7 +1024,7 @@ export class DingtalkHarnessBridge {
     return providerMessageIds;
   }
 
-  async #deliverArtifacts(target, sessionWebhook, replyTo, artifacts, baseReceipt) {
+  async #deliverArtifacts(target, sessionWebhook, replyTo, artifacts, baseReceipt, t = defaultTranslator) {
     const receipts = baseReceipt ? [baseReceipt] : [];
     let userVisible = Boolean(baseReceipt);
     for (const artifact of artifacts) {
@@ -1053,7 +1062,7 @@ export class DingtalkHarnessBridge {
         let noticeSent = false;
         const providerMessageIds = await this.#send(
           sessionWebhook,
-          artifactFailureText(artifact?.fileName, error),
+          artifactFailureText(artifact?.fileName, error, t),
         ).then((ids) => {
           noticeSent = true;
           return ids;

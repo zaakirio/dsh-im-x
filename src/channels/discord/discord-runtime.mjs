@@ -203,7 +203,6 @@ export class DiscordRuntime {
   #createWebSocket;
   #random;
   #status = createDiscordRuntimeStatus();
-  #api = null;
   #bridge = null;
   #abortController = null;
   #socket = null;
@@ -284,7 +283,6 @@ export class DiscordRuntime {
     const controller = new AbortController();
     this.#abortController = controller;
     const api = this.#createApi({ token: this.#token });
-    this.#api = api;
     try {
       const [bot, gateway] = await Promise.all([
         api.getCurrentUser({ signal: controller.signal }),
@@ -517,7 +515,6 @@ export class DiscordRuntime {
     const bridge = this.#bridge;
     this.#socket = null;
     this.#bridge = null;
-    this.#api = null;
     try {
       if (socket && socket.readyState < 2) socket.close(1000, 'Plugin stopped');
     } catch (error) {

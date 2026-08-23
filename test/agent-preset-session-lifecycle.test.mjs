@@ -10,6 +10,7 @@ import {
 } from '../src/channels/shared/bot-workspace-store.mjs';
 import { ConversationStateStore } from '../src/channels/shared/conversation-state-store.mjs';
 import { TextHarnessBridge } from '../src/channels/shared/text-harness-bridge.mjs';
+import { defaultTranslator as tr } from '../src/i18n/index.mjs';
 
 function message(messageId, content) {
   return {
@@ -84,11 +85,11 @@ test('/preset changes only the sessions created after /new and --default follows
   }]);
 
   await bridge.accept(message('message-list', '/presetlist'));
-  assert.match(sent.at(-1), /2\. New preset（preset-new）/u);
+  assert.ok(sent.at(-1).includes(`2. ${tr('preset.itemText', { label: 'New preset', id: 'preset-new' })}`));
 
   await bridge.accept(message('message-preset', '/preset 2'));
   assert.equal(workspaces.agentPresetFor(botId), 'preset-new');
-  assert.match(sent.at(-1), /已有会话不变/u);
+  assert.match(sent.at(-1), new RegExp(tr('preset.updatedNote').slice(0, 30)));
   assert.equal(state.sessionFor(conversationKey), 'session-a');
   assert.equal(creations.length, 1, '/preset itself must not create a session');
 

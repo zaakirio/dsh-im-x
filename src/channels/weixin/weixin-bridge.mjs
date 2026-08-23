@@ -32,6 +32,9 @@ import {
   promptContentForMessage,
 } from '../shared/image-prompt.mjs';
 import { rememberConnectionTestTarget } from '../shared/connection-test.mjs';
+import { helpText } from '../shared/bot-commands.mjs';
+import { bridgeTranslatorFactory } from '../shared/conversation-locale.mjs';
+import { defaultTranslator } from '../../i18n/index.mjs';
 import {
   materializeOutboundArtifact,
   releaseOutboundArtifact,
@@ -43,31 +46,8 @@ import {
   providerMessageIdsFor,
 } from '../shared/semantic/delivery.mjs';
 
-const INTERACTION_RESOLVED_TEXT = '这个问题已在其他客户端处理，无需再次回答。';
-const GENERIC_PROCESSING_ERROR = '消息处理失败，请稍后重试。';
 
-const HELP_TEXT = [
-  '微信已连接 DeepSeek Harness。',
-  '',
-  '直接发送文字、图片或带文字识别结果的语音即可继续当前会话。',
-  '/new  开启一个全新会话',
-  '/compact  压缩当前会话的较早上下文',
-  '/workspace 工作区绝对路径  切换工作区',
-  '/workspacelist  列出工作区绝对路径',
-  '/sessionlist [工作区序号或绝对路径]  列出会话 ID 和标题',
-  '/session Session ID 或当前工作区序号  将当前聊天绑定到指定会话',
-  '/models  按序号列出所有可用模型',
-  '/model [序号或完整模型ID]  查看或切换当前会话模型',
-  '示例：先发 /models，再发 /model 2',
-  '/presetlist  按序号列出可用 Agent Preset',
-  '/preset [序号或完整ID]  查看或设置当前机器人 Agent Preset',
-  '纯数字 ID：/preset id:<ID>',
-  '/preset --default  跟随 Host 默认',
-  '/stop  停止当前任务',
-  '/steer 补充指令  纠偏当前任务',
-  '/status  检查连接状态',
-  '/help  显示本帮助',
-].join('\n');
+const CHANNEL_LABEL = 'WeChat';
 
 function conversationKey(userId) {
   return `p2p:${userId}`;
@@ -89,8 +69,8 @@ function canClaimInteractionReply(message, pending) {
     && nonEmptyString(extractWeixinText(message));
 }
 
-function safeMessageError(error, userMessage = GENERIC_PROCESSING_ERROR) {
-  const diagnostic = imagePromptDiagnostic(error);
+function safeMessageError(error, t = defaultTranslator, userMessage = t('bridge.messageFailed')) {
+  const diagnostic = imagePromptDiagnostic(error, t);
   return {
     code: diagnostic?.code ?? 'message-processing-failed',
     reason: diagnostic?.reason ?? 'UNKNOWN',
@@ -99,26 +79,21 @@ function safeMessageError(error, userMessage = GENERIC_PROCESSING_ERROR) {
   };
 }
 
-function artifactFailureText(fileName, error) {
-  const name = String(fileName ?? '结果文件').replace(/[\r\n]+/g, ' ').trim() || '结果文件';
-  switch (error?.code) {
-    case 'artifact-delivery-uncertain':
-      return `结果文件「${name}」发送结果未能确认，请先检查聊天内是否已收到，不要立即重试。`;
-    case 'artifact-permission-required':
-      return `结果文件「${name}」已生成，但微信机器人当前没有文件消息发送权限，请检查机器人文件消息能力。`;
-    case 'artifact-too-large':
-      return `结果文件「${name}」超过当前微信会话可发送的文件大小，未发送。`;
-    case 'artifact-rate-limited':
-      return `结果文件「${name}」暂时被微信限流，未能发送，请稍后重试。`;
-    case 'artifact-provider-rejected':
-      return `结果文件「${name}」已生成，但微信拒绝了该文件消息。`;
-    case 'artifact-invalid':
-    case 'artifact-changed':
-    case 'artifact-unavailable':
-      return `结果文件「${name}」暂时无法读取或准备发送，请确认文件仍可访问后重试。`;
-    default:
-      return `结果文件「${name}」已生成，但暂时未能通过微信发送，请稍后重试。`;
-  }
+const WEIXIN_ARTIFACT_ERROR_KEYS = Object.freeze({
+  'artifact-delivery-uncertain': 'artifact.uncertainShort',
+  'artifact-permission-required': 'artifact.weixin.permission',
+  'artifact-too-large': 'artifact.weixin.tooLarge',
+  'artifact-rate-limited': 'artifact.weixin.rateLimited',
+  'artifact-provider-rejected': 'artifact.weixin.rejected',
+  'artifact-invalid': 'artifact.error.unavailable',
+  'artifact-changed': 'artifact.error.unavailable',
+  'artifact-unavailable': 'artifact.error.unavailable',
+});
+
+function artifactFailureText(fileName, error, t = defaultTranslator) {
+  const fallback = t('artifact.fallbackName');
+  const name = String(fileName ?? fallback).replace(/[\r\n]+/g, ' ').trim() || fallback;
+  return t(WEIXIN_ARTIFACT_ERROR_KEYS[error?.code] ?? 'artifact.weixin.generic', { name });
 }
 
 export function createWeixinBridgeStatus() {
@@ -141,6 +116,7 @@ export class WeixinHarnessBridge {
   #ownerUserId;
   #harness;
   #state;
+  #translatorFor;
   #status;
   #logger;
   #replyTimeoutMs;
@@ -166,6 +142,7 @@ export class WeixinHarnessBridge {
     replyTimeoutMs = 600_000,
     maxMessageChars = 4_000,
     signal,
+    locale,
   }) {
     if (!api || typeof api.sendText !== 'function') throw new TypeError('Weixin API is required');
     if (!baseUrl || !token || !ownerUserId) throw new TypeError('Weixin account credentials are required');
@@ -181,6 +158,7 @@ export class WeixinHarnessBridge {
     this.#replyTimeoutMs = replyTimeoutMs;
     this.#maxMessageChars = maxMessageChars;
     this.#signal = signal;
+    this.#translatorFor = bridgeTranslatorFactory({ state, locale });
     this.#approvals = new HarnessApprovalQueue({ label: 'weixin', logger });
   }
 
@@ -222,10 +200,11 @@ export class WeixinHarnessBridge {
         commandRunner,
       ).catch((error) => {
         if (error?.code === 'turn-stopped' || this.#signal?.aborted) return;
+        const t = this.#translatorFor(key, message);
         this.#status.lastError = error?.message ?? String(error);
-        this.#status.lastMessageError = safeMessageError(error);
+        this.#status.lastMessageError = safeMessageError(error, t);
         this.#logger.error?.('[dsh-weixin] failed to process a command:', error);
-        return this.#send(sender, GENERIC_PROCESSING_ERROR, contextToken, runId)
+        return this.#send(sender, t('bridge.messageFailed'), contextToken, runId)
           .catch(() => undefined);
       }).finally(() => {
         this.#acceptedMessageIds.delete(messageId);
@@ -367,6 +346,7 @@ export class WeixinHarnessBridge {
     const contextToken = typeof message.context_token === 'string' ? message.context_token : undefined;
     const runId = typeof message.run_id === 'string' ? message.run_id : undefined;
     const text = extractWeixinText(message) ?? '';
+    const t = this.#translatorFor(key, message);
     try {
       const images = typeof this.#api.inboundImages === 'function'
         ? this.#api.inboundImages(message)
@@ -374,26 +354,29 @@ export class WeixinHarnessBridge {
       const promptMessage = { content: text, images };
       const hasImages = hasInboundImages(promptMessage);
       if (!text && !hasImages) {
-        await this.#send(sender, '目前支持文字、图片，以及微信已转成文字的语音消息。', contextToken, runId);
+        await this.#send(sender, t('bridge.textImagesAndVoiceOnly'), contextToken, runId);
         await this.#state.markSeen(messageId);
         return;
       }
 
       const command = text.trim().toLowerCase();
       if (!hasImages && command === '/help') {
-        await this.#send(sender, HELP_TEXT, contextToken, runId);
+        await this.#send(sender, helpText(t, {
+          channelLabel: CHANNEL_LABEL,
+          introKey: 'bridge.help.introWithVoice',
+        }), contextToken, runId);
         await this.#state.markSeen(messageId);
         return;
       }
       if (!hasImages && command === '/status') {
         await this.#harness.ensureRunning({ signal: this.#signal });
-        await this.#send(sender, '微信与 DeepSeek Harness 连接正常。', contextToken, runId);
+        await this.#send(sender, t('bridge.statusOk', { channel: CHANNEL_LABEL }), contextToken, runId);
         await this.#state.markSeen(messageId);
         return;
       }
       if (!hasImages && command === '/new') {
         await this.#state.clearSession(key);
-        await this.#send(sender, '已开启新会话。请发送你的问题。', contextToken, runId);
+        await this.#send(sender, t('bridge.newSession'), contextToken, runId);
         await this.#state.markSeen(messageId);
         return;
       }
@@ -444,6 +427,7 @@ export class WeixinHarnessBridge {
               actor: sender,
               contextToken,
               runId,
+              t,
             }),
             onInteractionResolved: (resolution) => this.#handleInteractionResolved(resolution),
           },
@@ -456,7 +440,7 @@ export class WeixinHarnessBridge {
       }
       const answerText = typeof answer === 'string' && answer.trim()
         ? answer
-        : artifacts.length > 0 ? '结果文件已生成。' : answer;
+        : artifacts.length > 0 ? t('artifact.generated') : answer;
       let textDeliveryError = null;
       let textReceipt = null;
       try {
@@ -475,6 +459,7 @@ export class WeixinHarnessBridge {
         contextToken,
         runId,
         textReceipt,
+        t,
       );
       if (textDeliveryError && !delivery.userVisible) throw textDeliveryError;
       await this.#state.markSeen(messageId);
@@ -490,8 +475,8 @@ export class WeixinHarnessBridge {
       }
       if (this.#signal?.aborted) return;
       this.#status.lastError = error?.message ?? String(error);
-      const userMessage = imagePromptUserMessage(error) ?? GENERIC_PROCESSING_ERROR;
-      this.#status.lastMessageError = safeMessageError(error, userMessage);
+      const userMessage = imagePromptUserMessage(error, t) ?? t('bridge.messageFailed');
+      this.#status.lastMessageError = safeMessageError(error, t, userMessage);
       this.#logger.error?.('[dsh-weixin] failed to process an inbound message:', error);
       try {
         await this.#send(
@@ -509,6 +494,7 @@ export class WeixinHarnessBridge {
 
   async #processInteractionReply(message, messageId, key, expected) {
     this.#signal?.throwIfAborted();
+    const t = this.#translatorFor(key, message);
     const current = this.#pendingInteractions.get(key);
     const claimed = expected.claimedReplyMessageId === messageId;
     if (!current || current !== expected || current.submitting) {
@@ -528,7 +514,7 @@ export class WeixinHarnessBridge {
     if (!text || hasWeixinImageItems(message)) {
       await this.#send(
         expected.actor,
-        '请用文字回答当前问题。',
+        t('bridge.answerWithText'),
         contextToken,
         runId,
       );
@@ -540,7 +526,7 @@ export class WeixinHarnessBridge {
       if (claimed && (!pending || pending !== expected)) {
         await this.#send(
           expected.actor,
-          INTERACTION_RESOLVED_TEXT,
+          t('bridge.interactionResolved'),
           contextToken,
           runId,
         );
@@ -557,7 +543,7 @@ export class WeixinHarnessBridge {
       try {
         await this.#presentInteraction(pending);
       } catch {
-        this.#status.lastError = '微信交互问题发送失败。';
+        this.#status.lastError = t('bridge.error.interactionSendFailed', { channel: CHANNEL_LABEL });
         this.#logger.error?.('[dsh-weixin] failed to retry an interaction question');
         pending.interaction.reconnect?.();
         return;
@@ -567,7 +553,7 @@ export class WeixinHarnessBridge {
         if (claimed && (!presentedPending || presentedPending !== expected)) {
           await this.#send(
             expected.actor,
-            INTERACTION_RESOLVED_TEXT,
+            t('bridge.interactionResolved'),
             contextToken,
             runId,
           ).catch(() => undefined);
@@ -592,7 +578,7 @@ export class WeixinHarnessBridge {
       try {
         await this.#presentInteraction(pending);
       } catch {
-        this.#status.lastError = '微信交互问题发送失败。';
+        this.#status.lastError = t('bridge.error.interactionSendFailed', { channel: CHANNEL_LABEL });
         this.#logger.error?.('[dsh-weixin] failed to send the next interaction question');
         pending.interaction.reconnect?.();
       }
@@ -617,7 +603,7 @@ export class WeixinHarnessBridge {
         this.#clearPendingInteraction(key, pending.interactionId);
         await this.#send(
           pending.actor,
-          INTERACTION_RESOLVED_TEXT,
+          t('bridge.interactionResolved'),
           pending.contextToken,
           pending.runId,
         ).catch(() => undefined);
@@ -627,11 +613,11 @@ export class WeixinHarnessBridge {
       pending.submitting = false;
       pending.answers.pop();
       pending.index -= 1;
-      this.#status.lastError = '回答提交失败。';
+      this.#status.lastError = t('bridge.error.answerSubmitFailed');
       this.#logger.error?.('[dsh-weixin] failed to answer a Harness interaction');
       await this.#send(
         pending.actor,
-        '回答提交失败，请重新发送当前问题的答案。',
+        t('bridge.answerSubmitRetry'),
         pending.contextToken,
         pending.runId,
       ).catch(() => undefined);
@@ -643,12 +629,14 @@ export class WeixinHarnessBridge {
     actor,
     contextToken,
     runId,
+    t = defaultTranslator,
   }) {
     if (interaction?.kind === 'approval') {
       return this.#approvals.handleRequested(interaction, {
         key,
         actor,
         send: (text) => this.#send(actor, text, contextToken, runId),
+        t,
       });
     }
     if (interaction?.kind !== 'question') return;
@@ -677,7 +665,7 @@ export class WeixinHarnessBridge {
       });
       await this.#send(
         actor,
-        '检测到这个 Session 中遗留的待回答问题，已安全取消并继续处理你刚才的消息。',
+        t('bridge.recoveredInteractionCancelled'),
         contextToken,
         runId,
       ).catch(() => undefined);
@@ -761,9 +749,10 @@ export class WeixinHarnessBridge {
     await this.#state.markSeen(messageId);
     this.#status.messagesReceived += 1;
     this.#status.lastMessageAt = new Date().toISOString();
+    const sender = nonEmptyString(message?.from_user_id);
     await this.#send(
-      nonEmptyString(message?.from_user_id),
-      INTERACTION_RESOLVED_TEXT,
+      sender,
+      this.#translatorFor(sender ? conversationKey(sender) : '', message)('bridge.interactionResolved'),
       nonEmptyString(message?.context_token) ?? undefined,
       nonEmptyString(message?.run_id) ?? undefined,
     ).catch(() => undefined);
@@ -803,15 +792,17 @@ export class WeixinHarnessBridge {
 
   async #handleInteractionFailure(message, messageId, error) {
     if (this.#signal?.aborted) return;
+    const sender = nonEmptyString(message?.from_user_id);
+    const t = this.#translatorFor(sender ? conversationKey(sender) : '', message);
     this.#status.lastError = error?.message ?? String(error);
-    this.#status.lastMessageError = safeMessageError(error);
+    this.#status.lastMessageError = safeMessageError(error, t);
     this.#logger.error?.('[dsh-weixin] failed to process an interaction reply:', error);
     if (!this.#state.hasSeen(messageId)) {
       await this.#state.markSeen(messageId).catch(() => undefined);
     }
     await this.#send(
-      nonEmptyString(message?.from_user_id),
-      GENERIC_PROCESSING_ERROR,
+      sender,
+      t('bridge.messageFailed'),
       nonEmptyString(message?.context_token) ?? undefined,
       nonEmptyString(message?.run_id) ?? undefined,
     ).catch(() => undefined);
@@ -834,7 +825,7 @@ export class WeixinHarnessBridge {
     return providerMessageIds;
   }
 
-  async #deliverArtifacts(toUserId, replyTo, artifacts, contextToken, runId, baseReceipt) {
+  async #deliverArtifacts(toUserId, replyTo, artifacts, contextToken, runId, baseReceipt, t = defaultTranslator) {
     const receipts = baseReceipt ? [baseReceipt] : [];
     let userVisible = Boolean(baseReceipt);
     for (const artifact of artifacts) {
@@ -874,7 +865,7 @@ export class WeixinHarnessBridge {
         let noticeSent = false;
         const providerMessageIds = await this.#send(
           toUserId,
-          artifactFailureText(artifact?.fileName, error),
+          artifactFailureText(artifact?.fileName, error, t),
           contextToken,
           runId,
         ).then((ids) => {

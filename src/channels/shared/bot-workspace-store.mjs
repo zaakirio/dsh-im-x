@@ -16,8 +16,6 @@ import {
 import { CONNECTION_TEST_STATE_IDENTITY } from './connection-test.mjs';
 import { WORKSPACE_SESSION_STALE } from './workspace-session.mjs';
 
-const EMPTY_DOCUMENT = Object.freeze({ version: 1, workspaces: Object.freeze({}) });
-
 function workspaceSessionStale(message) {
   const error = new Error(message);
   error.code = WORKSPACE_SESSION_STALE;

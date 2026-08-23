@@ -19,7 +19,6 @@ function safeConnectionError(error) {
 
 export class OfficeRuntime {
   #config;
-  #token;
   #logger;
   #transport;
   #sleep;
@@ -38,7 +37,6 @@ export class OfficeRuntime {
     sleepImpl = sleep,
   }) {
     this.#config = config;
-    this.#token = token;
     this.#logger = logger;
     this.#sleep = sleepImpl;
     this.#transport = transport ?? new OfficeTransport({

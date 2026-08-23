@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import { TextHarnessBridge } from '../src/channels/shared/text-harness-bridge.mjs';
 import { runWorkspaceCommand } from '../src/channels/shared/workspace-command.mjs';
+import { defaultTranslator as tr } from '../src/i18n/index.mjs';
 
 test('/session binds exactly one safe Session ID to the current conversation', async () => {
   const calls = [];
@@ -20,12 +21,12 @@ test('/session binds exactly one safe Session ID to the current conversation', a
   }, 'direct:conversation-1');
 
   assert.deepEqual(calls, [{ key: 'direct:conversation-1', sessionId: 'session-123' }]);
-  assert.match(result.message, /^当前聊天已绑定会话：/);
-  assert.match(result.message, /工作区：\/workspace\/project/);
-  assert.match(result.message, /标题：安全标题 伪造 下一行/);
+  assert.ok(result.message.startsWith(tr('session.boundHeader')));
+  assert.ok(result.message.includes(tr('session.workspaceLine', { workspace: '/workspace/project' })));
+  assert.ok(result.message.includes(tr('session.titleLine', { title: '安全标题 伪造 下一行' })));
   assert.doesNotMatch(result.message, /\u202e|\n下一行/);
-  assert.match(result.message, /ID：session-123/);
-  assert.match(result.message, /归档：是/);
+  assert.match(result.message, /ID: session-123/);
+  assert.ok(result.message.includes(tr('session.archivedLine', { value: tr('session.yes') })));
   assert.equal(result.messages.join(''), result.message);
 });
 
@@ -52,10 +53,10 @@ test('/session N binds the selected position from the current workspace', async 
 
   const result = await runWorkspaceCommand('/session 2', harness, 'direct:conversation-1');
   assert.deepEqual(calls, [{ key: 'direct:conversation-1', sessionId: 'session-second' }]);
-  assert.match(result.message, /ID：session-second/);
+  assert.match(result.message, /ID: session-second/);
 
   const missing = await runWorkspaceCommand('/session 3', harness, 'direct:conversation-1');
-  assert.match(missing.message, /会话序号不存在/);
+  assert.equal(missing.message, tr('session.indexMissing'));
   assert.equal(calls.length, 1);
 });
 
@@ -66,20 +67,20 @@ test('/session N maps position lookup failures to safe messages', async () => {
     currentWorkspace() { throw stale; },
     async listWorkspaceSessions() { throw new Error('must not be called'); },
   }, 'direct:conversation-1');
-  assert.match(staleCurrent.message, /正在移除或已重新接入/);
+  assert.equal(staleCurrent.message, tr('session.bindRebound'));
   assert.doesNotMatch(staleCurrent.message, /private old bot lifecycle/);
 
   const staleList = await runWorkspaceCommand('/session 1', {
     currentWorkspace() { return process.cwd(); },
     async listWorkspaceSessions() { throw stale; },
   }, 'direct:conversation-1');
-  assert.match(staleList.message, /正在移除或已重新接入/);
+  assert.equal(staleList.message, tr('session.bindRebound'));
 
   const unavailable = await runWorkspaceCommand('/session 1', {
     currentWorkspace() { return process.cwd(); },
     async listWorkspaceSessions() { throw new Error('private Harness detail'); },
   }, 'direct:conversation-1');
-  assert.match(unavailable.message, /暂时无法获取会话列表/);
+  assert.equal(unavailable.message, tr('session.listForIndexFailed'));
   assert.doesNotMatch(unavailable.message, /private Harness detail/);
 });
 
@@ -102,7 +103,7 @@ test('/session strictly rejects missing, multiple, oversized, and unsafe IDs', a
 
   for (const command of invalid) {
     const result = await runWorkspaceCommand(command, harness, 'direct:conversation-1');
-    assert.match(result.message, /用法：\/session Session ID/);
+    assert.equal(result.message, tr('session.usageBind'));
   }
   assert.equal(bindCalls, 0);
 });
@@ -110,28 +111,28 @@ test('/session strictly rejects missing, multiple, oversized, and unsafe IDs', a
 test('/session requires binding support and a conversation key', async () => {
   assert.match(
     (await runWorkspaceCommand('/session session-1', {}, 'direct:conversation-1')).message,
-    /暂不支持绑定已有会话/,
+    new RegExp(tr('session.bindUnsupported')),
   );
   assert.match(
     (await runWorkspaceCommand('/session session-1', {
       async bindWorkspaceSession() { throw new Error('must not be called'); },
     })).message,
-    /缺少可绑定的会话上下文/,
+    new RegExp(tr('session.missingContext')),
   );
 });
 
 test('/session maps adoption, lifecycle, and concurrent failures to safe messages', async () => {
   const cases = [
-    ['session-id-invalid', /Session ID 格式无效/],
-    ['session-not-registered', /未找到该会话/],
-    ['session-workspace-ambiguous', /工作区归属不明确/],
-    ['session-summary-unavailable', /暂时无法读取该会话的信息/],
-    ['session-subagent-unsupported', /子代理会话不能绑定/],
-    ['workspace-bot-not-found', /正在移除或已重新接入/],
-    ['workspace-session-stale', /状态已发生变化/],
-    ['agent-busy', /状态已发生变化/],
-    ['session-conflict', /状态已发生变化/],
-    ['internal', /暂时无法绑定会话/],
+    ['session-id-invalid', tr('session.invalidId')],
+    ['session-not-registered', tr('session.notFound')],
+    ['session-workspace-ambiguous', tr('session.workspaceAmbiguous')],
+    ['session-summary-unavailable', tr('session.readFailed')],
+    ['session-subagent-unsupported', tr('session.subagentNotBindable')],
+    ['workspace-bot-not-found', tr('session.bindRebound')],
+    ['workspace-session-stale', tr('session.bindStale')],
+    ['agent-busy', tr('session.bindStale')],
+    ['session-conflict', tr('session.bindStale')],
+    ['internal', tr('session.bindFailed')],
   ];
 
   for (const [code, expected] of cases) {
@@ -140,7 +141,7 @@ test('/session maps adoption, lifecycle, and concurrent failures to safe message
     const result = await runWorkspaceCommand('/session session-1', {
       async bindWorkspaceSession() { throw internal; },
     }, 'direct:conversation-1');
-    assert.match(result.message, expected);
+    assert.ok(result.message.includes(expected), code);
     assert.doesNotMatch(result.message, /private detail/);
   }
 
@@ -152,7 +153,7 @@ test('/session maps adoption, lifecycle, and concurrent failures to safe message
     },
     assertWorkspaceScope() { throw stale; },
   }, 'direct:conversation-1');
-  assert.match(staleAfterBinding.message, /正在移除或已重新接入/);
+  assert.equal(staleAfterBinding.message, tr('session.bindRebound'));
 });
 
 test('the shared bridge binds locally with its conversation key and never prompts or creates', async () => {
@@ -194,9 +195,9 @@ test('the shared bridge binds locally with its conversation key and never prompt
   assert.deepEqual(calls, [{ key: 'direct:conversation-1', sessionId: 'session-123' }]);
   assert.equal(forbiddenCalls, 0);
   assert.equal(sent.length, 1);
-  assert.match(sent[0], /当前聊天已绑定会话/);
-  assert.match(sent[0], /标题：暂无标题/);
-  assert.match(sent[0], /归档：否/);
+  assert.ok(sent[0].includes(tr('session.boundHeader')));
+  assert.ok(sent[0].includes(tr('session.titleLine', { title: tr('session.untitled') })));
+  assert.ok(sent[0].includes(tr('session.archivedLine', { value: tr('session.no') })));
   assert.equal(seen.has('message-session-bind'), true);
 });
 
@@ -211,7 +212,7 @@ test('all nine channel bridges advertise /session and pass their current convers
   ];
   for (const [file, key] of bridgeFamilies) {
     const source = await readFile(new URL(file, import.meta.url), 'utf8');
-    assert.match(source, /\/session Session ID 或当前工作区序号  将当前聊天绑定到指定会话/);
+    assert.match(source, /helpText\(/);
     assert.ok(
       source.includes(`runWorkspaceCommand(text, this.#harness, ${key})`),
       `${file} must pass ${key} to the shared command`,

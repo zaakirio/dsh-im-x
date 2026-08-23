@@ -19,6 +19,7 @@ import {
 } from '../src/channels/shared/bot-workspace-store.mjs';
 import { runModelCommand } from '../src/channels/shared/model-command.mjs';
 import { askInWorkspaceSession } from '../src/channels/shared/workspace-session.mjs';
+import { defaultTranslator as tr } from '../src/i18n/index.mjs';
 
 async function fixture(t) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'dsh-im-session-bind-')));
@@ -276,7 +277,7 @@ test('a first prompt and model switch share one binding without holding the lock
   }
   const promptResult = await prompting;
 
-  assert.match(switchResult.message, /模型已切换为/);
+  assert.ok(switchResult.message.startsWith(tr('model.switched', { model: '' }).split('\n')[0]));
   assert.deepEqual(promptResult, { sessionId: 'session-1', answer: 'answer' });
   assert.equal(creations, 1);
   assert.deepEqual(state.snapshot(), { conversation: 'session-1' });

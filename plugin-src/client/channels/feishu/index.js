@@ -57,19 +57,6 @@ function SvgIcon({ children, size = 18, className, viewBox = "0 0 24 24" }) {
   }, children);
 }
 
-function ShieldIcon({ size = 18 }) {
-  return h(SvgIcon, { size },
-    h("path", {
-      d: "M12 3 5.5 5.8v5.1c0 4.25 2.72 7.87 6.5 9.1 3.78-1.23 6.5-4.85 6.5-9.1V5.8L12 3Z",
-      stroke: "currentColor", strokeWidth: "1.7", strokeLinejoin: "round",
-    }),
-    h("path", {
-      d: "m9.3 11.8 1.7 1.7 3.8-4", stroke: "currentColor",
-      strokeWidth: "1.7", strokeLinecap: "round", strokeLinejoin: "round",
-    }),
-  );
-}
-
 function RobotIcon({ size = 26 }) {
   return h(SvgIcon, { size },
     h("rect", {
@@ -81,35 +68,6 @@ function RobotIcon({ size = 26 }) {
       stroke: "currentColor", strokeWidth: "1.7", strokeLinecap: "round",
     }),
   );
-}
-
-function SparkIcon({ size = 18 }) {
-  return h(SvgIcon, { size },
-    h("path", {
-      d: "M12 2.8c.75 3.67 2.7 5.62 6.4 6.4-3.7.77-5.65 2.72-6.4 6.4-.75-3.68-2.7-5.63-6.4-6.4 3.7-.78 5.65-2.73 6.4-6.4Z",
-      stroke: "currentColor", strokeWidth: "1.55", strokeLinejoin: "round",
-    }),
-    h("path", {
-      d: "M5.2 15.8c.35 1.7 1.28 2.63 3 3-1.72.36-2.65 1.29-3 3-.36-1.71-1.29-2.64-3-3 1.71-.37 2.64-1.3 3-3ZM18.7 2.7c.22 1.06.79 1.63 1.85 1.85-1.06.22-1.63.79-1.85 1.85-.22-1.06-.79-1.63-1.85-1.85 1.06-.22 1.63-.79 1.85-1.85Z",
-      fill: "currentColor",
-    }),
-  );
-}
-
-function RefreshIcon({ size = 16 }) {
-  return h(SvgIcon, { size }, h("path", {
-    d: "M19 7.5V4m0 0h-3.5M19 4l-2.1 2.1A7 7 0 1 0 19 13",
-    stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round",
-    strokeLinejoin: "round",
-  }));
-}
-
-function ExternalIcon({ size = 15 }) {
-  return h(SvgIcon, { size }, h("path", {
-    d: "M13 5h6v6M19 5l-8.5 8.5M18 13.5V18a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4.5",
-    stroke: "currentColor", strokeWidth: "1.7", strokeLinecap: "round",
-    strokeLinejoin: "round",
-  }));
 }
 
 function AlertIcon({ size = 22 }) {

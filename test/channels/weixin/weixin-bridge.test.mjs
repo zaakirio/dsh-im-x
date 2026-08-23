@@ -178,7 +178,7 @@ test('Weixin returns a registered result file with native context after its exis
     { run_id: 'run-artifact' },
   ));
 
-  assert.deepEqual(order, ['text:结果文件已生成。', 'file:result.txt']);
+  assert.deepEqual(order, [`text:${tr('artifact.generated')}`, 'file:result.txt']);
   assert.equal(bridge.status.artifactsSent, 1);
   assert.deepEqual(receipt, {
     schemaVersion: 1,
@@ -265,7 +265,7 @@ test('Weixin tells users to inspect the chat instead of retrying an uncertain fi
 
   assert.equal(
     sent.at(-1),
-    '结果文件「weixin-uncertain.txt」发送结果未能确认，请先检查聊天内是否已收到，不要立即重试。',
+    tr('artifact.uncertainShort', { name: 'weixin-uncertain.txt' }),
   );
   assert.doesNotMatch(sent.join('\n'), /private provider transport detail/);
   assert.equal(bridge.status.artifactSendErrors, 1);
@@ -436,7 +436,7 @@ test('Weixin executes /compact for the bound Session without prompting the model
   await bridge.accept(message('compact-weixin', '/compact'));
 
   assert.deepEqual(executed, [{ sessionId: 'session-compact', line: '/compact' }]);
-  assert.equal(sent.at(-1).text, '暂无可压缩的历史记录。');
+  assert.equal(sent.at(-1).text, tr('compact.result.noHistory'));
   assert.equal(fixture.seen.has('compact-weixin'), true);
 });
 
@@ -496,7 +496,7 @@ test('Weixin lists models and presets without prompting and advertises fast comm
   assert.equal(fixture.sessions.size, 0);
 
   await bridge.accept(message('preset-current-weixin', '/preset'));
-  assert.match(sent.at(-1).text, /跟随 Host 默认/);
+  assert.match(sent.at(-1).text, new RegExp(tr('preset.followsHostDefault')));
   assert.equal(asks, 0);
   assert.equal(creates, 0);
 
@@ -510,7 +510,7 @@ test('Weixin lists models and presets without prompting and advertises fast comm
   await bridge.accept(message('preset-default-weixin', '/preset --default'));
   assert.deepEqual(presetUpdates, ['preset-002', null]);
   assert.equal(sent.length, defaultReplyStart + 1);
-  assert.match(sent.at(-1).text, /跟随 Host 默认/);
+  assert.match(sent.at(-1).text, new RegExp(tr('preset.followsHostDefault')));
   assert.equal(asks, 0);
   assert.equal(creates, 0);
   assert.equal(fixture.sessions.size, 0);
@@ -704,7 +704,7 @@ test('Weixin consumes an exact rejection as the pending approval response', asyn
   await eventually(() => sent.some(({ text }) => text.includes('允许执行微信审批测试')));
   const presentation = sent.find(({ text }) => text.includes('允许执行微信审批测试')).text;
   assert.match(presentation, /bash/);
-  assert.match(presentation, /批准.*拒绝/s);
+  assert.match(presentation, new RegExp(tr('approval.prompt').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 
   await Promise.all([
     bridge.accept(message('approval-reject', '  不同意  ')),
@@ -828,7 +828,9 @@ test('Weixin deduplicates question replays, rejects parallel questions, and keep
       outcome: 'rejected',
     },
   });
-  assert.equal(sent.some(({ text }) => text.includes('approval')), false);
+  // The approval must stay unpresented, and its id must never leak.
+  assert.equal(sent.some(({ text }) => text.includes('weixin-approval')), false);
+  assert.equal(sent.some(({ text }) => text.includes(tr('approval.header'))), false);
   assert.deepEqual(orphanResponse, {
     ok: false,
     error: {
@@ -838,7 +840,7 @@ test('Weixin deduplicates question replays, rejects parallel questions, and keep
     },
   });
   assert.equal(sent.some(({ text }) => text.includes('旧会话中的敏感问题内容')), false);
-  assert.equal(sent.some(({ text }) => text.includes('遗留的待回答问题')), true);
+  assert.equal(sent.some(({ text }) => text.includes(tr('bridge.recoveredInteractionCancelled'))), true);
   assert.equal(sent.at(-1).text, '交互恢复完成');
 });
 
@@ -903,7 +905,7 @@ test('Weixin keeps a queued prompt separate while a failed interaction answer is
     .finally(() => { nextSettled = true; });
   releaseFirstSubmit.resolve();
   await firstAnswer;
-  await eventually(() => sent.some(({ text }) => text.includes('回答提交失败')));
+  await eventually(() => sent.some(({ text }) => text.includes(tr('bridge.answerSubmitRetry'))));
   assert.equal(nextSettled, false);
   assert.deepEqual(asked, ['启动可重试交互']);
 
@@ -929,7 +931,7 @@ test('Weixin serializes an invalid pending reply before the following valid answ
   const bridge = new WeixinHarnessBridge({
     api: {
       sendText: async (request) => {
-        if (request.text === '请用文字回答当前问题。') {
+        if (request.text === tr('bridge.answerWithText')) {
           invalidNoticeStarted.resolve();
           await releaseInvalidNotice.promise;
         }
@@ -1055,7 +1057,7 @@ test('Weixin discards an already-claimed answer when the interaction resolves el
   await Promise.all([answer, first, later]);
   assert.deepEqual(asked, ['启动外部解决竞态', '后来的普通问题']);
   assert.equal(asked.includes('原本的问题答案'), false);
-  assert.equal(sent.some(({ text }) => text.includes('已在其他客户端处理')), true);
+  assert.equal(sent.some(({ text }) => text.includes(tr('bridge.interactionResolved'))), true);
 });
 
 test('Weixin keeps an answer that arrives after the first question is delivered but before its send ACK', async () => {
@@ -1195,7 +1197,7 @@ test('Weixin tombstones a q2 answer accepted before its send ACK when the intera
 
   assert.deepEqual(asked, ['启动 q2 resolved 窗口']);
   assert.equal(fixture.seen.has('q2-resolved-second'), true);
-  assert.equal(sent.some(({ text }) => text.includes('已在其他客户端处理')), true);
+  assert.equal(sent.some(({ text }) => text.includes(tr('bridge.interactionResolved'))), true);
 });
 
 test('Weixin reports resolved when an in-flight response becomes not-pending', async () => {
@@ -1258,7 +1260,7 @@ test('Weixin reports resolved when an in-flight response becomes not-pending', a
 
   assert.equal(sent.some(({ text, contextToken }) => (
     contextToken === 'context-respond-resolved-answer'
-      && text.includes('已在其他客户端处理')
+      && text.includes(tr('bridge.interactionResolved'))
   )), true);
 });
 
@@ -1377,12 +1379,12 @@ test('bridge commands are local and internal failures return a generic message',
   await bridge.accept(message('new', '/new'));
   assert.equal(fixture.sessions.has('p2p:owner-user'), false);
   await bridge.accept(message('failure', '触发失败'));
-  assert.match(sent.at(-1), /消息处理失败/);
+  assert.match(sent.at(-1), new RegExp(tr('bridge.messageFailed')));
   assert.doesNotMatch(sent.at(-1), /private path|secret|token-shaped/);
   assert.deepEqual(status.lastMessageError, {
     code: 'message-processing-failed',
     reason: 'UNKNOWN',
-    message: '消息处理失败，请稍后重试。',
+    message: tr('bridge.messageFailed'),
     at: status.lastMessageError.at,
   });
   assert.doesNotMatch(JSON.stringify(status.lastMessageError), /private path|secret|token-shaped/);

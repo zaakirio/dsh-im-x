@@ -33,6 +33,9 @@ import {
   releaseOutboundArtifact,
   trackOutboundArtifactProviderPromise,
 } from '../shared/semantic/artifact.mjs';
+import { helpText } from '../shared/bot-commands.mjs';
+import { bridgeTranslatorFactory } from '../shared/conversation-locale.mjs';
+import { defaultTranslator } from '../../i18n/index.mjs';
 import {
   createArtifactFailureReceipt,
   createDeliveryReceipt,
@@ -45,7 +48,6 @@ const CHANNEL_LABEL = 'WeCom';
 const MAX_REPLY_BYTES = 18_000;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_PREFETCHED_IMAGES = 4;
-const INTERACTION_RESOLVED_TEXT = '这个问题已在其他客户端处理，无需再次回答。';
 
 function nonEmptyString(value) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -200,34 +202,28 @@ function splitUtf8(text, maxBytes = MAX_REPLY_BYTES) {
   return chunks;
 }
 
-function progressText(update) {
+function progressText(update, t = defaultTranslator) {
   if (update?.type === 'text') return update.text;
-  if (update?.type === 'tool') return `正在使用${update.name}…`;
+  if (update?.type === 'tool') return t('bridge.usingTool', { name: update.name });
   return update?.text;
 }
 
-function artifactFailureText(fileName, error) {
-  const name = String(fileName ?? '结果文件').replace(/[\r\n]+/g, ' ').trim() || '结果文件';
-  switch (error?.code) {
-    case 'artifact-delivery-uncertain':
-      return `结果文件「${name}」的发送结果未能确认，请先检查聊天内是否已收到，不要立即重试。`;
-    case 'artifact-permission-required':
-      return `结果文件「${name}」已生成，但企业微信智能机器人缺少素材上传或文件消息能力，请检查机器人权限。`;
-    case 'artifact-too-large':
-      return `结果文件「${name}」超过当前企业微信机器人可发送的文件大小，未发送。`;
-    case 'artifact-empty':
-      return `结果文件「${name}」为空，企业微信不允许发送空文件。`;
-    case 'artifact-changed':
-    case 'artifact-invalid':
-    case 'artifact-unavailable':
-      return `结果文件「${name}」暂时无法读取或准备发送，请确认文件仍可访问后重试。`;
-    case 'artifact-rate-limited':
-      return `结果文件「${name}」暂时被企业微信限流，未能发送，请稍后重试。`;
-    case 'artifact-provider-rejected':
-      return `结果文件「${name}」已生成，但企业微信拒绝了该文件或文件消息。`;
-    default:
-      return `结果文件「${name}」已生成，但暂时未能通过企业微信发送，请稍后重试。`;
-  }
+const WECOM_ARTIFACT_ERROR_KEYS = Object.freeze({
+  'artifact-delivery-uncertain': 'artifact.error.uncertain',
+  'artifact-permission-required': 'artifact.wecom.permission',
+  'artifact-too-large': 'artifact.wecom.tooLarge',
+  'artifact-empty': 'artifact.wecom.empty',
+  'artifact-invalid': 'artifact.error.unavailable',
+  'artifact-changed': 'artifact.error.unavailable',
+  'artifact-unavailable': 'artifact.error.unavailable',
+  'artifact-rate-limited': 'artifact.wecom.rateLimited',
+  'artifact-provider-rejected': 'artifact.wecom.rejected',
+});
+
+function artifactFailureText(fileName, error, t = defaultTranslator) {
+  const fallback = t('artifact.fallbackName');
+  const name = String(fileName ?? fallback).replace(/[\r\n]+/g, ' ').trim() || fallback;
+  return t(WECOM_ARTIFACT_ERROR_KEYS[error?.code] ?? 'artifact.wecom.generic', { name });
 }
 
 function abortReason(signal) {
@@ -278,9 +274,9 @@ function wecomArtifactError(error, { dispatched = false } = {}) {
   return wrapped;
 }
 
-function answerTextForDelivery(answer, artifacts) {
+function answerTextForDelivery(answer, artifacts, t = defaultTranslator) {
   if (typeof answer === 'string' && answer.trim()) return answer;
-  return artifacts.length > 0 ? '结果文件已生成。' : '任务已完成，但没有生成可显示的文本。';
+  return artifacts.length > 0 ? t('artifact.generated') : t('bridge.taskCompleteNoText');
 }
 
 function providerMessageId(result) {
@@ -312,6 +308,7 @@ export class WecomHarnessBridge {
   #client;
   #harness;
   #state;
+  #translatorFor;
   #status;
   #logger;
   #replyTimeoutMs;
@@ -337,6 +334,7 @@ export class WecomHarnessBridge {
     generateStreamId = generateReqId,
     fileUploadTimeoutMs = DEFAULT_FILE_UPLOAD_TIMEOUT_MS,
     signal,
+    locale,
   }) {
     if (!client || typeof client.replyStream !== 'function' || typeof client.sendMessage !== 'function') {
       throw new TypeError('Enterprise WeChat client is required');
@@ -351,6 +349,7 @@ export class WecomHarnessBridge {
     this.#status = status;
     this.#logger = logger;
     this.#replyTimeoutMs = replyTimeoutMs;
+    this.#translatorFor = bridgeTranslatorFactory({ state, locale });
     this.#generateReqId = generateStreamId;
     this.#fileUploadTimeoutMs = Math.min(fileUploadTimeoutMs, DEFAULT_FILE_UPLOAD_TIMEOUT_MS);
     this.#signal = signal;
@@ -400,7 +399,8 @@ export class WecomHarnessBridge {
         if (error?.code === 'turn-stopped' || this.#signal?.aborted) return;
         this.#status.lastError = error?.message ?? String(error);
         this.#logger.error?.('[dsh-im:wecom] failed to process a command');
-        return this.#sendImmediate(frame, chatId, '消息处理失败，请稍后重试。')
+        const t = this.#translatorFor(key, commandMessage);
+        return this.#sendImmediate(frame, chatId, t('bridge.messageFailed'))
           .catch(() => undefined);
       }).finally(() => {
         this.#acceptedMessageIds.delete(messageId);
@@ -517,6 +517,7 @@ export class WecomHarnessBridge {
   }
 
   async #processFastCommand(frame, messageId, chatId, key, message, runner) {
+    const t = this.#translatorFor(key, message);
     this.#signal?.throwIfAborted();
     if (this.#state.hasSeen(messageId)) return;
     await this.#state.markSeen(messageId);
@@ -528,6 +529,7 @@ export class WecomHarnessBridge {
       pendingInteraction: this.#pendingInteractions.has(key)
         || this.#approvals.hasPending(key),
       control: { owner: this, key },
+      t,
     });
     if (result?.stopped) {
       await Promise.allSettled([
@@ -569,7 +571,7 @@ export class WecomHarnessBridge {
     }
   }
 
-  async #deliverArtifacts(chatId, replyTo, artifacts = [], baseReceipt = null) {
+  async #deliverArtifacts(chatId, replyTo, artifacts = [], baseReceipt = null, t = defaultTranslator) {
     if (artifacts.length === 0) {
       return { receipt: baseReceipt, failureNoticeVisible: false };
     }
@@ -641,7 +643,7 @@ export class WecomHarnessBridge {
         try {
           providerMessageIds = await this.#sendActive(
             chatId,
-            artifactFailureText(artifact?.fileName, error),
+            artifactFailureText(artifact?.fileName, error, t),
           );
           failureNoticeVisible = true;
         } catch (noticeError) {
@@ -684,11 +686,12 @@ export class WecomHarnessBridge {
     const text = message.content;
     const hasImages = hasInboundImages(message);
     const key = conversationKey(frame);
+    const t = this.#translatorFor(key, message);
     let streamId = null;
     let streamStarted = false;
     try {
       if (!text && !hasImages) {
-        await this.#sendImmediate(frame, chatId, '目前支持文字、图片和语音转写消息。');
+        await this.#sendImmediate(frame, chatId, t('bridge.textImagesAndTranscriptOnly'));
         await this.#state.markSeen(messageId);
         return;
       }
@@ -700,13 +703,13 @@ export class WecomHarnessBridge {
       }
       if (!hasImages && command === '/status') {
         await this.#harness.ensureRunning({ signal: this.#signal });
-        await this.#sendImmediate(frame, chatId, '企业微信机器人与 DeepSeek Harness 连接正常。');
+        await this.#sendImmediate(frame, chatId, t('bridge.statusOk', { channel: CHANNEL_LABEL }));
         await this.#state.markSeen(messageId);
         return;
       }
       if (!hasImages && command === '/new') {
         await this.#state.clearSession(key);
-        await this.#sendImmediate(frame, chatId, '已开启新会话。请发送你的问题。');
+        await this.#sendImmediate(frame, chatId, t('bridge.newSession'));
         await this.#state.markSeen(messageId);
         return;
       }
@@ -737,7 +740,7 @@ export class WecomHarnessBridge {
 
       streamId = this.#generateReqId('stream');
       try {
-        await this.#client.replyStream(frame, streamId, '正在思考中…', false);
+        await this.#client.replyStream(frame, streamId, t('bridge.thinking'), false);
         streamStarted = true;
       } catch (error) {
         this.#logger.warn?.('[dsh-im:wecom] unable to start a stream; using an active reply:', error);
@@ -760,7 +763,7 @@ export class WecomHarnessBridge {
           control: { owner: this, key },
           onUpdate: streamStarted && typeof this.#client.replyStreamNonBlocking === 'function'
             ? async (update) => {
-                const progress = splitUtf8(progressText(update))[0];
+                const progress = splitUtf8(progressText(update, t))[0];
                 if (progress) await this.#client.replyStreamNonBlocking(frame, streamId, progress, false);
               }
             : undefined,
@@ -775,7 +778,7 @@ export class WecomHarnessBridge {
       });
 
       this.#signal?.throwIfAborted();
-      const displayAnswer = answerTextForDelivery(answer, artifacts);
+      const displayAnswer = answerTextForDelivery(answer, artifacts, t);
       const chunks = splitUtf8(displayAnswer);
       let finalSent = false;
       let textReceipt = null;
@@ -820,7 +823,7 @@ export class WecomHarnessBridge {
           error,
         );
       }
-      const delivery = await this.#deliverArtifacts(chatId, messageId, artifacts, textReceipt);
+      const delivery = await this.#deliverArtifacts(chatId, messageId, artifacts, textReceipt, t);
       const artifactDispatched = delivery.receipt?.artifacts?.some(
         ({ outcome }) => outcome === 'sent' || outcome === 'unknown',
       );
@@ -835,7 +838,7 @@ export class WecomHarnessBridge {
     } catch (error) {
       if (error?.code === 'turn-stopped') {
         if (streamStarted && streamId) {
-          await this.#client.replyStream(frame, streamId, '已停止。', true)
+          await this.#client.replyStream(frame, streamId, t('bridge.stopped'), true)
             .catch(() => undefined);
         }
         await this.#state.markSeen(messageId);
@@ -844,7 +847,7 @@ export class WecomHarnessBridge {
       if (this.#signal?.aborted) return;
       this.#status.lastError = error?.message ?? String(error);
       this.#logger.error?.('[dsh-im:wecom] failed to process an inbound message');
-      const errorText = imagePromptUserMessage(error) ?? '消息处理失败，请稍后重试。';
+      const errorText = imagePromptUserMessage(error, t) ?? t('bridge.messageFailed');
       try {
         if (streamStarted && streamId) {
           await this.#client.replyStream(frame, streamId, errorText, true);
@@ -864,12 +867,13 @@ export class WecomHarnessBridge {
   }
 
   async #processInteractionReply(frame, messageId, senderId, chatId, key, expected) {
+    const t = this.#translatorFor(key, frame);
     if (this.#signal?.aborted) return;
     const current = this.#pendingInteractions.get(key);
     const claimed = expected.claimedReplyMessageId === messageId;
     if (!current || current !== expected || current.submitting) {
       if (claimed && (!current || current !== expected)) {
-        return this.#discardResolvedInteractionReply(frame, messageId, chatId);
+        return this.#discardResolvedInteractionReply(frame, messageId, chatId, key);
       }
       return this.#enqueueMessage(frame, messageId, key, { releaseMessageId: false });
     }
@@ -880,7 +884,7 @@ export class WecomHarnessBridge {
 
     const text = nonEmptyString(interactionReplyText(frame));
     if (!text) {
-      await this.#sendImmediate(frame, chatId, '请用文字回答当前问题。')
+      await this.#sendImmediate(frame, chatId, t('bridge.answerWithText'))
         .catch(() => undefined);
       return;
     }
@@ -888,7 +892,7 @@ export class WecomHarnessBridge {
     const pending = this.#pendingInteractions.get(key);
     if (!pending || pending !== expected || pending.submitting) {
       if (claimed && (!pending || pending !== expected)) {
-        await this.#sendImmediate(frame, chatId, INTERACTION_RESOLVED_TEXT)
+        await this.#sendImmediate(frame, chatId, t('bridge.interactionResolved'))
           .catch(() => undefined);
         return;
       }
@@ -909,7 +913,7 @@ export class WecomHarnessBridge {
       try {
         await this.#presentInteraction(pending);
       } catch {
-        this.#status.lastError = '企业微信交互问题发送失败。';
+        this.#status.lastError = t('bridge.error.interactionSendFailed', { channel: CHANNEL_LABEL });
         this.#logger.error?.('[dsh-im:wecom] failed to retry an interaction question');
         pending.interaction.reconnect?.();
         return;
@@ -917,7 +921,7 @@ export class WecomHarnessBridge {
       const presentedPending = this.#pendingInteractions.get(key);
       if (!presentedPending || presentedPending !== expected || presentedPending.submitting) {
         if (claimed && (!presentedPending || presentedPending !== expected)) {
-          await this.#sendImmediate(frame, chatId, INTERACTION_RESOLVED_TEXT)
+          await this.#sendImmediate(frame, chatId, t('bridge.interactionResolved'))
             .catch(() => undefined);
           return;
         }
@@ -940,7 +944,7 @@ export class WecomHarnessBridge {
       try {
         await this.#presentInteraction(pending);
       } catch {
-        this.#status.lastError = '企业微信交互问题发送失败。';
+        this.#status.lastError = t('bridge.error.interactionSendFailed', { channel: CHANNEL_LABEL });
         this.#logger.error?.('[dsh-im:wecom] failed to send the next interaction question');
         pending.interaction.reconnect?.();
       }
@@ -964,7 +968,7 @@ export class WecomHarnessBridge {
         if (this.#pendingInteractions.get(key) === pending) {
           this.#clearPendingInteraction(key, pending.interactionId);
         }
-        await this.#sendImmediate(frame, chatId, INTERACTION_RESOLVED_TEXT)
+        await this.#sendImmediate(frame, chatId, t('bridge.interactionResolved'))
           .catch(() => undefined);
         return;
       }
@@ -972,14 +976,15 @@ export class WecomHarnessBridge {
       pending.submitting = false;
       pending.answers.pop();
       pending.index -= 1;
-      this.#status.lastError = '回答提交失败。';
+      this.#status.lastError = t('bridge.error.answerSubmitFailed');
       this.#logger.error?.('[dsh-im:wecom] failed to answer a Harness interaction');
-      await this.#sendImmediate(frame, chatId, '回答提交失败，请重新发送当前问题的答案。')
+      await this.#sendImmediate(frame, chatId, t('bridge.answerSubmitRetry'))
         .catch(() => undefined);
     }
   }
 
   async #handleInteraction(interaction, {
+    t = defaultTranslator,
     key,
     actor,
     chatId,
@@ -1019,7 +1024,7 @@ export class WecomHarnessBridge {
       });
       await this.#sendActive(
         chatId,
-        '检测到这个 Session 中遗留的待回答问题，已安全取消并继续处理你刚才的消息。',
+        t('bridge.recoveredInteractionCancelled'),
       ).catch(() => undefined);
       return;
     }
@@ -1102,12 +1107,13 @@ export class WecomHarnessBridge {
     return presentation;
   }
 
-  async #discardResolvedInteractionReply(frame, messageId, chatId) {
+  async #discardResolvedInteractionReply(frame, messageId, chatId, key) {
+    const t = this.#translatorFor(key, frame);
     if (this.#state.hasSeen(messageId)) return;
     await this.#state.markSeen(messageId);
     this.#status.messagesReceived += 1;
     this.#status.lastMessageAt = new Date().toISOString();
-    await this.#sendImmediate(frame, chatId, INTERACTION_RESOLVED_TEXT).catch(() => undefined);
+    await this.#sendImmediate(frame, chatId, t('bridge.interactionResolved')).catch(() => undefined);
   }
 
   #takePendingInteraction(key, interactionId) {
