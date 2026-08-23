@@ -70,7 +70,7 @@ Channel code never contains a sentence, so a new language needs no changes outsi
 
 ![IM bot settings page](docs/images/imbot.png)
 
-_Screenshot from upstream; the settings page renders in the language the Harness client is set to._
+_The settings page follows the language your Harness client is set to._
 
 ## Built-in channels
 

@@ -147,10 +147,10 @@ export function IMSettingsTab({
       h('span', { className: 'dim-githubAction' },
         h('a', {
           className: 'dim-githubLink',
-          href: 'https://github.com/xmanrui/dsh-im',
+          href: 'https://github.com/zaakirio/dsh-im-x',
           target: '_blank',
           rel: 'noopener noreferrer',
-          'aria-label': 'dsh-im GitHub',
+          'aria-label': 'dsh-im-x GitHub',
           'aria-describedby': githubTooltipId,
         },
         h('span', null, 'GitHub'),

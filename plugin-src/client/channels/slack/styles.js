@@ -1,4 +1,4 @@
-export const SLACK_STYLE_ID = 'xmanrui-dsh-im-slack-settings';
+export const SLACK_STYLE_ID = 'dsh-im-x-slack-settings';
 
 const CSS = String.raw`
 .dsl-page { --ddt-accent: #4a154b; --ddt-accent-deep: #321033; --ddt-accent-wash: #f7eef7; }

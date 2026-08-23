@@ -1,4 +1,4 @@
-export const TELEGRAM_STYLE_ID = 'xmanrui-dsh-im-telegram-settings';
+export const TELEGRAM_STYLE_ID = 'dsh-im-x-telegram-settings';
 
 const CSS = String.raw`
 .dtg-page { --ddt-accent: #229ed9; --ddt-accent-deep: #1687bd; --ddt-accent-wash: #eaf7fd; }

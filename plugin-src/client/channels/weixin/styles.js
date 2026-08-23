@@ -1,4 +1,4 @@
-export const WEIXIN_STYLE_ID = 'xmanrui-dsh-weixin-settings';
+export const WEIXIN_STYLE_ID = 'dsh-im-x-weixin-settings';
 
 const CSS = String.raw`
 .dxw-page {

@@ -51,6 +51,8 @@ Connect IM bots to DeepSeek Harness by scanning a QR code, using an App Manifest
 
 ![IM机器人页面](docs/images/imbot.png)
 
+_截图为英文界面；设置页会跟随 Harness 客户端的语言设置。_
+
 ## 当前内置渠道
 
 | 渠道 | 接入方式 | 消息与回复 |

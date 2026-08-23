@@ -1,4 +1,4 @@
-export const DINGTALK_STYLE_ID = 'xmanrui-dsh-dingtalk-settings';
+export const DINGTALK_STYLE_ID = 'dsh-im-x-dingtalk-settings';
 
 const CSS = String.raw`
 .ddt-page {

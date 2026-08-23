@@ -1,4 +1,4 @@
-export const IM_STYLE_ID = 'xmanrui-dsh-im-settings';
+export const IM_STYLE_ID = 'dsh-im-x-settings';
 
 const CSS = String.raw`
 .dim-page {

@@ -1,4 +1,4 @@
-export const WHATSAPP_STYLE_ID = 'xmanrui-dsh-im-whatsapp-settings';
+export const WHATSAPP_STYLE_ID = 'dsh-im-x-whatsapp-settings';
 
 const CSS = String.raw`
 .dwa-page { --ddt-accent: #25d366; --ddt-accent-deep: #128c7e; --ddt-accent-wash: #eafbf0; }
