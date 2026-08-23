@@ -27,7 +27,7 @@ function usage() {
   dsh-im-x uninstall [--profile web]
 
 Examples:
-  npx -y dsh-im-x install
+  npx -y github:zaakirio/dsh-im-x install
   dsh-im-x install --source .`);
 }
 

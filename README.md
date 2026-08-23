@@ -8,7 +8,7 @@
   <p><strong>DeepSeek Harness, in your language</strong></p>
 
   <p>
-    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/github/license/zaakirio/dsh-im-x" alt="MIT license"></a>
     <img src="https://img.shields.io/badge/agent-DeepSeek%20Harness-5865f2" alt="DeepSeek Harness">
     <img src="https://img.shields.io/badge/node-%3E%3D22.19-5fa04e" alt="Node >= 22.19">
     <img src="https://img.shields.io/badge/languages-English%20%C2%B7%20%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-8b5cf6" alt="English and Simplified Chinese">
@@ -128,10 +128,10 @@ dsh plugin --profile web add -w dsh-im-x
 
 Restart `dsh web`, then open **Settings → Plugins → IM Bot**.
 
-To try the latest code before it is published to npm, use the GitHub-source installer instead:
+To try the latest code before it is published to npm, install from the GitHub source instead:
 
 ```sh
-npx -y dsh-im-x install
+npx -y github:zaakirio/dsh-im-x install
 ```
 
 A GitHub-source installation fetches and builds a Git dependency directly. With pnpm 10 or newer, the profile may first need an `allowBuilds` entry in `pnpm-workspace.yaml`. Most users should prefer the stable npm release.
@@ -230,6 +230,8 @@ If the Slack desktop app has no native Slash Command registered with the same na
 ## Local development
 
 ```sh
+git clone git@github.com:zaakirio/dsh-im-x.git
+cd dsh-im-x
 npm install
 npm run check
 node bin/dsh-im-x.mjs install --source .

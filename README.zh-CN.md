@@ -8,7 +8,7 @@
   <p><strong>让 DeepSeek Harness 说你的语言</strong></p>
 
   <p>
-    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/github/license/zaakirio/dsh-im-x" alt="MIT license"></a>
     <img src="https://img.shields.io/badge/agent-DeepSeek%20Harness-5865f2" alt="DeepSeek Harness">
     <img src="https://img.shields.io/badge/node-%3E%3D22.19-5fa04e" alt="Node >= 22.19">
     <img src="https://img.shields.io/badge/languages-English%20%C2%B7%20%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-8b5cf6" alt="English and Simplified Chinese">
@@ -110,7 +110,7 @@ dsh plugin --profile web add -w dsh-im-x
 如需试用尚未发布到 npm 的最新代码，可以改用 GitHub 源安装器：
 
 ```sh
-npx -y dsh-im-x install
+npx -y github:zaakirio/dsh-im-x install
 ```
 
 GitHub 源安装会直接拉取并构建 Git 依赖；pnpm 10 及以上版本可能要求先在 profile 的 `pnpm-workspace.yaml` 中允许该依赖执行构建脚本。普通用户建议优先使用 npm 稳定版。

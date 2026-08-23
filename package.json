@@ -24,7 +24,8 @@
     "ai-office"
   ],
   "author": {
-    "name": "Zaakir"
+    "name": "zaakirio",
+    "url": "https://github.com/zaakirio"
   },
   "contributors": [
     {
@@ -37,6 +38,12 @@
     }
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zaakirio/dsh-im-x.git"
+  },
+  "homepage": "https://github.com/zaakirio/dsh-im-x#readme",
+  "bugs": "https://github.com/zaakirio/dsh-im-x/issues",
   "type": "module",
   "publishConfig": {
     "access": "public"
