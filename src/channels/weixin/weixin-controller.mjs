@@ -10,6 +10,7 @@ import {
   connectionTestMessage,
   connectionTestTargetUnavailable,
 } from '../shared/connection-test.mjs';
+import { createTranslator, defaultTranslator } from '../../i18n/index.mjs';
 
 const ACTIVE_ATTEMPT_STATES = new Set([
   'starting',
@@ -20,24 +21,25 @@ const ACTIVE_ATTEMPT_STATES = new Set([
 ]);
 const TERMINAL_ATTEMPT_STATES = new Set(['connected', 'expired', 'failed', 'cancelled']);
 const QR_TTL_MS = 5 * 60_000;
-const ACTIVATION_ERROR_MESSAGES = Object.freeze({
-  'credential-read-failed': '微信已授权，但无法读取现有登录凭据。请检查 DSH 凭据存储。',
-  'credential-save-failed': '微信已授权，但登录凭据无法写入 DSH 凭据存储。请检查凭据存储是否可写。',
-  'account-config-save-failed': '微信已授权，但账号配置无法写入本机。请检查 DSH_HOME 目录权限。',
-  'runtime-prepare-failed': '微信已授权，但无法初始化账号状态或工作区。请检查 DSH_HOME 和工作区目录。',
-  'harness-connect-failed': '微信已授权，但插件无法连接本机 Harness。请检查 dsh web 地址和端口。',
-  'harness-timeout': '微信已授权，但 Harness 健康检查超时。请确认 dsh web 未阻塞。',
-  'harness-auth-required': '微信已授权，但 Harness 健康检查需要身份认证。请检查代理、网关或自定义鉴权配置。',
-  'harness-proxy-auth-required': '微信已授权，但本机 Harness 请求被代理要求认证。请让回环地址绕过代理，并检查 NO_PROXY 配置。',
-  'harness-loopback-forbidden': '微信已授权，但 Harness 异常拒绝了回环地址的健康检查。请检查 HTTP 代理、Harness 源码版本和构建产物。',
-  'harness-host-untrusted': '微信已授权，但 Harness 的 Host 信任检查拒绝了非回环地址请求。请检查 harnessBaseUrl 与 trustedHosts 配置。',
-  'harness-request-forbidden': '微信已授权，但健康检查收到了非 Harness 标准的 403 拒绝响应。请检查代理或网关配置。',
-  'harness-api-not-found': '微信已授权，但找不到 Harness 健康检查接口。请确认 Harness 与插件版本兼容。',
-  'harness-http-failed': '微信已授权，但 Harness 健康检查返回服务错误。请查看 dsh web 日志。',
-  'harness-response-invalid': '微信已授权，但 Harness 返回了无法识别的响应。请确认 Harness 与插件版本兼容。',
-  'harness-rpc-rejected': '微信已授权，但 Harness 拒绝了健康检查请求。请查看 dsh web 日志。',
-  'harness-check-unknown-failed': '微信已授权，但 Harness 健康检查发生未知错误。请查看 dsh web 日志。',
-  'connection-start-failed': '微信已授权，但消息连接初始化失败。请查看 dsh web 日志后重试。',
+/** Activation failure codes, mapped to their catalogue keys. */
+const ACTIVATION_ERROR_KEYS = Object.freeze({
+  'credential-read-failed': 'weixin.activation.credentialReadFailed',
+  'credential-save-failed': 'weixin.activation.credentialSaveFailed',
+  'account-config-save-failed': 'weixin.activation.accountConfigSaveFailed',
+  'runtime-prepare-failed': 'weixin.activation.runtimePrepareFailed',
+  'harness-connect-failed': 'weixin.activation.harnessConnectFailed',
+  'harness-timeout': 'weixin.activation.harnessTimeout',
+  'harness-auth-required': 'weixin.activation.harnessAuthRequired',
+  'harness-proxy-auth-required': 'weixin.activation.harnessProxyAuthRequired',
+  'harness-loopback-forbidden': 'weixin.activation.harnessLoopbackForbidden',
+  'harness-host-untrusted': 'weixin.activation.harnessHostUntrusted',
+  'harness-request-forbidden': 'weixin.activation.harnessRequestForbidden',
+  'harness-api-not-found': 'weixin.activation.harnessApiNotFound',
+  'harness-http-failed': 'weixin.activation.harnessHttpFailed',
+  'harness-response-invalid': 'weixin.activation.harnessResponseInvalid',
+  'harness-rpc-rejected': 'weixin.activation.harnessRpcRejected',
+  'harness-check-unknown-failed': 'weixin.activation.harnessCheckUnknownFailed',
+  'connection-start-failed': 'weixin.activation.connectionStartFailed',
 });
 
 function cleanString(value) {
@@ -94,21 +96,22 @@ function activationStageError(code, cause) {
   return error;
 }
 
-function publicProvisioningError(error) {
+function publicProvisioningError(error, t = defaultTranslator) {
   if (error instanceof WeixinApiError) return safeAccountError(error.code, error.message);
-  const message = ACTIVATION_ERROR_MESSAGES[error?.code];
-  return message
-    ? safeAccountError(error.code, message)
-    : safeAccountError('activation-unknown-failed', '微信已授权，但激活过程中发生未知错误。请查看 dsh web 日志。');
+  const key = ACTIVATION_ERROR_KEYS[error?.code];
+  return key
+    ? safeAccountError(error.code, t(key))
+    : safeAccountError('activation-unknown-failed', t('weixin.activation.unknownFailed'));
 }
 
 function preserveActivationError(error, fallbackCode) {
-  if (error instanceof WeixinApiError || ACTIVATION_ERROR_MESSAGES[error?.code]) return error;
+  if (error instanceof WeixinApiError || ACTIVATION_ERROR_KEYS[error?.code]) return error;
   return activationStageError(fallbackCode, error);
 }
 
 export class WeixinController {
   #api;
+  #t;
   #credentials;
   #configStore;
   #createRuntime;
@@ -129,6 +132,7 @@ export class WeixinController {
     createRuntime,
     deleteState = async () => {},
     logger = console,
+    locale,
   }) {
     if (!api || typeof api.beginLogin !== 'function' || typeof api.pollLogin !== 'function') {
       throw new TypeError('WeixinController requires a Weixin API client');
@@ -152,6 +156,7 @@ export class WeixinController {
     this.#createRuntime = createRuntime;
     this.#deleteState = deleteState;
     this.#logger = logger;
+    this.#t = createTranslator(locale);
   }
 
   async initialize() {
@@ -167,7 +172,7 @@ export class WeixinController {
           if (!token) {
             this.#errors.set(
               latest.botId,
-              safeAccountError('missing-token', '登录凭据缺失，请移除账号后重新扫码。'),
+              safeAccountError('missing-token', this.#t('weixin.missingToken')),
             );
             return;
           }
@@ -176,7 +181,7 @@ export class WeixinController {
         } catch (error) {
           this.#errors.set(
             latest.botId,
-            safeAccountError('connection-failed', '微信连接未就绪，插件会自动重试。'),
+            safeAccountError('connection-failed', this.#t('weixin.connectionNotReady')),
           );
           this.#logger.warn?.(`[dsh-weixin] account ${latest.botId} failed to initialize:`, error);
         } finally {
@@ -227,12 +232,12 @@ export class WeixinController {
     } catch (error) {
       if (record.controller.signal.aborted) {
         record.state = 'cancelled';
-        record.error = safeAccountError('cancelled', '扫码绑定已取消。');
+        record.error = safeAccountError('cancelled', this.#t('qr.cancelled'));
       } else {
         record.state = 'failed';
         record.error = safeAccountError(
           error instanceof WeixinApiError ? error.code : 'qr-start-failed',
-          error instanceof WeixinApiError ? error.message : '无法生成微信二维码，请稍后重试。',
+          error instanceof WeixinApiError ? error.message : this.#t('weixin.qrUnavailable'),
         );
       }
       if (this.#activeAttemptId === record.id) this.#activeAttemptId = null;
@@ -271,7 +276,7 @@ export class WeixinController {
       record.verifyResolve = null;
       await record.task?.catch(() => undefined);
       if (!TERMINAL_ATTEMPT_STATES.has(record.state)) record.state = 'cancelled';
-      record.error ??= safeAccountError('cancelled', '扫码绑定已取消。');
+      record.error ??= safeAccountError('cancelled', this.#t('qr.cancelled'));
     }
     if (this.#activeAttemptId === record.id) this.#activeAttemptId = null;
     this.#touch();
@@ -288,7 +293,7 @@ export class WeixinController {
         await this.#startRuntime(config, token);
         this.#errors.delete(botId);
       } catch (error) {
-        this.#errors.set(botId, safeAccountError('connection-failed', '微信连接仍未就绪，请稍后重试。'));
+        this.#errors.set(botId, safeAccountError('connection-failed', this.#t('weixin.connectionStillNotReady')));
         throw error;
       } finally {
         this.#touch();
@@ -303,10 +308,10 @@ export class WeixinController {
     return this.#withBotTransition(botId, async () => {
       const runtime = this.#runtimes.get(botId);
       if (!runtime?.status?.ready || typeof runtime.sendConnectionTest !== 'function') {
-        throw connectionTestTargetUnavailable('微信机器人');
+        throw connectionTestTargetUnavailable(this.#t('bot.weixinDefaultName'), this.#t);
       }
       return runtime.sendConnectionTest(connectionTestMessage(
-        `微信机器人（${maskWeixinAccountId(config.accountId)}）`,
+        this.#t('bot.cardLabel', { name: this.#t('bot.weixinDefaultName'), id: maskWeixinAccountId(config.accountId) }),
       ));
     });
   }
@@ -352,7 +357,7 @@ export class WeixinController {
             ? 'error'
             : 'offline';
       const error = this.#errors.get(config.botId) ?? (state === 'error'
-        ? safeAccountError('connection-failed', '微信连接未就绪，插件会自动重试。')
+        ? safeAccountError('connection-failed', this.#t('weixin.connectionNotReady'))
         : null);
       return {
         botId: config.botId,
@@ -360,16 +365,16 @@ export class WeixinController {
         connected,
         configured: true,
         bot: {
-          name: '微信机器人',
+          name: this.#t('bot.weixinDefaultName'),
           accountIdMasked: maskWeixinAccountId(config.accountId),
         },
         health: {
           status: connected ? 'healthy' : state === 'error' ? 'error' : 'offline',
           summary: connected
-            ? '微信消息长轮询运行正常'
+            ? this.#t('weixin.healthy')
             : state === 'error'
-              ? '微信连接未就绪，插件会自动重试'
-              : '微信连接当前离线',
+              ? this.#t('status.error', { channel: this.#t('bot.weixinDefaultName') })
+              : this.#t('status.offline', { channel: this.#t('bot.weixinDefaultName') }),
           lastCheckedAt: runtimeStatus?.lastCheckedAt ?? null,
         },
         stats: {
@@ -438,11 +443,11 @@ export class WeixinController {
           record.state = 'needs_verification';
         } else if (response.status === 'verify_code_blocked') {
           record.state = 'failed';
-          record.error = safeAccountError('verification-blocked', '配对码多次错误，请重新生成二维码。');
+          record.error = safeAccountError('verification-blocked', this.#t('weixin.pairingBlocked'));
           break;
         } else if (response.status === 'expired') {
           record.state = 'expired';
-          record.error = safeAccountError('expired', '二维码已过期，请重新生成。');
+          record.error = safeAccountError('expired', this.#t('weixin.qrExpired'));
           break;
         } else if (response.status === 'scaned_but_redirect') {
           record.currentBaseUrl = apiBaseFromServer(response.redirect_host, record.currentBaseUrl);
@@ -453,7 +458,7 @@ export class WeixinController {
           ) ?? this.#configStore.list()[0];
           if (!existing) {
             record.state = 'failed';
-            record.error = safeAccountError('already-bound', '该微信账号已绑定，但本机没有可恢复的凭据。');
+            record.error = safeAccountError('already-bound', this.#t('weixin.alreadyBound'));
           } else {
             record.state = 'connected';
             record.botId = existing.botId;
@@ -465,7 +470,7 @@ export class WeixinController {
           const accountId = cleanString(response.ilink_bot_id);
           const ownerUserId = cleanString(response.ilink_user_id);
           if (!token || !accountId || !ownerUserId) {
-            throw new WeixinApiError('incomplete-login', '微信授权成功，但返回的账号凭据不完整。');
+            throw new WeixinApiError('incomplete-login', this.#t('weixin.incompleteLogin'));
           }
           record.state = 'connecting';
           this.#touch();
@@ -485,15 +490,15 @@ export class WeixinController {
       if (!record.controller.signal.aborted && Date.now() >= record.expiresAt
         && !TERMINAL_ATTEMPT_STATES.has(record.state)) {
         record.state = 'expired';
-        record.error = safeAccountError('expired', '二维码已过期，请重新生成。');
+        record.error = safeAccountError('expired', this.#t('weixin.qrExpired'));
       }
     } catch (error) {
       if (record.controller.signal.aborted || error?.name === 'AbortError') {
         record.state = 'cancelled';
-        record.error = safeAccountError('cancelled', '扫码绑定已取消。');
+        record.error = safeAccountError('cancelled', this.#t('qr.cancelled'));
       } else {
         record.state = 'failed';
-        record.error = publicProvisioningError(error);
+        record.error = publicProvisioningError(error, this.#t);
         this.#logger.error?.('[dsh-weixin] provisioning failed:', error);
       }
     } finally {

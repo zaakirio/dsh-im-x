@@ -7,6 +7,7 @@ import {
 } from 'node:crypto';
 
 import { fetchImageBuffer } from '../shared/image-prompt.mjs';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
 export const WEIXIN_QR_BASE_URL = 'https://ilinkai.weixin.qq.com/';
 export const WEIXIN_PROTOCOL_VERSION = '2.4.6';
@@ -120,7 +121,7 @@ export function parseWeixinImageAesKey(imageItem) {
   const directHex = nonEmptyString(imageItem?.aeskey);
   if (directHex) {
     if (!/^[0-9a-fA-F]{32}$/.test(directHex)) {
-      throw new WeixinApiError('invalid-image-key', '微信图片的加密密钥无效。');
+      throw new WeixinApiError('invalid-image-key', defaultTranslator('weixin.api.invalidImageKey'));
     }
     return Buffer.from(directHex, 'hex');
   }
@@ -130,20 +131,20 @@ export function parseWeixinImageAesKey(imageItem) {
   if (encoded?.length === 32 && /^[0-9a-fA-F]{32}$/.test(encoded.toString('ascii'))) {
     return Buffer.from(encoded.toString('ascii'), 'hex');
   }
-  throw new WeixinApiError('invalid-image-key', '微信图片的加密密钥无效。');
+  throw new WeixinApiError('invalid-image-key', defaultTranslator('weixin.api.invalidImageKey'));
 }
 
 export function decryptWeixinImage(ciphertext, key) {
   const encrypted = Buffer.from(ciphertext);
   const aesKey = Buffer.from(key);
   if (aesKey.length !== 16 || encrypted.length === 0 || encrypted.length % 16 !== 0) {
-    throw new WeixinApiError('invalid-image-ciphertext', '微信图片的加密数据无效。');
+    throw new WeixinApiError('invalid-image-ciphertext', defaultTranslator('weixin.api.invalidImageCiphertext'));
   }
   try {
     const decipher = createDecipheriv('aes-128-ecb', aesKey, null);
     return Buffer.concat([decipher.update(encrypted), decipher.final()]);
   } catch (error) {
-    throw new WeixinApiError('image-decryption-failed', '微信图片解密失败。', { cause: error });
+    throw new WeixinApiError('image-decryption-failed', defaultTranslator('weixin.api.imageDecryptionFailed'), { cause: error });
   }
 }
 
@@ -154,16 +155,16 @@ export function weixinImageDownloadUrl(media) {
   }
 
   const fullUrl = nonEmptyString(media?.full_url);
-  if (!fullUrl) throw new WeixinApiError('missing-image-url', '微信图片没有可用的下载地址。');
+  if (!fullUrl) throw new WeixinApiError('missing-image-url', defaultTranslator('weixin.api.missingImageUrl'));
   let url;
   try {
     url = new URL(fullUrl);
   } catch {
-    throw new WeixinApiError('invalid-image-url', '微信图片的下载地址无效。');
+    throw new WeixinApiError('invalid-image-url', defaultTranslator('weixin.api.invalidImageUrl'));
   }
   if (url.protocol !== 'https:' || url.hostname !== WEIXIN_CDN_HOST
     || (url.port && url.port !== '443') || !url.pathname.startsWith('/c2c/')) {
-    throw new WeixinApiError('untrusted-image-url', '微信图片的下载地址不受信任。');
+    throw new WeixinApiError('untrusted-image-url', defaultTranslator('weixin.api.untrustedImageUrl'));
   }
   url.username = '';
   url.password = '';
@@ -206,11 +207,11 @@ export function normalizeWeixinApiBaseUrl(value) {
   try {
     url = new URL(value);
   } catch {
-    throw new WeixinApiError('invalid-base-url', '微信服务返回了无效的连接地址。');
+    throw new WeixinApiError('invalid-base-url', defaultTranslator('weixin.api.invalidBaseUrl'));
   }
   if (url.protocol !== 'https:' || !isWeixinHost(url.hostname)
     || (url.port !== '' && url.port !== '443')) {
-    throw new WeixinApiError('untrusted-base-url', '微信服务返回了不受信任的连接地址。');
+    throw new WeixinApiError('untrusted-base-url', defaultTranslator('weixin.api.untrustedBaseUrl'));
   }
   url.username = '';
   url.password = '';
@@ -222,15 +223,15 @@ export function normalizeWeixinApiBaseUrl(value) {
 
 export function normalizeWeixinQrUrl(value) {
   const text = nonEmptyString(value);
-  if (!text) throw new WeixinApiError('invalid-qr', '微信服务没有返回扫码地址。');
+  if (!text) throw new WeixinApiError('invalid-qr', defaultTranslator('weixin.api.missingQr'));
   let url;
   try {
     url = new URL(text);
   } catch {
-    throw new WeixinApiError('invalid-qr', '微信服务返回了无效的扫码地址。');
+    throw new WeixinApiError('invalid-qr', defaultTranslator('weixin.api.invalidQr'));
   }
   if (url.protocol !== 'https:' || !isWeixinHost(url.hostname)) {
-    throw new WeixinApiError('untrusted-qr', '微信服务返回了不受信任的扫码地址。');
+    throw new WeixinApiError('untrusted-qr', defaultTranslator('weixin.api.untrustedQr'));
   }
   return url.toString();
 }
@@ -269,12 +270,12 @@ function trustedWeixinCdnUploadUrl(value) {
   try {
     url = new URL(value);
   } catch {
-    throw new WeixinApiError('invalid-upload-url', '微信服务返回了无效的文件上传地址。');
+    throw new WeixinApiError('invalid-upload-url', defaultTranslator('weixin.api.invalidUploadUrl'));
   }
   if (url.protocol !== 'https:' || url.hostname !== WEIXIN_CDN_HOST
     || (url.port && url.port !== '443') || url.pathname !== '/c2c/upload'
     || url.username || url.password) {
-    throw new WeixinApiError('untrusted-upload-url', '微信服务返回了不受信任的文件上传地址。');
+    throw new WeixinApiError('untrusted-upload-url', defaultTranslator('weixin.api.untrustedUploadUrl'));
   }
   url.hash = '';
   return url;
@@ -285,7 +286,7 @@ function weixinCdnUploadUrl(response, fileKey) {
   if (fullUrl) return trustedWeixinCdnUploadUrl(fullUrl);
   const uploadParam = nonEmptyString(response?.upload_param);
   if (!uploadParam) {
-    throw new WeixinApiError('missing-upload-url', '微信服务没有返回文件上传地址。');
+    throw new WeixinApiError('missing-upload-url', defaultTranslator('weixin.api.missingUploadUrl'));
   }
   const url = new URL(`${WEIXIN_CDN_BASE_URL}/upload`);
   url.searchParams.set('encrypted_query_param', uploadParam);
@@ -315,21 +316,21 @@ async function uploadWeixinCdn(fetchImpl, url, ciphertext, { signal } = {}) {
       if (response.status >= 400 && response.status < 500) {
         throw new WeixinApiError(
           'upload-rejected',
-          `微信文件上传被拒绝（HTTP ${response.status}）。`,
+          defaultTranslator('weixin.api.uploadRejectedHttp', { status: response.status }),
           { status: response.status },
         );
       }
       if (response.status !== 200) {
         throw new WeixinApiError(
           'upload-failed',
-          `微信文件上传失败（HTTP ${response.status}）。`,
+          defaultTranslator('weixin.api.uploadFailedHttp', { status: response.status }),
           { status: response.status },
         );
       }
       const downloadParam = nonEmptyString(response.headers.get('x-encrypted-param'));
       await response.body?.cancel?.().catch(() => undefined);
       if (!downloadParam) {
-        throw new WeixinApiError('invalid-upload-response', '微信文件上传响应缺少下载参数。');
+        throw new WeixinApiError('invalid-upload-response', defaultTranslator('weixin.api.invalidUploadResponse'));
       }
       return downloadParam;
     } catch (error) {
@@ -340,7 +341,7 @@ async function uploadWeixinCdn(fetchImpl, url, ciphertext, { signal } = {}) {
     }
   }
   if (lastError instanceof WeixinApiError) throw lastError;
-  throw new WeixinApiError('upload-failed', '微信文件上传失败。', { cause: lastError });
+  throw new WeixinApiError('upload-failed', defaultTranslator('weixin.api.uploadFailed'), { cause: lastError });
 }
 
 function abortError(signal) {
@@ -361,7 +362,7 @@ async function requestJson(fetchImpl, {
   const trustedBase = normalizeWeixinApiBaseUrl(baseUrl);
   const url = new URL(endpoint, trustedBase);
   if (!isWeixinHost(url.hostname)) {
-    throw new WeixinApiError('untrusted-endpoint', '拒绝访问不受信任的微信服务地址。');
+    throw new WeixinApiError('untrusted-endpoint', defaultTranslator('weixin.api.untrustedEndpoint'));
   }
 
   const controller = new AbortController();
@@ -384,22 +385,22 @@ async function requestJson(fetchImpl, {
     if (!response.ok) {
       throw new WeixinApiError(
         'http-error',
-        `微信服务请求失败（HTTP ${response.status}）。`,
+        defaultTranslator('weixin.api.requestFailedHttp', { status: response.status }),
         { status: response.status },
       );
     }
     try {
       return await response.json();
     } catch (error) {
-      throw new WeixinApiError('invalid-response', '微信服务返回了无法解析的响应。', { cause: error });
+      throw new WeixinApiError('invalid-response', defaultTranslator('weixin.api.invalidResponse'), { cause: error });
     }
   } catch (error) {
     if (signal?.aborted) throw abortError(signal);
     if (timedOut) {
-      throw new WeixinApiError('timeout', '微信服务请求超时。', { cause: error });
+      throw new WeixinApiError('timeout', defaultTranslator('weixin.api.timeout'), { cause: error });
     }
     if (error instanceof WeixinApiError) throw error;
-    throw new WeixinApiError('network-error', '暂时无法访问微信服务。', { cause: error });
+    throw new WeixinApiError('network-error', defaultTranslator('weixin.api.networkError'), { cause: error });
   } finally {
     if (timer) clearTimeout(timer);
     signal?.removeEventListener('abort', onAbort);
@@ -408,7 +409,7 @@ async function requestJson(fetchImpl, {
 
 function validateLoginResponse(value) {
   if (!value || typeof value !== 'object' || !LOGIN_STATUSES.has(value.status)) {
-    throw new WeixinApiError('invalid-login-status', '微信服务返回了无法识别的扫码状态。');
+    throw new WeixinApiError('invalid-login-status', defaultTranslator('weixin.api.invalidLoginStatus'));
   }
   return value;
 }
@@ -432,7 +433,7 @@ export function createWeixinApi({ fetchImpl = fetch } = {}) {
         signal,
       });
       const qrcode = nonEmptyString(response?.qrcode);
-      if (!qrcode) throw new WeixinApiError('invalid-qr', '微信服务没有返回二维码令牌。');
+      if (!qrcode) throw new WeixinApiError('invalid-qr', defaultTranslator('weixin.api.missingQrToken'));
       return {
         qrcode,
         qrcodeUrl: normalizeWeixinQrUrl(response.qrcode_img_content),
@@ -499,7 +500,7 @@ export function createWeixinApi({ fetchImpl = fetch } = {}) {
         },
       });
       if (response?.ret !== undefined && response.ret !== 0) {
-        throw new WeixinApiError('send-rejected', '微信服务拒绝了回复消息。');
+        throw new WeixinApiError('send-rejected', defaultTranslator('weixin.api.sendRejected'));
       }
       return true;
     },
@@ -547,7 +548,7 @@ export function createWeixinApi({ fetchImpl = fetch } = {}) {
       if (uploadRejection) {
         throw weixinArtifactError(new WeixinApiError(
           'upload-url-rejected',
-          '微信服务拒绝了文件上传请求。',
+          defaultTranslator('weixin.api.uploadRequestRejected'),
           { providerCode: uploadRejection },
         ));
       }
@@ -608,7 +609,7 @@ export function createWeixinApi({ fetchImpl = fetch } = {}) {
       if (sendRejection) {
         throw weixinArtifactError(new WeixinApiError(
           'send-rejected',
-          '微信服务拒绝了文件消息。',
+          defaultTranslator('weixin.api.fileMessageRejected'),
           { providerCode: sendRejection },
         ));
       }
@@ -626,7 +627,7 @@ export function createWeixinApi({ fetchImpl = fetch } = {}) {
         body: { base_info: baseInfo() },
       });
       if (response?.ret !== undefined && response.ret !== 0) {
-        throw new WeixinApiError('start-rejected', '微信账号连接启动失败。');
+        throw new WeixinApiError('start-rejected', defaultTranslator('weixin.api.startRejected'));
       }
       return response;
     },

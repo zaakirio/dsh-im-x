@@ -137,7 +137,10 @@ test('confirmed QR login stores bot_token only in credentials and starts a redac
   await controller.sendConnectionTest(completed.botId);
   assert.equal(runtimes.connectionTests[0].botId, completed.botId);
   assert.match(runtimes.connectionTests[0].text, new RegExp(tr('connection.testSuccess', { name: '' }).split('\n')[0]));
-  assert.match(runtimes.connectionTests[0].text, /微信机器人（accoun••••\.bot）/);
+  assert.ok(runtimes.connectionTests[0].text.includes(tr('bot.cardLabel', {
+    name: tr('bot.weixinDefaultName'),
+    id: 'accoun••••.bot',
+  })));
 
   await controller.deleteBot(completed.botId);
   assert.equal(credentials.values.size, 0);
@@ -214,7 +217,7 @@ test('runtime activation failure is classified and rolls credentials and config 
   );
 
   assert.equal(failed.error.code, 'connection-start-failed');
-  assert.match(failed.error.message, /消息连接初始化失败/);
+  assert.equal(failed.error.message, tr('weixin.activation.connectionStartFailed'));
   assert.equal(credentials.values.size, 0);
   assert.equal(configs.accounts.size, 0);
   assert.doesNotMatch(JSON.stringify(failed), /must-be-rolled-back|host-only detail/);
@@ -252,7 +255,7 @@ test('credential write failure is classified and rolls back a post-commit error'
   );
 
   assert.equal(failed.error.code, 'credential-save-failed');
-  assert.match(failed.error.message, /DSH 凭据存储/);
+  assert.equal(failed.error.message, tr('weixin.activation.credentialSaveFailed'));
   assert.equal(credentials.values.size, 0);
   assert.equal(configs.accounts.size, 0);
   assert.doesNotMatch(JSON.stringify(failed), /private detail|must-be-rolled-back/);
@@ -349,12 +352,12 @@ test('account config write and runtime preparation failures have distinct safe c
 
 test('known runtime activation codes cross the provisioning boundary unchanged', async () => {
   for (const scenario of [
-    ['harness-auth-required', /需要身份认证/],
-    ['harness-proxy-auth-required', /NO_PROXY/],
-    ['harness-loopback-forbidden', /回环地址/],
-    ['harness-host-untrusted', /Host 信任检查/],
-    ['harness-request-forbidden', /代理或网关配置/],
-    ['harness-api-not-found', /找不到 Harness 健康检查接口/],
+    ['harness-auth-required', tr('weixin.activation.harnessAuthRequired')],
+    ['harness-proxy-auth-required', tr('weixin.activation.harnessProxyAuthRequired')],
+    ['harness-loopback-forbidden', tr('weixin.activation.harnessLoopbackForbidden')],
+    ['harness-host-untrusted', tr('weixin.activation.harnessHostUntrusted')],
+    ['harness-request-forbidden', tr('weixin.activation.harnessRequestForbidden')],
+    ['harness-api-not-found', tr('weixin.activation.harnessApiNotFound')],
   ]) {
     const [code, publicMessage] = scenario;
     const credentials = credentialsFixture();
@@ -387,7 +390,7 @@ test('known runtime activation codes cross the provisioning boundary unchanged',
 
     assert.equal(failed.error.code, code);
     assert.notEqual(failed.error.code, 'harness-unreachable');
-    assert.match(failed.error.message, publicMessage);
+    assert.equal(failed.error.message, publicMessage);
     assert.doesNotMatch(JSON.stringify(failed), /host-only detail|must-be-rolled-back/);
     await controller.close();
   }
@@ -424,7 +427,7 @@ test('an unclassified activation error uses the explicit unknown fallback code',
 
   assert.equal(failed.error.code, 'activation-unknown-failed');
   assert.notEqual(failed.error.code, 'activation-failed');
-  assert.match(failed.error.message, /未知错误/);
+  assert.equal(failed.error.message, tr('weixin.activation.unknownFailed'));
   assert.doesNotMatch(
     JSON.stringify(failed),
     /unexpected host-only activation detail|must-never-cross-the-browser-boundary/,
