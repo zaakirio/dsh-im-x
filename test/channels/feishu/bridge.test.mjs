@@ -202,7 +202,7 @@ test('Feishu executes /compact for the bound Session without prompting the model
   await bridge.waitForIdle();
 
   assert.deepEqual(executed, [{ sessionId: 'session-compact', line: '/compact' }]);
-  assert.deepEqual(sent, ['暂无可压缩的历史记录。']);
+  assert.deepEqual(sent, [tr('compact.result.noHistory')]);
 });
 
 test('Feishu lists models and presets without prompting and advertises fast commands', async () => {
@@ -264,7 +264,7 @@ test('Feishu lists models and presets without prompting and advertises fast comm
 
   await bridge.accept(event('preset-current-feishu', '/preset'));
   await bridge.waitForIdle();
-  assert.match(sent.at(-1), /跟随 Host 默认/);
+  assert.ok(sent.at(-1).includes(tr('preset.followsHostDefault')));
   assert.equal(asks, 0);
   assert.equal(creates, 0);
 
@@ -280,7 +280,7 @@ test('Feishu lists models and presets without prompting and advertises fast comm
   await bridge.waitForIdle();
   assert.deepEqual(presetUpdates, ['preset-002', null]);
   assert.equal(sent.length, defaultReplyStart + 1);
-  assert.match(sent.at(-1), /跟随 Host 默认/);
+  assert.ok(sent.at(-1).includes(tr('preset.followsHostDefault')));
   assert.equal(asks, 0);
   assert.equal(creates, 0);
   assert.equal(fixture.sessions.size, 0);
@@ -778,7 +778,7 @@ test('a threaded Feishu reply answers a pending Harness question before the orig
 
   assert.equal(originalTurnFinished, true);
   assert.equal(streamed.at(-1), '你选择了：测试环境');
-  assert.equal(sent.some((text) => text.includes('连接正常')), true);
+  assert.equal(sent.some((text) => text.includes(tr('bridge.statusOk', { channel: 'Feishu' }))), true);
   assert.deepEqual(asked, [{
     sessionId: 'session-question',
     text: '请先调用 ask_user_question',
@@ -923,8 +923,7 @@ test('Feishu handles approval replies on the fast lane and presents approvals in
   await bridge.accept(event('approval-invalid', '好的'));
   assert.deepEqual(decisions, []);
   assert.deepEqual(asked, [{ sessionId: 'session-approval', text: '发起两个审批' }]);
-  assert.match(sent.at(-1).text, /批准/);
-  assert.match(sent.at(-1).text, /拒绝/);
+  assert.ok(sent.at(-1).text.includes(tr('approval.prompt')));
 
   await bridge.accept(event('approval-allow', '批准'));
   assert.deepEqual(decisions, [{
@@ -1052,7 +1051,7 @@ test('question replays are deduplicated and an unrenderable approval is safely r
       outcome: 'rejected',
     },
   });
-  assert.equal(sent.some(({ text }) => text.includes('无法完整展示')), true);
+  assert.equal(sent.some(({ text }) => text.includes(tr('approval.cannotDisplay'))), true);
   assert.equal(sent.at(-1).text, '交互已取消');
 });
 
@@ -1115,7 +1114,7 @@ test('a queued next prompt stays separate while a failed interaction response is
     .finally(() => { nextSettled = true; });
   releaseFirstSubmit.resolve();
   await firstAnswer;
-  await eventually(() => sent.some(({ text }) => text.includes('回答提交失败')));
+  await eventually(() => sent.some(({ text }) => text.includes(tr('bridge.answerSubmitRetry'))));
   assert.equal(nextSettled, false);
   assert.deepEqual(asked, ['启动可重试交互']);
 
@@ -1136,7 +1135,7 @@ test('a rich-post pending reply does not block the valid text answer behind it',
   let submitted;
   const bridge = new FeishuHarnessBridge({
     client: textClient(async (message) => {
-      if (message.text === '请用文字回答当前问题。') {
+      if (message.text === tr('bridge.answerWithText')) {
         invalidNoticeStarted.resolve();
         await releaseInvalidNotice.promise;
       }
@@ -1260,7 +1259,7 @@ test('an answer resolved elsewhere is not reinterpreted as a later prompt', asyn
   await Promise.all([answer, first, later]);
   assert.deepEqual(asked, ['启动外部解决竞态', '后来的普通问题']);
   assert.equal(asked.includes('原本的问题答案'), false);
-  assert.equal(sent.some(({ text }) => text.includes('已在其他客户端处理')), true);
+  assert.equal(sent.some(({ text }) => text.includes(tr('bridge.interactionResolved'))), true);
 });
 
 test('a late reply to a resolved Feishu question thread is discarded', async () => {
@@ -1317,7 +1316,7 @@ test('a late reply to a resolved Feishu question thread is discarded', async () 
   }));
 
   assert.deepEqual(asked, ['启动线程迟到测试']);
-  assert.equal(sent.some(({ text }) => text.includes('已在其他客户端处理')), true);
+  assert.equal(sent.some(({ text }) => text.includes(tr('bridge.interactionResolved'))), true);
 });
 
 test('a question resolved while its next message is in flight tombstones that late thread', async () => {
@@ -1403,7 +1402,7 @@ test('a question resolved while its next message is in flight tombstones that la
   }));
 
   assert.deepEqual(asked, ['启动在途解决竞态']);
-  assert.equal(sent.some(({ text }) => text.includes('已在其他客户端处理')), true);
+  assert.equal(sent.some(({ text }) => text.includes(tr('bridge.interactionResolved'))), true);
 });
 
 test('a q2 thread reply accepted before an in-flight send resolves is discarded after resolution', async () => {
@@ -1498,7 +1497,7 @@ test('a q2 thread reply accepted before an in-flight send resolves is discarded 
   await Promise.all([alreadyAcceptedReply, firstAnswer, first]);
 
   assert.deepEqual(asked, ['启动已接收回复竞态']);
-  assert.equal(sent.some(({ text }) => text.includes('已在其他客户端处理')), true);
+  assert.equal(sent.some(({ text }) => text.includes(tr('bridge.interactionResolved'))), true);
 });
 
 test('a recovered orphan question is cancelled without exposing its old content', async () => {
@@ -1545,7 +1544,7 @@ test('a recovered orphan question is cancelled without exposing its old content'
     },
   });
   assert.equal(sent.some(({ text }) => text.includes('旧会话中的敏感问题内容')), false);
-  assert.equal(sent.some(({ text }) => text.includes('遗留的待回答问题')), true);
+  assert.equal(sent.some(({ text }) => text.includes(tr('bridge.recoveredInteractionCancelled'))), true);
   assert.equal(sent.at(-1).text, '新的消息已继续');
 });
 
@@ -1597,11 +1596,11 @@ test('a multi-question interaction keeps ordered canonical answers', async () =>
 
   const first = bridge.accept(event('batch-start', '请分步提问'));
   await eventually(() => sent.some(({ text }) => (
-    text.includes('（1/2）') && text.includes('选择回答语言')
+    text.includes(tr('question.headerWithProgress', { index: 1, total: 2 })) && text.includes('选择回答语言')
   )));
   await bridge.accept(event('batch-language', '2'));
   await eventually(() => sent.some(({ text }) => (
-    text.includes('（2/2）') && text.includes('选择交付内容')
+    text.includes(tr('question.headerWithProgress', { index: 2, total: 2 })) && text.includes('选择交付内容')
   )));
   await bridge.accept(event('batch-deliverables', '1，文档，发布说明'));
 
@@ -1769,7 +1768,7 @@ test('a group interaction question tells the user to mention the bot again', asy
   }));
 
   const questionText = sent.find(({ text }) => text.includes('请选择群聊测试环境'))?.text;
-  assert.match(questionText ?? '', /群聊中请\s*@机器人\s*后发送答案/);
+  assert.match(questionText ?? '', new RegExp(tr('question.mentionHint')));
 });
 
 test('only the actor who started a group interaction can answer it', async () => {
@@ -1984,7 +1983,7 @@ test('Feishu finalizes the answer card before delivering registered result files
   assert.equal(status.artifactsSent, 1);
   assert.equal(status.artifactSendErrors, 1);
   assert.equal(notices.length, 1);
-  assert.match(notices[0], /notes\.txt.*限流/);
+  assert.match(notices[0], new RegExp(tr('artifact.feishu.rateLimited', { name: 'notes.txt' }).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.doesNotMatch(notices[0], /provider detail/);
 });
 
@@ -2021,7 +2020,7 @@ test('Feishu tells users to check the chat before retrying an uncertain file del
   await bridge.waitForIdle();
 
   assert.deepEqual(notices, [
-    '结果文件「uncertain.txt」发送结果未能确认，请先检查聊天内是否已收到，不要立即重试。',
+    tr('artifact.uncertainShort', { name: 'uncertain.txt' }),
   ]);
 });
 
@@ -2063,7 +2062,7 @@ test('Feishu delivers a file-only Turn with a neutral final card', async (t) => 
   bridge.accept(event('om_file_only', '只发送结果文件'));
   await bridge.waitForIdle();
 
-  assert.deepEqual(cardContents, ['结果文件已生成。']);
+  assert.deepEqual(cardContents, [tr('artifact.generated')]);
   assert.deepEqual(files, ['file-only.txt']);
 });
 
@@ -2204,7 +2203,7 @@ test('Feishu returns the receipt after reaction finalization and one safe notice
 
       assert.equal(attemptedTexts.length, 2, 'must not append a generic error after the safe notice');
       assert.equal(visibleTexts.length, 1);
-      assert.match(visibleTexts[0], /暂时无法读取或准备发送.*仍可访问/);
+      assert.ok(visibleTexts[0].includes(tr('artifact.error.unavailable', { name: '' }).replace(' "" ', ' ').slice(-40)));
       assert.deepEqual(reactions, ['OnIt', 'DONE']);
       assert.deepEqual(receipt, {
         schemaVersion: 1,
@@ -2252,7 +2251,7 @@ test('Feishu keeps the generic error when no answer or file failure notice is vi
   await bridge.accept(event('om-no-visible-failure', '生成并发送文件'));
 
   assert.equal(attemptedTexts.length, 3);
-  assert.match(attemptedTexts.at(-1), /^处理失败，请稍后重试/);
+  assert.equal(attemptedTexts.at(-1), tr('feishu.processingFailed'));
 });
 
 test('Feishu does not repeat finalized card text when cancellation happens before file delivery', async (t) => {
@@ -2379,7 +2378,7 @@ test('bridge does not expose internal error details in a Feishu failure reply', 
   await bridge.waitForIdle();
 
   assert.equal(sent.length, 1);
-  assert.match(sent[0], /处理失败，请稍后重试/);
+  assert.equal(sent[0], tr('feishu.processingFailed'));
   assert.doesNotMatch(sent[0], /secret-shaped-internal-detail|private\/path/);
   assert.equal(status.lastError, 'secret-shaped-internal-detail /private/path');
 });
@@ -2597,7 +2596,7 @@ test('number replies on a later session page use page-local labels', async () =>
 
   await bridge.accept(event('sessions-number-pick', '1', { senderOpenId: 'ou_owner' }));
   await bridge.waitForIdle();
-  assert.match(JSON.parse(sent.at(-1).content).text, /ID：session-21/);
+  assert.match(JSON.parse(sent.at(-1).content).text, /ID: session-21/);
 });
 
 test('session pagination preserves an explicitly selected workspace', async () => {
@@ -2753,8 +2752,8 @@ test('/repair status after a runtime restart never starts a duplicate authorizat
   assert.equal(repair.calls.status.length, 0);
   assert.equal(repair.calls.cancel.length, 0);
   const message = JSON.parse(fx.sent.at(-1).content).text;
-  assert.match(message, /没有可恢复的修复任务记录/);
-  assert.match(message, /不会启动新的授权/);
+  assert.equal(message, tr('feishu.repair.noRecord'));
+  assert.match(message, new RegExp(tr('feishu.repair.noRecord').slice(0, 40)));
 });
 
 test('menu repair entry is number-only and reply 6 starts the same repair flow', async () => {
@@ -2783,7 +2782,7 @@ test('chat repair requires a private chat and an exact owner; wildcard never aut
   await wildcard.bridge.accept(event('repair-wildcard', '/repair', { senderOpenId: 'ou_anyone' }));
   await wildcard.bridge.waitForIdle();
   assert.equal(wildcardRepair.calls.start.length, 0);
-  assert.match(JSON.parse(wildcard.sent.at(-1).content).text, /没有可验证的接入者身份/);
+  assert.equal(JSON.parse(wildcard.sent.at(-1).content).text, tr('feishu.repair.noAdminIdentity'));
 
   const mixedRepair = repairCapability();
   const mixed = repairBridge({
@@ -2793,7 +2792,7 @@ test('chat repair requires a private chat and an exact owner; wildcard never aut
   await mixed.bridge.accept(event('repair-mixed-intruder', '/repair', { senderOpenId: 'ou_other' }));
   await mixed.bridge.waitForIdle();
   assert.equal(mixedRepair.calls.start.length, 0);
-  assert.match(JSON.parse(mixed.sent.at(-1).content).text, /只能由机器人接入者/);
+  assert.match(JSON.parse(mixed.sent.at(-1).content).text, new RegExp(tr('feishu.repair.operatorOnly')));
   await mixed.bridge.accept(event('repair-mixed-owner', '/repair', { senderOpenId: 'ou_owner' }));
   await mixed.bridge.waitForIdle();
   assert.equal(mixedRepair.calls.start.length, 1);
@@ -2807,7 +2806,7 @@ test('chat repair requires a private chat and an exact owner; wildcard never aut
   }));
   await group.bridge.waitForIdle();
   assert.equal(groupRepair.calls.start.length, 0);
-  assert.match(JSON.parse(group.sent.at(-1).content).text, /请私聊机器人/);
+  assert.match(JSON.parse(group.sent.at(-1).content).text, new RegExp(tr('feishu.repair.privateChatOnly')));
 });
 
 test('/repair qr, status, verify and cancel stay scoped to the initiating owner', async () => {
@@ -2843,8 +2842,8 @@ test('/repair qr, status, verify and cancel stay scoped to the initiating owner'
   const textMessages = sent
     .filter((request) => request.data.msg_type === 'text')
     .map((request) => JSON.parse(request.data.content).text);
-  assert.equal(textMessages.some((text) => text.includes('修复任务正在等待授权')), true);
-  assert.equal(textMessages.some((text) => text.includes('授权尚未完成')), true);
+  assert.equal(textMessages.some((text) => text.includes(tr('feishu.repair.waitingWithRemaining', { remaining: '' }).slice(0, 30))), true);
+  assert.equal(textMessages.some((text) => text.includes(tr('feishu.repair.notAuthorisedYet'))), true);
 
   await fx.bridge.accept(event('repair-commands-cancel', '/repair cancel', { senderOpenId: 'ou_owner' }));
   await fx.bridge.waitForIdle();
@@ -2870,7 +2869,7 @@ test('/repair cancel only reports cancellation when the controller confirms it',
 
     const reply = JSON.parse(fx.sent.at(-1).content).text;
     assert.doesNotMatch(reply, /已取消本次修复授权/);
-    assert.match(reply, state === 'saving' ? /正在等待专用测试按钮/ : /修复完成/);
+    assert.equal(reply, tr(state === 'saving' ? 'feishu.repair.awaitingRealCallback' : 'feishu.repair.done'));
     await eventually(() => repair.calls.status.length > 0);
   }
 });
@@ -2891,7 +2890,7 @@ test('/repair rejects placeholder or mismatched launcher links and cancels the a
     await fx.bridge.waitForIdle();
     assert.equal(repair.calls.cancel.length, 1);
     const text = JSON.parse(fx.sent.at(-1).content).text;
-    assert.match(text, /无法安全验证/);
+    assert.equal(text, tr('feishu.repair.unsafeLink'));
     assert.doesNotMatch(text, /\{\{client_id\}\}|cli_other_app/);
   }
 });
@@ -2909,13 +2908,13 @@ test('repair monitor reports expiry without claiming that the callback was fixed
   await fx.bridge.waitForIdle();
   await eventually(() => fx.sent.some((outgoing) => (
     outgoing.msgType === 'text'
-      && JSON.parse(outgoing.content).text.includes('授权链接已过期')
+      && JSON.parse(outgoing.content).text.includes(tr('feishu.repair.linkExpired'))
   )));
   const terminal = fx.sent
     .filter((outgoing) => outgoing.msgType === 'text')
     .map((outgoing) => JSON.parse(outgoing.content).text)
-    .find((text) => text.includes('授权链接已过期'));
-  assert.doesNotMatch(terminal, /修复完成/);
+    .find((text) => text.includes(tr('feishu.repair.linkExpired')));
+  assert.doesNotMatch(terminal, new RegExp(tr('feishu.repair.done').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 });
 
 // ── Watches: read-only tracking, persistence, compensation, dedup ─────────
@@ -2975,7 +2974,7 @@ test('/watch resolves read-only: no binding, no workspace switch', async () => {
 
   await bridge.accept(event('watch-1', '/watch 1', { senderOpenId: 'ou_owner' }));
   await bridge.waitForIdle();
-  assert.match(sent.at(-1), /已关注会话「Target」/);
+  assert.equal(sent.at(-1), tr('feishu.watch.added', { title: 'Target' }));
   assert.equal(bindCalls, 0, 'watch must not bind the conversation');
   assert.equal(switchCalls, 0, 'watch must not switch workspaces');
   assert.equal(state.sessionFor('p2p:ou_owner'), 'bound-session', 'existing binding unchanged');
@@ -3005,7 +3004,7 @@ test('/watch finds a session in another workspace without switching', async () =
 
   await bridge.accept(event('watch-x', '/watch other-session', { senderOpenId: 'ou_owner' }));
   await bridge.waitForIdle();
-  assert.match(sent.at(-1), /已关注会话「Other Session」/);
+  assert.equal(sent.at(-1), tr('feishu.watch.added', { title: 'Other Session' }));
   assert.equal(state.sessionFor('p2p:ou_owner'), null, 'cross-workspace watch must not bind');
   assert.ok(state.watchEntry('p2p:ou_owner', 'other-session'));
 });

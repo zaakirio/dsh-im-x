@@ -32,6 +32,7 @@ import {
   WHATSAPP_ENDPOINTS,
   createWhatsappRpcHandler,
 } from '../../../plugin-src/host/channels/whatsapp/rpc.mjs';
+import { defaultTranslator as tr } from '../../../src/i18n/index.mjs';
 
 const ACCOUNT_JID = '16505550123@s.whatsapp.net';
 const AUTH_DIRECTORY = '7fe8c17e-4fb7-4c5b-a9dc-c36525575dd1';
@@ -655,7 +656,10 @@ test('WhatsApp runtime treats a lost file-send response as uncertain delivery', 
 
   assert.equal(sent.filter((content) => content.document).length, 1);
   assert.equal(warnings.some((warning) => warning.includes('artifact-delivery-uncertain')), true);
-  assert.equal(sent.some((content) => content.text?.includes('发送结果未能确认')), true);
+  assert.equal(
+    sent.some((content) => content.text === tr('artifact.error.uncertain', { name: 'uncertain.txt' })),
+    true,
+  );
 });
 
 test('stopping WhatsApp aborts a pending upload without another file or failure notice', async (t) => {

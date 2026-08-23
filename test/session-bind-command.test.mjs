@@ -213,8 +213,10 @@ test('all nine channel bridges advertise /session and pass their current convers
   for (const [file, key] of bridgeFamilies) {
     const source = await readFile(new URL(file, import.meta.url), 'utf8');
     assert.match(source, /helpText\(/);
-    assert.ok(
-      source.includes(`runWorkspaceCommand(text, this.#harness, ${key})`),
+    // The trailing options argument carries the conversation translator.
+    assert.match(
+      source,
+      new RegExp(`runWorkspaceCommand\\(text, this\\.#harness, ${key}(,|\\))`),
       `${file} must pass ${key} to the shared command`,
     );
   }
