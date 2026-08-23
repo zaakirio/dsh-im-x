@@ -58,10 +58,13 @@ Some behaviour follows from this rather than being separate features:
 - Relative timestamps in `/sessionlist` are formatted with `Intl` for the active locale instead of a fixed date pattern.
 - The prompt sent for an image with no caption, and the AI Office handoff prompt, are both translated, so the agent is not asked a question in a language the user does not read.
 
+The settings page follows the language the Harness client is set to, and takes only that from the host: lookup, fallbacks, and placeholders come from the same catalogue the channel runtimes use.
+
 ### Adding a language
 
 Add a locale module under `src/i18n/locales/`, register it in `src/i18n/index.mjs`, and give it a display name.
 A parity test then requires the new catalogue to cover every English key and to use the same placeholders, so a partial translation fails the build rather than reaching a user as a mix of two languages.
+Channel code never contains a sentence, so a new language needs no changes outside `src/i18n/`.
 
 ## Interface
 
@@ -250,12 +253,13 @@ IM management RPCs accept loopback browsers by default. When a Web profile is de
 
 Everything the original does still works; the differences are in how copy and language are handled.
 
-- **A real translation layer.** Upstream wrote user-facing Chinese directly into channel code, and translated only the settings page, at render time, through a dictionary keyed by Chinese source strings plus regex reverse-parsers. This fork resolves every string from a keyed catalogue instead, so copy no longer depends on pattern-matching prose.
+- **A real translation layer.** Upstream wrote user-facing Chinese directly into channel code, and translated only the settings page, at render time, through a dictionary keyed by Chinese source strings plus regex reverse-parsers and substring phrase replacement. This fork resolves every string in both the runtime and the settings page from one keyed catalogue, so copy no longer depends on pattern-matching prose. No source file outside the Chinese catalogue contains a translatable string, and a test enforces that.
 - **English by default, and actually switchable.** `/lang`, per-bot locales, and channel locale detection are described under [Language support](#language-support).
 - **One command surface.** `/help` and the native command menus channels register both come from a single command registry, replacing six drifting copies of the command list.
 - **Errors carry codes, not prose.** Failures raised deep in storage, download, and validation paths now carry a code and render at the boundary that knows the conversation's language, instead of a pre-rendered sentence.
 - **Locale-independent logic.** A few behaviours keyed off Chinese text and would have broken silently once translated: Slack filtered streaming progress by matching the Chinese "using X…" string, and approvals only accepted Chinese decision words. Both now key off structured data.
 - **Lint and a test timeout.** The repo gained `eslint` with `no-undef`, which catches stale identifiers that only throw on one channel path, and `npm test` runs with a timeout so a hanging test fails instead of blocking forever.
+- **Guards against the mistakes this migration made.** Tests now require every locale to cover English's key set and placeholders, reject a CJK literal in any client source, and reject a call to a placeholder key without params, which is how a button once rendered a literal `{name}`.
 
 Size limits, platform requirements, credential handling, and the RPC surface are unchanged from upstream.
 
