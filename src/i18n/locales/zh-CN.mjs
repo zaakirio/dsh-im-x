@@ -489,17 +489,6 @@ export const ZH_CN = Object.freeze({
   // --- QR pairing (shared wording) ---------------------------------------
   'qr.cancelled': '扫码绑定已取消。',
 
-  // --- QQ ----------------------------------------------------------------
-  'qq.missingSecret': 'QQ 机器人凭据缺失，请移除后重新扫码。',
-  'qq.connectionNotReady': 'QQ 连接未就绪，插件会自动重试。',
-  'qq.qrServiceUnavailable': 'QQ 扫码服务暂时不可用，请重新生成二维码。',
-  'qq.qrStartFailed': '无法生成 QQ 二维码，请稍后重试。',
-  'qq.boundNotReady': 'QQ 机器人已绑定，消息连接暂未就绪。',
-  'qq.connectionStillNotReady': 'QQ 连接仍未就绪，请稍后重试。',
-  'qq.activationFailed': 'QQ 已授权，但无法安全保存接入配置。',
-  'qq.healthy': 'QQ WebSocket 长连接运行正常',
-  'qq.connectionError': 'QQ 连接未就绪，插件会自动重试',
-  'qq.connectionOffline': 'QQ 连接当前离线',
   // --- WeChat service and media errors -----------------------------------
   'weixin.api.invalidImageKey': '微信图片的加密密钥无效。',
   'weixin.api.invalidImageCiphertext': '微信图片的加密数据无效。',
@@ -530,4 +519,24 @@ export const ZH_CN = Object.freeze({
   'weixin.api.uploadRequestRejected': '微信服务拒绝了文件上传请求。',
   'weixin.api.fileMessageRejected': '微信服务拒绝了文件消息。',
   'weixin.api.startRejected': '微信账号连接启动失败。',
+  // --- QR-paired channel connection states -------------------------------
+  'qr.missingSecret': '{channel}机器人凭据缺失，请移除后重新扫码。',
+  'qr.serviceUnavailable': '{channel}扫码服务暂时不可用，请重新生成二维码。',
+  'qr.startFailed': '无法生成{channel}二维码，请稍后重试。',
+  'qr.expired': '{channel}二维码已过期，请重新生成。',
+  'qr.boundNotReady': '{channel}机器人已绑定，消息连接暂未就绪。',
+  'qr.activationFailed': '{channel}已授权，但无法安全保存接入配置。',
+  'qr.deviceInvalid': '{channel}关联设备已失效，请移除后重新扫码。',
+  'qr.authorizationFailed': '{channel}未完成机器人授权，请重新扫码。',
+  'qr.pollPending': '{channel}授权状态暂时不可用，正在重试。',
+  'qr.pollFailed': '{channel}授权查询暂时失败，正在重试。',
+  'qr.connectFailed': '无法连接{channel}，请重新生成二维码。',
+  'qr.deviceSaveFailed': '{channel}已扫码，但无法保存关联设备。',
+  'status.healthyDingtalk': '钉钉 Stream 消息连接运行正常',
+  'status.offlineDingtalk': '钉钉消息连接当前离线',
+  'status.healthyQq': 'QQ WebSocket 长连接运行正常',
+  'status.healthyWhatsapp': 'WhatsApp Web 关联设备运行正常',
+  'status.healthyWecom': '企业微信消息连接运行正常',
+  'qr.notCompleted': '{channel}扫码没有完成，请重新生成二维码。',
+  'status.healthyWecomSocket': '企业微信 WebSocket 长连接运行正常',
 });

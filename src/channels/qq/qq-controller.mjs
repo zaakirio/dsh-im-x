@@ -2,6 +2,9 @@ import { randomUUID } from 'node:crypto';
 
 import { connectionTestMessage } from '../shared/connection-test.mjs';
 import { deriveQqBotIdentity, maskQqAppId } from './config-store.mjs';
+import { createTranslator } from '../../i18n/index.mjs';
+
+const CHANNEL_LABEL = 'QQ';
 
 const ACTIVE_ATTEMPT_STATES = new Set(['starting', 'pending', 'refreshing', 'connecting']);
 const TERMINAL_ATTEMPT_STATES = new Set(['connected', 'failed', 'cancelled']);
@@ -38,6 +41,7 @@ export class QqController {
   #logger;
   #runtimes = new Map();
   #errors = new Map();
+  #t;
   #attempts = new Map();
   #activeAttemptId = null;
   #transitions = new Map();
@@ -51,6 +55,7 @@ export class QqController {
     createRuntime,
     deleteState = async () => {},
     logger = console,
+    locale,
   }) {
     if (!qrAuth || typeof qrAuth.start !== 'function') throw new TypeError('QQ QR auth is required');
     if (!credentials || typeof credentials.resolve !== 'function'
@@ -68,6 +73,7 @@ export class QqController {
     this.#createRuntime = createRuntime;
     this.#deleteState = deleteState;
     this.#logger = logger;
+    this.#t = createTranslator(locale);
   }
 
   async initialize() {
@@ -77,14 +83,14 @@ export class QqController {
         if (this.#closed || this.#runtimes.get(config.botId)?.status?.ready) return;
         const appSecret = await this.#resolveSecret(config.secretRef);
         if (!appSecret) {
-          this.#errors.set(config.botId, safeError('missing-secret', 'QQ 机器人凭据缺失，请移除后重新扫码。'));
+          this.#errors.set(config.botId, safeError('missing-secret', this.#t('qr.missingSecret', { channel: CHANNEL_LABEL })));
           return;
         }
         try {
           await this.#startRuntime(config, appSecret);
           this.#errors.delete(config.botId);
         } catch (error) {
-          this.#errors.set(config.botId, safeError('connection-failed', 'QQ 连接未就绪，插件会自动重试。'));
+          this.#errors.set(config.botId, safeError('connection-failed', this.#t('status.connectionNotReady', { channel: CHANNEL_LABEL })));
           this.#logger.warn?.(`[dsh-im:qq] bot ${config.botId} failed to initialize:`, error);
         } finally {
           this.#touch();
@@ -147,7 +153,7 @@ export class QqController {
         onFailure: (error) => {
           if (record.controller.signal.aborted || TERMINAL_ATTEMPT_STATES.has(record.state)) return;
           record.state = 'failed';
-          record.error = safeError('qr-connect-failed', 'QQ 扫码服务暂时不可用，请重新生成二维码。');
+          record.error = safeError('qr-connect-failed', this.#t('qr.serviceUnavailable', { channel: CHANNEL_LABEL }));
           if (this.#activeAttemptId === record.id) this.#activeAttemptId = null;
           this.#touch();
           firstQrReject(error);
@@ -158,10 +164,10 @@ export class QqController {
     } catch (error) {
       if (record.controller.signal.aborted) {
         record.state = 'cancelled';
-        record.error = safeError('cancelled', '扫码绑定已取消。');
+        record.error = safeError('cancelled', this.#t('qr.cancelled'));
       } else if (!TERMINAL_ATTEMPT_STATES.has(record.state)) {
         record.state = 'failed';
-        record.error = safeError('qr-start-failed', '无法生成 QQ 二维码，请稍后重试。');
+        record.error = safeError('qr-start-failed', this.#t('qr.startFailed', { channel: CHANNEL_LABEL }));
       }
       if (this.#activeAttemptId === record.id) this.#activeAttemptId = null;
       this.#touch();
@@ -207,7 +213,7 @@ export class QqController {
         await this.#startRuntime(config, normalizedSecret);
         this.#errors.delete(identity.botId);
       } catch (error) {
-        this.#errors.set(identity.botId, safeError('connection-failed', 'QQ 机器人已绑定，消息连接暂未就绪。'));
+        this.#errors.set(identity.botId, safeError('connection-failed', this.#t('qr.boundNotReady', { channel: CHANNEL_LABEL })));
         this.#logger.warn?.(`[dsh-im:qq] bot ${identity.botId} credential connection failed:`, error);
       }
       this.#touch();
@@ -223,7 +229,7 @@ export class QqController {
       record.dispose?.();
       await record.task?.catch(() => undefined);
       if (!TERMINAL_ATTEMPT_STATES.has(record.state)) record.state = 'cancelled';
-      record.error ??= safeError('cancelled', '扫码绑定已取消。');
+      record.error ??= safeError('cancelled', this.#t('qr.cancelled'));
     }
     if (this.#activeAttemptId === record.id) this.#activeAttemptId = null;
     this.#touch();
@@ -240,7 +246,7 @@ export class QqController {
         await this.#startRuntime(config, secret);
         this.#errors.delete(botId);
       } catch (error) {
-        this.#errors.set(botId, safeError('connection-failed', 'QQ 连接仍未就绪，请稍后重试。'));
+        this.#errors.set(botId, safeError('connection-failed', this.#t('status.stillNotReady', { channel: CHANNEL_LABEL })));
         throw error;
       } finally {
         this.#touch();
@@ -255,12 +261,12 @@ export class QqController {
     return this.#withBotTransition(botId, async () => {
       const runtime = this.#runtimes.get(botId);
       if (!runtime?.status?.ready || typeof runtime.sendConnectionTest !== 'function') {
-        const error = new Error('QQ机器人尚未连接');
+        const error = new Error(this.#t('status.notConnected', { channel: CHANNEL_LABEL }));
         error.code = 'test-target-unavailable';
         throw error;
       }
       await runtime.sendConnectionTest(connectionTestMessage(
-        `QQ 机器人（${maskQqAppId(config.appId)}）`,
+        this.#t('bot.cardLabel', { name: this.#t('bot.qqDefaultName'), id: maskQqAppId(config.appId) }),
       ));
       return { sent: true };
     });
@@ -306,11 +312,14 @@ export class QqController {
         state,
         connected,
         configured: true,
-        bot: { name: 'QQ机器人', appIdMasked: maskQqAppId(config.appId) },
+        bot: { name: this.#t('bot.qqDefaultName'), appIdMasked: maskQqAppId(config.appId) },
         health: {
           status: connected ? 'healthy' : state === 'error' ? 'error' : 'offline',
-          summary: connected ? 'QQ WebSocket 长连接运行正常'
-            : state === 'error' ? 'QQ 连接未就绪，插件会自动重试' : 'QQ 连接当前离线',
+          summary: connected
+            ? this.#t('status.healthyQq')
+            : this.#t(state === 'error' ? 'status.error' : 'status.offline', {
+              channel: CHANNEL_LABEL,
+            }),
           lastCheckedAt: runtimeStatus?.lastCheckedAt ?? null,
           lastConnectedAt: runtimeStatus?.lastConnectedAt ?? null,
         },
@@ -364,10 +373,10 @@ export class QqController {
     } catch (error) {
       if (record.controller.signal.aborted) {
         record.state = 'cancelled';
-        record.error = safeError('cancelled', '扫码绑定已取消。');
+        record.error = safeError('cancelled', this.#t('qr.cancelled'));
       } else {
         record.state = 'failed';
-        record.error = safeError('activation-failed', 'QQ 已授权，但无法安全保存接入配置。');
+        record.error = safeError('activation-failed', this.#t('qr.activationFailed', { channel: CHANNEL_LABEL }));
         this.#logger.error?.('[dsh-im:qq] provisioning failed:', error);
       }
     } finally {
@@ -417,7 +426,7 @@ export class QqController {
           await this.#restoreCredential(identity.secretRef, previousSecret);
           throw error;
         }
-        this.#errors.set(identity.botId, safeError('connection-failed', 'QQ 机器人已绑定，消息连接暂未就绪。'));
+        this.#errors.set(identity.botId, safeError('connection-failed', this.#t('qr.boundNotReady', { channel: CHANNEL_LABEL })));
         this.#logger.warn?.(`[dsh-im:qq] bot ${identity.botId} activation connection failed:`, error);
       }
       this.#touch();

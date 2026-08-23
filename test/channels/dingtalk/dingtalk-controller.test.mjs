@@ -154,7 +154,7 @@ test('successful QR poll stores secret then config then starts runtime without p
   await controller.sendConnectionTest(completed.botId);
   assert.equal(runtimes.connectionTests[0].botId, completed.botId);
   assert.match(runtimes.connectionTests[0].text, new RegExp(tr('connection.testSuccess', { name: '' }).split('\n')[0]));
-  assert.match(runtimes.connectionTests[0].text, /钉钉机器人（ding••••vate）/);
+  assert.match(runtimes.connectionTests[0].text, new RegExp(tr('bot.cardLabel', { name: tr('bot.dingtalkDefaultName'), id: 'ding••••vate' }).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   await controller.close();
 });
 

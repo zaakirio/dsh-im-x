@@ -10,6 +10,9 @@ import {
   connectionTestMessage,
   connectionTestTargetUnavailable,
 } from '../shared/connection-test.mjs';
+import { createTranslator, defaultTranslator } from '../../i18n/index.mjs';
+
+const CHANNEL_LABEL = 'DingTalk';
 
 const ACTIVE_ATTEMPT_STATES = new Set(['starting', 'pending', 'connecting']);
 const TERMINAL_ATTEMPT_STATES = new Set(['connected', 'expired', 'failed', 'cancelled']);
@@ -84,7 +87,8 @@ function normalizePendingSender(value) {
   return {
     requestId: opaqueRequestId,
     staffId,
-    displayName: cleanString(value.displayName ?? value.senderName ?? value.senderNick) ?? '钉钉用户',
+    displayName: cleanString(value.displayName ?? value.senderName ?? value.senderNick)
+      ?? defaultTranslator('bot.dingtalkDefaultUser'),
     requestedAt: cleanString(value.requestedAt),
   };
 }
@@ -114,7 +118,7 @@ function publicPendingSender(sender) {
 function publicApprovedSender(sender) {
   return {
     senderKey: sender.senderKey,
-    displayName: cleanString(sender.displayName) ?? '钉钉用户',
+    displayName: cleanString(sender.displayName) ?? defaultTranslator('bot.dingtalkDefaultUser'),
     senderIdMasked: maskDingtalkSenderId(sender.staffId),
     approvedAt: cleanString(sender.approvedAt),
   };
@@ -131,6 +135,7 @@ export class DingtalkController {
   #clock;
   #runtimes = new Map();
   #errors = new Map();
+  #t;
   #attempts = new Map();
   #activeAttemptId = null;
   #transitions = new Map();
@@ -155,6 +160,7 @@ export class DingtalkController {
     deleteState = async () => {},
     logger = console,
     clock = Date,
+    locale,
   }) {
     if (!deviceAuth
       || typeof deviceAuth.start !== 'function'
@@ -186,6 +192,7 @@ export class DingtalkController {
     this.#createRuntime = createRuntime;
     this.#deleteState = deleteState;
     this.#logger = logger;
+    this.#t = createTranslator(locale);
     this.#clock = clock;
   }
 
@@ -206,7 +213,7 @@ export class DingtalkController {
         if (!clientSecret) {
           this.#errors.set(
             latest.botId,
-            safeError('missing-secret', '钉钉机器人凭据缺失，请移除后重新扫码。'),
+            safeError('missing-secret', this.#t('qr.missingSecret', { channel: CHANNEL_LABEL })),
           );
           this.#touch();
           return;
@@ -217,7 +224,7 @@ export class DingtalkController {
         } catch {
           this.#errors.set(
             latest.botId,
-            safeError('connection-failed', '钉钉连接未就绪，请稍后重试。'),
+            safeError('connection-failed', this.#t('status.stillNotReady', { channel: CHANNEL_LABEL })),
           );
           this.#logger.warn?.(`[dsh-dingtalk] bot ${latest.botId} failed to initialize`);
         }
@@ -270,10 +277,10 @@ export class DingtalkController {
     } catch (error) {
       if (record.controller.signal.aborted || error?.name === 'AbortError') {
         record.state = 'cancelled';
-        record.error = safeError('cancelled', '扫码接入已取消。');
+        record.error = safeError('cancelled', this.#t('qr.cancelled'));
       } else {
         record.state = 'failed';
-        record.error = safeError('qr-start-failed', '无法生成钉钉二维码，请稍后重试。');
+        record.error = safeError('qr-start-failed', this.#t('qr.startFailed', { channel: CHANNEL_LABEL }));
       }
       if (this.#activeAttemptId === record.id) this.#activeAttemptId = null;
       this.#touch();
@@ -319,7 +326,7 @@ export class DingtalkController {
       } catch {
         this.#errors.set(
           identity.botId,
-          safeError('connection-failed', '钉钉已接入，但消息连接暂未就绪，请稍后重试。'),
+          safeError('connection-failed', this.#t('qr.boundNotReady', { channel: CHANNEL_LABEL })),
         );
         this.#logger.warn?.('[dsh-dingtalk] credential-bound bot saved but its connection is not ready');
       }
@@ -337,7 +344,7 @@ export class DingtalkController {
     }
     if (nowFrom(this.#clock) >= record.expiresAt) {
       record.state = 'expired';
-      record.error = safeError('expired', '二维码已过期，请重新生成。');
+      record.error = safeError('expired', this.#t('qr.expired', { channel: CHANNEL_LABEL }));
       if (this.#activeAttemptId === record.id) this.#activeAttemptId = null;
       this.#touch();
       return publicAttempt(record);
@@ -360,7 +367,7 @@ export class DingtalkController {
       record.controller.abort();
       await record.pollTask?.catch(() => undefined);
       if (!TERMINAL_ATTEMPT_STATES.has(record.state)) record.state = 'cancelled';
-      record.error ??= safeError('cancelled', '扫码接入已取消。');
+      record.error ??= safeError('cancelled', this.#t('qr.cancelled'));
     }
     if (this.#activeAttemptId === record.id) this.#activeAttemptId = null;
     this.#touch();
@@ -380,7 +387,7 @@ export class DingtalkController {
       } catch (error) {
         this.#errors.set(
           botId,
-          safeError('connection-failed', '钉钉连接仍未就绪，请稍后重试。'),
+          safeError('connection-failed', this.#t('status.stillNotReady', { channel: CHANNEL_LABEL })),
         );
         throw error;
       } finally {
@@ -396,10 +403,13 @@ export class DingtalkController {
     return this.#withBotTransition(botId, async () => {
       const runtime = this.#runtimes.get(botId);
       if (!runtime?.status?.ready || typeof runtime.sendConnectionTest !== 'function') {
-        throw connectionTestTargetUnavailable('钉钉机器人');
+        throw connectionTestTargetUnavailable(this.#t('bot.dingtalkDefaultName'), this.#t);
       }
       return runtime.sendConnectionTest(connectionTestMessage(
-        `钉钉机器人（${maskDingtalkClientId(config.clientId)}）`,
+        this.#t('bot.cardLabel', {
+          name: this.#t('bot.dingtalkDefaultName'),
+          id: maskDingtalkClientId(config.clientId),
+        }),
       ));
     });
   }
@@ -501,14 +511,14 @@ export class DingtalkController {
         connected,
         configured: true,
         bot: {
-          name: '钉钉机器人',
+          name: this.#t('bot.dingtalkDefaultName'),
           clientIdMasked: maskDingtalkClientId(config.clientId),
         },
         health: {
           status: connected ? 'healthy' : accountError ? 'error' : 'offline',
           summary: connected
-            ? '钉钉 Stream 消息连接运行正常'
-            : accountError?.message ?? '钉钉消息连接当前离线',
+            ? this.#t('status.healthyDingtalk')
+            : accountError?.message ?? this.#t('status.offlineDingtalk'),
           lastCheckedAt: currentStatus.lastCheckedAt ?? null,
         },
         stats: {
@@ -580,32 +590,32 @@ export class DingtalkController {
         if (this.#activeAttemptId === record.id) this.#activeAttemptId = null;
       } else if (state === 'EXPIRED') {
         record.state = 'expired';
-        record.error = safeError('expired', '二维码已过期，请重新生成。');
+        record.error = safeError('expired', this.#t('qr.expired', { channel: CHANNEL_LABEL }));
         if (this.#activeAttemptId === record.id) this.#activeAttemptId = null;
       } else if (state === 'FAIL') {
         record.state = 'failed';
-        record.error = safeError('authorization-failed', '钉钉未完成机器人授权，请重新扫码。');
+        record.error = safeError('authorization-failed', this.#t('qr.authorizationFailed', { channel: CHANNEL_LABEL }));
         if (this.#activeAttemptId === record.id) this.#activeAttemptId = null;
       } else {
         record.state = 'pending';
-        record.error = safeError('poll-pending', '钉钉授权状态暂时不可用，正在重试。');
+        record.error = safeError('poll-pending', this.#t('qr.pollPending', { channel: CHANNEL_LABEL }));
       }
     } catch (error) {
       if (record.controller.signal.aborted || error?.name === 'AbortError') {
         record.state = 'cancelled';
-        record.error = safeError('cancelled', '扫码接入已取消。');
+        record.error = safeError('cancelled', this.#t('qr.cancelled'));
         if (this.#activeAttemptId === record.id) this.#activeAttemptId = null;
       } else if (record.state === 'connecting') {
         record.state = 'failed';
         record.error = safeError(
           'activation-failed',
-          '钉钉已授权，但无法安全保存接入配置。',
+          this.#t('qr.activationFailed', { channel: CHANNEL_LABEL }),
         );
         if (this.#activeAttemptId === record.id) this.#activeAttemptId = null;
         this.#logger.error?.('[dsh-dingtalk] bot activation failed');
       } else {
         record.state = 'pending';
-        record.error = safeError('poll-failed', '钉钉授权查询暂时失败，正在重试。');
+        record.error = safeError('poll-failed', this.#t('qr.pollFailed', { channel: CHANNEL_LABEL }));
       }
     } finally {
       this.#touch();
@@ -660,7 +670,7 @@ export class DingtalkController {
         }
         this.#errors.set(
           identity.botId,
-          safeError('connection-failed', '钉钉已接入，但消息连接暂未就绪，请稍后重试。'),
+          safeError('connection-failed', this.#t('qr.boundNotReady', { channel: CHANNEL_LABEL })),
         );
         this.#logger.warn?.('[dsh-dingtalk] authorized bot saved but its connection is not ready');
       }
@@ -681,7 +691,7 @@ export class DingtalkController {
         await this.#startRuntime(previousConfig, clientSecret).catch(() => undefined);
         this.#errors.set(
           previousConfig.botId,
-          safeError('connection-failed', '钉钉连接未就绪，请稍后重试。'),
+          safeError('connection-failed', this.#t('status.stillNotReady', { channel: CHANNEL_LABEL })),
         );
         throw error;
       } finally {

@@ -511,17 +511,6 @@ export const EN = Object.freeze({
   // --- QR pairing (shared wording) ---------------------------------------
   'qr.cancelled': 'QR pairing was cancelled.',
 
-  // --- QQ ----------------------------------------------------------------
-  'qq.missingSecret': 'The QQ bot credentials are missing. Remove it and scan again.',
-  'qq.connectionNotReady': 'The QQ connection is not ready. The plugin keeps retrying.',
-  'qq.qrServiceUnavailable': 'The QQ QR service is unavailable. Generate a new QR code.',
-  'qq.qrStartFailed': 'A QQ QR code could not be generated. Try again shortly.',
-  'qq.boundNotReady': 'The QQ bot is bound, but its message connection is not ready yet.',
-  'qq.connectionStillNotReady': 'The QQ connection is still not ready. Try again shortly.',
-  'qq.activationFailed': 'QQ authorised, but the connection configuration could not be saved safely.',
-  'qq.healthy': 'The QQ WebSocket connection is running normally',
-  'qq.connectionError': 'The QQ connection is not ready; the plugin keeps retrying',
-  'qq.connectionOffline': 'The QQ connection is offline',
   // --- WeChat service and media errors -----------------------------------
   'weixin.api.invalidImageKey': 'The WeChat image encryption key is invalid.',
   'weixin.api.invalidImageCiphertext': 'The WeChat image encrypted data is invalid.',
@@ -552,4 +541,26 @@ export const EN = Object.freeze({
   'weixin.api.uploadRequestRejected': 'The WeChat service rejected the file-upload request.',
   'weixin.api.fileMessageRejected': 'The WeChat service rejected the file message.',
   'weixin.api.startRejected': 'The WeChat account connection failed to start.',
+  // --- QR-paired channel connection states -------------------------------
+  // Shared by DingTalk, WeCom, QQ, and WhatsApp, which pair by scanning a code
+  // and report the same set of conditions.
+  'qr.missingSecret': 'The {channel} bot credentials are missing. Remove it and scan again.',
+  'qr.serviceUnavailable': 'The {channel} QR service is unavailable. Generate a new QR code.',
+  'qr.startFailed': 'A {channel} QR code could not be generated. Try again shortly.',
+  'qr.expired': 'The {channel} QR code has expired. Generate a new one.',
+  'qr.boundNotReady': 'The {channel} bot is bound, but its message connection is not ready yet.',
+  'qr.activationFailed': '{channel} authorised, but the connection configuration could not be saved safely.',
+  'qr.deviceInvalid': 'The {channel} linked device is no longer valid. Remove it and scan again.',
+  'qr.authorizationFailed': '{channel} did not finish authorising the bot. Scan again.',
+  'qr.pollPending': 'The {channel} authorisation status is briefly unavailable. Retrying.',
+  'qr.pollFailed': 'The {channel} authorisation query briefly failed. Retrying.',
+  'qr.connectFailed': 'Could not connect to {channel}. Generate a new QR code.',
+  'qr.deviceSaveFailed': '{channel} was scanned, but the linked device could not be saved.',
+  'status.healthyDingtalk': 'The DingTalk Stream message connection is running normally',
+  'status.offlineDingtalk': 'The DingTalk message connection is offline',
+  'status.healthyQq': 'The QQ WebSocket connection is running normally',
+  'status.healthyWhatsapp': 'The WhatsApp Web linked device is running normally',
+  'status.healthyWecom': 'The WeCom message connection is running normally',
+  'qr.notCompleted': 'The {channel} scan did not complete. Generate a new QR code.',
+  'status.healthyWecomSocket': 'The WeCom WebSocket connection is running normally',
 });

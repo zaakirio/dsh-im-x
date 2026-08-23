@@ -88,7 +88,7 @@ test('Enterprise WeChat Bot ID and Secret binding stores credentials and starts 
   assert.doesNotMatch(JSON.stringify(status), /manual-secret|remote-manual|secretRef/);
   await controller.sendConnectionTest(status.bots[0].botId);
   assert.match(connectionTestText, new RegExp(tr('connection.testSuccess', { name: '' }).split('\n')[0]));
-  assert.match(connectionTestText, /企业微信机器人（remote••••nual）/);
+  assert.match(connectionTestText, new RegExp(tr('bot.cardLabel', { name: tr('bot.wecomDefaultName'), id: 'remote••••nual' }).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   await controller.close();
 });
 

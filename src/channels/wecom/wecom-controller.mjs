@@ -5,6 +5,9 @@ import {
   connectionTestMessage,
   connectionTestTargetUnavailable,
 } from '../shared/connection-test.mjs';
+import { createTranslator } from '../../i18n/index.mjs';
+
+const CHANNEL_LABEL = 'WeCom';
 
 const ACTIVE_ATTEMPT_STATES = new Set(['pending', 'connecting']);
 const TERMINAL_ATTEMPT_STATES = new Set(['connected', 'failed', 'cancelled', 'expired']);
@@ -40,6 +43,7 @@ export class WecomController {
   #logger;
   #runtimes = new Map();
   #errors = new Map();
+  #t;
   #attempts = new Map();
   #activeAttemptId = null;
   #transitions = new Map();
@@ -53,6 +57,7 @@ export class WecomController {
     createRuntime,
     deleteState = async () => {},
     logger = console,
+    locale,
   }) {
     if (!qrAuth || typeof qrAuth.start !== 'function' || typeof qrAuth.poll !== 'function') {
       throw new TypeError('Enterprise WeChat QR auth is required');
@@ -72,6 +77,7 @@ export class WecomController {
     this.#createRuntime = createRuntime;
     this.#deleteState = deleteState;
     this.#logger = logger;
+    this.#t = createTranslator(locale);
   }
 
   async initialize() {
@@ -82,14 +88,14 @@ export class WecomController {
         if (this.#closed || existing?.ready || existing?.wecomConnectionState === 'connecting') return;
         const secret = await this.#resolveSecret(config.secretRef);
         if (!secret) {
-          this.#errors.set(config.botId, safeError('missing-secret', '企业微信机器人凭据缺失，请移除后重新扫码。'));
+          this.#errors.set(config.botId, safeError('missing-secret', this.#t('qr.missingSecret', { channel: CHANNEL_LABEL })));
           return;
         }
         try {
           await this.#startRuntime(config, secret);
           this.#errors.delete(config.botId);
         } catch (error) {
-          this.#errors.set(config.botId, safeError('connection-failed', '企业微信连接未就绪，插件会自动重试。'));
+          this.#errors.set(config.botId, safeError('connection-failed', this.#t('status.connectionNotReady', { channel: CHANNEL_LABEL })));
           this.#logger.warn?.(`[dsh-im:wecom] bot ${config.botId} failed to initialize`);
         } finally {
           this.#touch();
@@ -134,8 +140,8 @@ export class WecomController {
     } catch (error) {
       record.state = record.controller.signal.aborted ? 'cancelled' : 'failed';
       record.error = record.controller.signal.aborted
-        ? safeError('cancelled', '扫码绑定已取消。')
-        : safeError('qr-start-failed', '无法生成企业微信二维码，请稍后重试。');
+        ? safeError('cancelled', this.#t('qr.cancelled'))
+        : safeError('qr-start-failed', this.#t('qr.startFailed', { channel: CHANNEL_LABEL }));
       this.#finishAttempt(record);
       throw error;
     }
@@ -150,7 +156,7 @@ export class WecomController {
     }
     if (Date.now() >= record.expiresAt) {
       record.state = 'expired';
-      record.error = safeError('expired', '企业微信二维码已过期，请重新生成。');
+      record.error = safeError('expired', this.#t('qr.expired', { channel: CHANNEL_LABEL }));
       record.controller.abort();
       this.#finishAttempt(record);
       return publicAttempt(record);
@@ -200,7 +206,7 @@ export class WecomController {
       } catch {
         this.#errors.set(
           identity.botId,
-          safeError('connection-failed', '企业微信机器人已绑定，消息连接暂未就绪。'),
+          safeError('connection-failed', this.#t('qr.boundNotReady', { channel: CHANNEL_LABEL })),
         );
         this.#logger.warn?.(`[dsh-im:wecom] bot ${identity.botId} credential connection failed`);
       }
@@ -216,7 +222,7 @@ export class WecomController {
       record.controller.abort();
       await Promise.allSettled([record.polling, record.transition].filter(Boolean));
       if (!TERMINAL_ATTEMPT_STATES.has(record.state)) record.state = 'cancelled';
-      record.error ??= safeError('cancelled', '扫码绑定已取消。');
+      record.error ??= safeError('cancelled', this.#t('qr.cancelled'));
       this.#finishAttempt(record);
     }
     return publicAttempt(record);
@@ -250,7 +256,7 @@ export class WecomController {
         throw connectionTestTargetUnavailable('企业微信机器人');
       }
       return runtime.sendConnectionTest(connectionTestMessage(
-        `企业微信机器人（${maskWecomBotId(config.remoteBotId)}）`,
+        this.#t('bot.cardLabel', { name: this.#t('bot.wecomDefaultName'), id: maskWecomBotId(config.remoteBotId) }),
       ));
     });
   }
@@ -295,11 +301,14 @@ export class WecomController {
         state,
         connected,
         configured: true,
-        bot: { name: '企业微信机器人', appIdMasked: maskWecomBotId(config.remoteBotId) },
+        bot: { name: this.#t('bot.wecomDefaultName'), appIdMasked: maskWecomBotId(config.remoteBotId) },
         health: {
           status: connected ? 'healthy' : state === 'error' ? 'error' : 'offline',
-          summary: connected ? '企业微信 WebSocket 长连接运行正常'
-            : state === 'error' ? '企业微信连接未就绪，插件会自动重试' : '企业微信连接当前离线',
+          summary: connected
+            ? this.#t('status.healthyWecomSocket')
+            : this.#t(state === 'error' ? 'status.error' : 'status.offline', {
+              channel: CHANNEL_LABEL,
+            }),
           lastCheckedAt: runtimeStatus?.lastCheckedAt ?? null,
           lastConnectedAt: runtimeStatus?.lastConnectedAt ?? null,
         },
@@ -341,13 +350,13 @@ export class WecomController {
       if (result.status === 'waiting') return;
       if (result.status === 'expired') {
         record.state = 'expired';
-        record.error = safeError('expired', '企业微信二维码已过期，请重新生成。');
+        record.error = safeError('expired', this.#t('qr.expired', { channel: CHANNEL_LABEL }));
         this.#finishAttempt(record);
         return;
       }
       if (result.status !== 'success') {
         record.state = 'failed';
-        record.error = safeError('qr-connect-failed', '企业微信扫码没有完成，请重新生成二维码。');
+        record.error = safeError('qr-connect-failed', this.#t('qr.notCompleted', { channel: CHANNEL_LABEL }));
         this.#finishAttempt(record);
         return;
       }
@@ -362,7 +371,7 @@ export class WecomController {
     } catch (error) {
       if (record.controller.signal.aborted) return;
       record.state = 'failed';
-      record.error = safeError('qr-connect-failed', '企业微信扫码服务暂时不可用，请重新生成二维码。');
+      record.error = safeError('qr-connect-failed', this.#t('qr.serviceUnavailable', { channel: CHANNEL_LABEL }));
       this.#logger.warn?.('[dsh-im:wecom] QR polling failed');
       this.#finishAttempt(record);
     }
@@ -379,10 +388,10 @@ export class WecomController {
     } catch (error) {
       if (record.controller.signal.aborted) {
         record.state = 'cancelled';
-        record.error = safeError('cancelled', '扫码绑定已取消。');
+        record.error = safeError('cancelled', this.#t('qr.cancelled'));
       } else {
         record.state = 'failed';
-        record.error = safeError('activation-failed', '企业微信已授权，但无法安全保存接入配置。');
+        record.error = safeError('activation-failed', this.#t('qr.activationFailed', { channel: CHANNEL_LABEL }));
         this.#logger.error?.('[dsh-im:wecom] provisioning failed');
       }
     } finally {
@@ -429,7 +438,7 @@ export class WecomController {
           await this.#restoreCredential(identity.secretRef, previousSecret);
           throw error;
         }
-        this.#errors.set(identity.botId, safeError('connection-failed', '企业微信机器人已绑定，消息连接暂未就绪。'));
+        this.#errors.set(identity.botId, safeError('connection-failed', this.#t('qr.boundNotReady', { channel: CHANNEL_LABEL })));
         this.#logger.warn?.(`[dsh-im:wecom] bot ${identity.botId} activation connection failed`);
       }
       this.#touch();

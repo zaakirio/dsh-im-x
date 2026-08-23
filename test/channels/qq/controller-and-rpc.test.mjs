@@ -5,6 +5,7 @@ import { maskQqAppId } from '../../../src/channels/qq/config-store.mjs';
 import { QqController } from '../../../src/channels/qq/qq-controller.mjs';
 import { connectionTestMessage } from '../../../src/channels/shared/connection-test.mjs';
 import { QQ_ENDPOINTS, createQqRpcHandler } from '../../../plugin-src/host/channels/qq/rpc.mjs';
+import { defaultTranslator as tr } from '../../../src/i18n/index.mjs';
 
 function deferred() {
   let resolve;
@@ -122,7 +123,10 @@ test('QQ controller delegates the shared connection-test message to the selected
   await controller.initialize();
   assert.deepEqual(await controller.sendConnectionTest(config.botId), { sent: true });
   assert.deepEqual(sent, [
-    connectionTestMessage(`QQ 机器人（${maskQqAppId(config.appId)}）`),
+    connectionTestMessage(tr('bot.cardLabel', {
+      name: tr('bot.qqDefaultName'),
+      id: maskQqAppId(config.appId),
+    })),
   ]);
   await controller.close();
 });

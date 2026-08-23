@@ -2,6 +2,9 @@ import { randomUUID } from 'node:crypto';
 
 import { connectionTestMessage } from '../shared/connection-test.mjs';
 import { deriveWhatsappBotId, maskWhatsappAccount } from './config-store.mjs';
+import { createTranslator } from '../../i18n/index.mjs';
+
+const CHANNEL_LABEL = 'WhatsApp';
 
 const ACTIVE_ATTEMPT_STATES = new Set(['starting', 'pending', 'connecting']);
 const TERMINAL_ATTEMPT_STATES = new Set(['connected', 'failed', 'cancelled']);
@@ -35,6 +38,7 @@ export class WhatsappController {
   #logger;
   #runtimes = new Map();
   #errors = new Map();
+  #t;
   #attempts = new Map();
   #transitions = new Map();
   #activeAttemptId = null;
@@ -49,6 +53,7 @@ export class WhatsappController {
     deleteAuth = async () => {},
     deleteState = async () => {},
     logger = console,
+    locale,
   }) {
     if (!configStore || typeof configStore.list !== 'function'
       || typeof configStore.save !== 'function' || typeof configStore.remove !== 'function') {
@@ -65,6 +70,7 @@ export class WhatsappController {
     this.#deleteAuth = deleteAuth;
     this.#deleteState = deleteState;
     this.#logger = logger;
+    this.#t = createTranslator(locale);
   }
 
   async initialize() {
@@ -79,8 +85,8 @@ export class WhatsappController {
           this.#errors.set(config.botId, safeError(
             error?.code === 'relink-required' ? 'relink-required' : 'connection-failed',
             error?.code === 'relink-required'
-              ? 'WhatsApp 关联设备已失效，请移除后重新扫码。'
-              : 'WhatsApp 连接未就绪，插件会自动重试。',
+              ? this.#t('qr.deviceInvalid', { channel: CHANNEL_LABEL })
+              : this.#t('status.connectionNotReady', { channel: CHANNEL_LABEL }),
           ));
           this.#logger.warn?.(`[dsh-im:whatsapp] bot ${config.botId} failed to initialize`);
         } finally {
@@ -168,7 +174,7 @@ export class WhatsappController {
       await record.task?.catch(() => undefined);
       if (!TERMINAL_ATTEMPT_STATES.has(record.state)) {
         record.state = 'cancelled';
-        record.error = safeError('cancelled', '扫码接入已取消。');
+        record.error = safeError('cancelled', this.#t('qr.cancelled'));
       }
       await this.#deleteAuth(record.authDirectory).catch(() => undefined);
     }
@@ -188,8 +194,8 @@ export class WhatsappController {
         this.#errors.set(botId, safeError(
           error?.code === 'relink-required' ? 'relink-required' : 'connection-failed',
           error?.code === 'relink-required'
-            ? 'WhatsApp 关联设备已失效，请移除后重新扫码。'
-            : 'WhatsApp 连接仍未就绪，请稍后重试。',
+            ? this.#t('qr.deviceInvalid', { channel: CHANNEL_LABEL })
+            : this.#t('status.stillNotReady', { channel: CHANNEL_LABEL }),
         ));
         throw error;
       } finally {
@@ -205,14 +211,14 @@ export class WhatsappController {
     return this.#withBotTransition(botId, async () => {
       const runtime = this.#runtimes.get(botId);
       if (!runtime?.status?.ready || typeof runtime.sendConnectionTest !== 'function') {
-        const error = new Error('WhatsApp机器人尚未连接');
+        const error = new Error(this.#t('status.notConnected', { channel: CHANNEL_LABEL }));
         error.code = 'test-target-unavailable';
         throw error;
       }
       return runtime.sendConnectionTest(
         connectionTestMessage(
           `${config.name}（${maskWhatsappAccount(config.accountJid)}）`,
-          'WhatsApp机器人',
+          this.#t('bot.whatsappDefaultName'),
         ),
       );
     });
@@ -257,8 +263,11 @@ export class WhatsappController {
         bot: { name: config.name, idMasked: maskWhatsappAccount(config.accountJid) },
         health: {
           status: connected ? 'healthy' : state === 'error' ? 'error' : 'offline',
-          summary: connected ? 'WhatsApp Web 关联设备运行正常'
-            : state === 'error' ? 'WhatsApp 连接未就绪' : 'WhatsApp 连接当前离线',
+          summary: connected
+            ? this.#t('status.healthyWhatsapp')
+            : this.#t(state === 'error' ? 'status.error' : 'status.offline', {
+              channel: CHANNEL_LABEL,
+            }),
           lastCheckedAt: runtimeStatus?.lastCheckedAt ?? null,
           lastConnectedAt: runtimeStatus?.lastConnectedAt ?? null,
         },
@@ -319,7 +328,7 @@ export class WhatsappController {
         await this.#startRuntime(config);
         this.#errors.delete(botId);
       } catch (error) {
-        this.#errors.set(botId, safeError('connection-failed', 'WhatsApp 已绑定，消息连接暂未就绪。'));
+        this.#errors.set(botId, safeError('connection-failed', this.#t('qr.boundNotReady', { channel: CHANNEL_LABEL })));
         this.#logger.warn?.(`[dsh-im:whatsapp] bot ${botId} did not reconnect after QR binding`);
       }
       if (previous?.authDirectory && previous.authDirectory !== config.authDirectory) {
@@ -342,11 +351,11 @@ export class WhatsappController {
         await this.#deleteAuth(record.authDirectory).catch(() => undefined);
         if (previous) await this.#startRuntime(previous).catch(() => undefined);
         record.state = 'cancelled';
-        record.error = safeError('cancelled', '扫码接入已取消。');
+        record.error = safeError('cancelled', this.#t('qr.cancelled'));
       } else {
         await this.#deleteAuth(record.authDirectory).catch(() => undefined);
         record.state = 'failed';
-        record.error = safeError('activation-failed', 'WhatsApp 已扫码，但无法保存关联设备。');
+        record.error = safeError('activation-failed', this.#t('qr.deviceSaveFailed', { channel: CHANNEL_LABEL }));
         this.#logger.error?.('[dsh-im:whatsapp] unable to persist linked-device session');
       }
     } finally {
@@ -359,10 +368,10 @@ export class WhatsappController {
     if (TERMINAL_ATTEMPT_STATES.has(record.state)) return;
     if (record.controller.signal.aborted || error?.name === 'AbortError') {
       record.state = 'cancelled';
-      record.error = safeError('cancelled', '扫码接入已取消。');
+      record.error = safeError('cancelled', this.#t('qr.cancelled'));
     } else {
       record.state = 'failed';
-      record.error = safeError('qr-connect-failed', '无法连接 WhatsApp，请重新生成二维码。');
+      record.error = safeError('qr-connect-failed', this.#t('qr.connectFailed', { channel: CHANNEL_LABEL }));
     }
     if (this.#activeAttemptId === record.id) this.#activeAttemptId = null;
     await record.session?.close().catch(() => undefined);
