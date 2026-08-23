@@ -409,7 +409,7 @@ export class SlackApi {
         throw new ImagePromptError(
           'slack-file-access-required',
           'Slack redirected a private file request to the workspace because file access was not granted',
-          'Slack 未授权机器人读取该文件。请为应用添加 files:read 后重新安装，再重新发送图片。',
+          'image.error.slackFileAccessRequired',
         );
       }
       return response;

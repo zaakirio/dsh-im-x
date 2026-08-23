@@ -7,7 +7,7 @@ import {
 } from '@whiskeysockets/baileys';
 
 import { splitMessageText } from '../shared/editable-message-stream.mjs';
-import { ImagePromptError } from '../shared/image-prompt.mjs';
+import { byteLimitLabel, ImagePromptError } from '../shared/image-prompt.mjs';
 import { trackOutboundArtifactProviderPromise } from '../shared/semantic/artifact.mjs';
 import { createWhatsappBridgeStatus, WhatsappHarnessBridge } from './whatsapp-bridge.mjs';
 import { createWhatsappWebSession } from './whatsapp-web-session.mjs';
@@ -103,7 +103,7 @@ async function downloadWhatsappImage(message, download, {
       throw new ImagePromptError(
         'image-download-failed',
         `WhatsApp image download timed out after ${IMAGE_DOWNLOAD_TIMEOUT_MS} ms`,
-        '图片下载失败，请重新发送后再试。',
+        'image.error.downloadFailed',
       );
     }
     throw error;
@@ -122,7 +122,8 @@ async function downloadWhatsappImage(message, download, {
         throw new ImagePromptError(
           'image-too-large',
           `WhatsApp image exceeded ${maxBytes} bytes`,
-          '图片超过 5 MB，请压缩后重试。',
+          'image.error.tooLarge',
+          { limit: byteLimitLabel(maxBytes) },
         );
       }
       chunks.push(data);
@@ -133,7 +134,7 @@ async function downloadWhatsappImage(message, download, {
       throw new ImagePromptError(
         'image-download-failed',
         `WhatsApp image stream timed out after ${IMAGE_DOWNLOAD_TIMEOUT_MS} ms`,
-        '图片下载失败，请重新发送后再试。',
+        'image.error.downloadFailed',
       );
     }
     throw error;

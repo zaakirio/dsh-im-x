@@ -11,6 +11,7 @@ import {
   OutboundArtifactRegistry,
   createOutboundArtifactTool,
 } from '../../../src/channels/shared/semantic/artifact.mjs';
+import { defaultTranslator as t } from '../../../src/i18n/index.mjs';
 
 function deferred() {
   let resolve;
@@ -135,7 +136,7 @@ test('QQ sends image-only attachments to Harness and accepts the SDK file MIME f
   assert.equal(prompts.length, 1);
   assert.equal(prompts[0].sessionId, 'session-image');
   assert.deepEqual(prompts[0].content.map(({ type }) => type), ['text', 'image']);
-  assert.equal(prompts[0].content[0].text, '请分析这张图片。');
+  assert.equal(prompts[0].content[0].text, t('image.defaultPrompt'));
   assert.equal(prompts[0].content[1].mediaType, 'image/png');
   assert.equal(prompts[0].content[1].name, 'diagram.PNG');
   assert.equal(Buffer.from(prompts[0].content[1].data, 'base64').equals(PNG_BYTES), true);
@@ -209,7 +210,7 @@ test('QQ rejects non-platform image URLs without fetching and returns a retryabl
   }));
 
   assert.equal(downloads, 0);
-  assert.deepEqual(sent, ['图片下载失败，请重新发送后再试。']);
+  assert.deepEqual(sent, [t('image.error.downloadFailed')]);
   assert.equal(fixture.seen.has('qq-image-untrusted'), true);
 });
 

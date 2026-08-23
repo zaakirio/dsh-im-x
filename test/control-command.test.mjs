@@ -6,6 +6,7 @@ import {
   runControlCommand,
 } from '../src/channels/shared/control-command.mjs';
 import { HarnessApprovalQueue } from '../src/channels/shared/harness-approval.mjs';
+import { defaultTranslator as t } from '../src/i18n/index.mjs';
 
 function fixture({ sessionId = 'session-one', stopped = true, steered = true } = {}) {
   const calls = [];
@@ -46,10 +47,10 @@ test('isControlCommand reserves valid and malformed control command forms', () =
 
 test('/stop is exact, text-only, and never creates a Session', async () => {
   const { calls, harness, state } = fixture();
-  assert.match((await runControlCommand('/stop later', harness, state, 'direct:one')).message, /用法/);
-  assert.match((await runControlCommand('/stop', harness, state, 'direct:one', {
+  assert.equal((await runControlCommand('/stop later', harness, state, 'direct:one')).message, t('control.usage.stop'));
+  assert.equal((await runControlCommand('/stop', harness, state, 'direct:one', {
     hasImages: true,
-  })).message, /纯文字/);
+  })).message, t('control.textOnly'));
   assert.equal(calls.length, 0);
 });
 
@@ -65,7 +66,7 @@ test('/stop controls only the bound active turn and marks accepted cancellation'
     'direct:one',
     { signal, pendingInteraction: true, control },
   );
-  assert.deepEqual(result, { message: '已请求停止当前任务。', stopped: true });
+  assert.deepEqual(result, { message: t('control.stopRequested'), stopped: true });
   assert.deepEqual(active.calls, [
     ['sessionFor', 'direct:one'],
     ['workspaceSession', 'session-one'],
@@ -76,30 +77,30 @@ test('/stop controls only the bound active turn and marks accepted cancellation'
   const missing = await runControlCommand(
     '/stop', inactive.harness, inactive.state, 'direct:one', { control },
   );
-  assert.match(missing.message, /没有正在运行/);
+  assert.equal(missing.message, t('control.noActiveTask'));
   assert.equal(missing.stopped, undefined);
 });
 
 test('/stop and /steer return friendly no-session messages without creating one', async () => {
   const { harness, state, calls } = fixture({ sessionId: null });
-  assert.match(
+  assert.equal(
     (await runControlCommand('/stop', harness, state, 'direct:one')).message,
-    /没有正在运行/,
+    t('control.noActiveTask'),
   );
-  assert.match(
-    (await runControlCommand('/steer 补充', harness, state, 'direct:one')).message,
-    /普通消息/,
+  assert.equal(
+    (await runControlCommand('/steer more context', harness, state, 'direct:one')).message,
+    t('control.noActiveTaskSendMessage'),
   );
   assert.equal(calls.some(([method]) => method === 'workspaceSession'), false);
 });
 
 test('/steer requires text, preserves multiple lines, and rejects images', async () => {
   const { harness, state, calls } = fixture();
-  assert.match((await runControlCommand('/steer', harness, state, 'direct:one')).message, /用法/);
-  assert.match((await runControlCommand('/steer   ', harness, state, 'direct:one')).message, /用法/);
-  assert.match((await runControlCommand('/steer text', harness, state, 'direct:one', {
+  assert.equal((await runControlCommand('/steer', harness, state, 'direct:one')).message, t('control.usage.steer'));
+  assert.equal((await runControlCommand('/steer   ', harness, state, 'direct:one')).message, t('control.usage.steer'));
+  assert.equal((await runControlCommand('/steer text', harness, state, 'direct:one', {
     hasImages: true,
-  })).message, /纯文字/);
+  })).message, t('control.textOnly'));
   assert.equal(calls.length, 0);
 
   const control = { owner: {}, key: 'direct:one' };
@@ -110,7 +111,7 @@ test('/steer requires text, preserves multiple lines, and rejects images', async
     'direct:one',
     { control },
   );
-  assert.match(result.message, /已提交/);
+  assert.equal(result.message, t('control.steerSubmitted'));
   assert.deepEqual(calls.find(([method]) => method === 'steerActiveTurn'), [
     'steerActiveTurn',
     'session-one',
@@ -126,7 +127,7 @@ test('/steer never reaches Harness while an interaction is pending', async () =>
     pendingInteraction: true,
     control: { owner: {}, key: 'direct:one' },
   });
-  assert.match(result.message, /等待你的回答或审批/);
+  assert.equal(result.message, t('control.awaitingInteraction'));
   assert.equal(calls.length, 0);
 });
 
@@ -135,7 +136,7 @@ test('/steer reports a lost active-turn race instead of starting new work', asyn
   const result = await runControlCommand('/steer continue', harness, state, 'direct:one', {
     control: { owner: {}, key: 'direct:one' },
   });
-  assert.match(result.message, /普通消息/);
+  assert.equal(result.message, t('control.noActiveTaskSendMessage'));
   assert.equal(calls.filter(([method]) => method === 'steerActiveTurn').length, 1);
 });
 

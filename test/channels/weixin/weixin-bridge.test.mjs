@@ -12,6 +12,7 @@ import {
   createOutboundArtifactTool,
   releaseOutboundArtifact,
 } from '../../../src/channels/shared/semantic/artifact.mjs';
+import { defaultTranslator as t } from '../../../src/i18n/index.mjs';
 
 function deferred() {
   let resolve;
@@ -305,7 +306,7 @@ test('Weixin sends image-only messages to Harness as structured content', async 
   assert.equal(prompts.length, 1);
   assert.equal(prompts[0].sessionId, 'session-image');
   assert.deepEqual(prompts[0].content.map(({ type }) => type), ['text', 'image']);
-  assert.equal(prompts[0].content[0].text, '请分析这张图片。');
+  assert.equal(prompts[0].content[0].text, t('image.defaultPrompt'));
   assert.equal(prompts[0].content[1].mediaType, 'image/png');
   assert.equal(Buffer.from(prompts[0].content[1].data, 'base64').equals(PNG_BYTES), true);
   assert.equal(sent.at(-1).text, '微信图片已识别');
@@ -361,7 +362,7 @@ test('Weixin returns a specific retry message when encrypted image loading fails
     item_list: [{ type: 2, image_item: { media: {} } }],
   }));
 
-  assert.equal(sent.at(-1).text, '图片下载失败，请重新发送后再试。');
+  assert.equal(sent.at(-1).text, t('image.error.downloadFailed'));
   assert.equal(fixture.seen.has('weixin-image-error'), true);
 });
 
@@ -399,7 +400,7 @@ test('Weixin explains model image rejection and records only safe structured dia
     item_list: [{ type: 2, image_item: { media: {} } }],
   }));
 
-  assert.match(sent.at(-1).text, /当前模型不支持图片/);
+  assert.equal(sent.at(-1).text, t('image.host.modelDoesNotSupportImages'));
   assert.match(sent.at(-1).text, /\/models/);
   assert.equal(fixture.seen.has('weixin-model-image-error'), true);
   assert.deepEqual(status.lastMessageError, {

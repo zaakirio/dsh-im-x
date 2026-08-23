@@ -8,13 +8,14 @@ import {
   WecomHarnessBridge,
   wecomInboundMessage,
 } from '../../../src/channels/wecom/wecom-bridge.mjs';
-import { DEFAULT_IMAGE_PROMPT } from '../../../src/channels/shared/image-prompt.mjs';
+import { defaultImagePrompt } from '../../../src/channels/shared/image-prompt.mjs';
 import { connectionTestTarget } from '../../../src/channels/shared/connection-test.mjs';
 import {
   OUTBOUND_ARTIFACT_TOOL,
   OutboundArtifactRegistry,
   createOutboundArtifactTool,
 } from '../../../src/channels/shared/semantic/artifact.mjs';
+import { defaultTranslator as t } from '../../../src/i18n/index.mjs';
 
 const PNG_1X1 = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
@@ -349,7 +350,7 @@ test('Enterprise WeChat downloads an image with its AES key and submits structur
   assert.deepEqual(asked, [{
     sessionId: 'session-existing',
     content: [
-      { type: 'text', text: DEFAULT_IMAGE_PROMPT },
+      { type: 'text', text: defaultImagePrompt() },
       {
         type: 'image',
         mediaType: 'image/png',
@@ -496,7 +497,7 @@ test('Enterprise WeChat bounds prefetched image memory while a conversation is q
   assert.equal(downloads.length, 4);
   assert.equal(prompts.length, 5);
   assert.equal(transport.streamed.some(({ content }) => (
-    content === '当前待处理图片较多，请稍后重新发送。'
+    content === t('image.error.queueFull')
   )), true);
 });
 

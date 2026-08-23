@@ -6,7 +6,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { FeishuHarnessBridge } from '../../../src/channels/feishu/bridge.mjs';
-import { DEFAULT_IMAGE_PROMPT } from '../../../src/channels/shared/image-prompt.mjs';
+import { defaultImagePrompt } from '../../../src/channels/shared/image-prompt.mjs';
 import { connectionTestTarget } from '../../../src/channels/shared/connection-test.mjs';
 import {
   OUTBOUND_ARTIFACT_TOOL,
@@ -498,7 +498,7 @@ test('bridge downloads an inbound Feishu image once and submits structured Harne
   assert.deepEqual(asked, [{
     sessionId: 'session-image',
     content: [
-      { type: 'text', text: DEFAULT_IMAGE_PROMPT },
+      { type: 'text', text: defaultImagePrompt() },
       { type: 'image', mediaType: 'image/png', data: PNG_1X1.toString('base64') },
     ],
   }]);
@@ -545,8 +545,8 @@ test('bridge tells users to grant im:message:readonly when Feishu rejects image 
   await bridge.waitForIdle();
 
   assert.equal(sent.length, 1);
+  assert.equal(sent[0], t('image.error.feishuPermissionRequired'));
   assert.match(sent[0], /im:message:readonly/);
-  assert.match(sent[0], /发布新版本/);
   assert.doesNotMatch(sent[0], /99991672|HTTP 400|secret-shaped|private\/path/);
 });
 
@@ -2921,6 +2921,7 @@ test('repair monitor reports expiry without claiming that the callback was fixed
 // ── Watches: read-only tracking, persistence, compensation, dedup ─────────
 
 import { StateStore } from '../../../src/channels/feishu/state-store.mjs';
+import { defaultTranslator as t } from '../../../src/i18n/index.mjs';
 
 function watchHarness({ sessionsByWorkspace = { 'C:/work': [] }, current = 'C:/work', history = [] } = {}) {
   const listeners = [];

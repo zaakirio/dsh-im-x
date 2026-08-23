@@ -22,6 +22,7 @@ import { runWorkspaceCommand } from '../shared/workspace-command.mjs';
 import { askInWorkspaceSession } from '../shared/workspace-session.mjs';
 import {
   hasInboundImages,
+  byteLimitLabel,
   ImagePromptError,
   imagePromptUserMessage,
   promptContentForMessage,
@@ -131,7 +132,8 @@ function imageSource(client, image) {
         throw new ImagePromptError(
           'image-too-large',
           `Enterprise WeChat image exceeds ${maxBytes} bytes`,
-          '图片超过 5 MB，请压缩后重试。',
+          'image.error.tooLarge',
+          { limit: byteLimitLabel(maxBytes) },
         );
       }
       return { data, name: result?.filename };
@@ -167,7 +169,8 @@ function prefetchInboundImages(message, signal) {
             throw new ImagePromptError(
               'image-too-large',
               `Enterprise WeChat image exceeds ${maxBytes} bytes`,
-              '图片超过 5 MB，请压缩后重试。',
+              'image.error.tooLarge',
+              { limit: byteLimitLabel(maxBytes) },
             );
           }
           return result;
@@ -186,7 +189,7 @@ function imageQueueFullMessage(message) {
         throw new ImagePromptError(
           'image-queue-full',
           `Enterprise WeChat already has ${MAX_PREFETCHED_IMAGES} prefetched images`,
-          '当前待处理图片较多，请稍后重新发送。',
+          'image.error.queueFull',
         );
       },
     })),

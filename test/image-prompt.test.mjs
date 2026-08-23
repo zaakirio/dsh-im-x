@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  DEFAULT_IMAGE_PROMPT,
+  defaultImagePrompt,
   ImagePromptError,
   fetchImageBuffer,
   hasInboundPrompt,
@@ -11,6 +11,7 @@ import {
   promptContentForMessage,
 } from '../src/channels/shared/image-prompt.mjs';
 import { HarnessClient } from '../src/channels/shared/harness-client.mjs';
+import { defaultTranslator as t } from '../src/i18n/index.mjs';
 
 const PNG_1X1 = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
@@ -39,7 +40,7 @@ test('image-only messages lazily load bytes and receive a useful default instruc
 
   assert.equal(loadOptions.maxBytes, 5 * 1024 * 1024);
   assert.deepEqual(content, [
-    { type: 'text', text: DEFAULT_IMAGE_PROMPT },
+    { type: 'text', text: defaultImagePrompt() },
     {
       type: 'image',
       mediaType: 'image/png',
@@ -98,7 +99,7 @@ test('unsupported image bytes receive a channel-safe error', async () => {
     promptContentForMessage({ images: [{ data: Buffer.from('not an image') }] }),
     (error) => error instanceof ImagePromptError
       && error.code === 'unsupported-image-type'
-      && /JPEG/.test(error.userMessage),
+      && error.userMessageKey === 'image.error.unsupportedType',
   );
 });
 
@@ -110,7 +111,7 @@ test('Harness attachment failures map only allowlisted reasons to safe channel m
   assert.deepEqual(imagePromptDiagnostic(modelError), {
     code: 'attachment-error',
     reason: 'MODEL_DOES_NOT_SUPPORT_IMAGES',
-    userMessage: '当前模型不支持图片，请用 /models 查看可用模型，再用 /model <序号> 切换后重发。',
+    userMessage: t('image.host.modelDoesNotSupportImages'),
   });
   assert.doesNotMatch(imagePromptUserMessage(modelError), /private|secret/);
 
@@ -227,7 +228,8 @@ test('image downloads report the safe HTTP status for non-success responses', as
       }),
     }),
     (error) => error.code === 'image-http-error'
-      && error.userMessage === '图片下载失败（HTTP 403），请重新发送后再试。',
+      && error.userMessageKey === 'image.error.httpError'
+      && error.userMessageParams.status === 403,
   );
   assert.equal(cancelled, true);
 });

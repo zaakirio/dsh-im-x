@@ -16,6 +16,7 @@ import { TextHarnessBridge } from '../../../src/channels/shared/text-harness-bri
 import { SlackHarnessBridge } from '../../../src/channels/slack/slack-bridge.mjs';
 import { TelegramHarnessBridge } from '../../../src/channels/telegram/telegram-bridge.mjs';
 import { WhatsappHarnessBridge } from '../../../src/channels/whatsapp/whatsapp-bridge.mjs';
+import { defaultTranslator as t } from '../../../src/i18n/index.mjs';
 
 function deferred() {
   let resolve;
@@ -338,7 +339,7 @@ test('/stop uses the shared command fast lane without waiting for the running pr
     '/stop waited for the ordinary conversation queue',
   );
   assert.equal(promptSettled, false);
-  assert.equal(sent.includes('已请求停止当前任务。'), true);
+  assert.equal(sent.includes(t('control.stopRequested')), true);
   assert.equal(controls.stop.owner, controls.prompt.owner);
   assert.equal(controls.stop.key, controls.prompt.key);
 

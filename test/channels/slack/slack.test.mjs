@@ -24,6 +24,7 @@ import {
   SLACK_ENDPOINTS,
   createSlackRpcHandler,
 } from '../../../plugin-src/host/channels/slack/rpc.mjs';
+import { defaultTranslator as t } from '../../../src/i18n/index.mjs';
 
 const BOT_TOKEN = `xoxb-${'0'.repeat(24)}-not-a-real-token`;
 const APP_TOKEN = `xapp-${'0'.repeat(24)}-not-a-real-token`;
@@ -465,7 +466,7 @@ test('Slack refuses unsafe file redirects and explains stale files:read authoriz
     maxBytes: 100,
   }), (error) => {
     assert.equal(error.code, 'slack-file-access-required');
-    assert.match(error.userMessage, /files:read/);
+    assert.equal(error.userMessageKey, 'image.error.slackFileAccessRequired');
     return true;
   });
   assert.equal(workspaceCalls.length, 1);
@@ -503,7 +504,7 @@ test('Slack refuses unsafe file redirects and explains stale files:read authoriz
     maxBytes: 100,
   }), (error) => {
     assert.equal(error.code, 'slack-file-access-required');
-    assert.match(error.userMessage, /files:read/);
+    assert.equal(error.userMessageKey, 'image.error.slackFileAccessRequired');
     return true;
   });
   assert.equal(missingScopeCalls.length, 2);

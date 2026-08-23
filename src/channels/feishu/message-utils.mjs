@@ -1,11 +1,8 @@
-import { ImagePromptError } from '../shared/image-prompt.mjs';
+import { byteLimitLabel, ImagePromptError } from '../shared/image-prompt.mjs';
 
 const FEISHU_MISSING_MESSAGE_SCOPE_CODE = 99991672;
 const FEISHU_ERROR_BODY_LIMIT = 64 * 1024;
 const FEISHU_ERROR_BODY_TIMEOUT_MS = 1_000;
-const FEISHU_IMAGE_PERMISSION_MESSAGE =
-  '飞书机器人缺少图片读取权限。请在飞书开放平台为该应用添加 im:message:readonly，发布新版本并完成必要的管理员审批后，再重新发送图片。';
-
 export function conversationKey(event) {
   const chatType = event?.message?.chat_type;
   if (chatType === 'p2p') {
@@ -113,7 +110,8 @@ async function readBoundedStream(stream, { signal, maxBytes }) {
         throw new ImagePromptError(
           'image-too-large',
           `Feishu image exceeds ${maxBytes} bytes`,
-          '图片超过 5 MB，请压缩后重试。',
+          'image.error.tooLarge',
+          { limit: byteLimitLabel(maxBytes) },
         );
       }
       chunks.push(data);
@@ -196,7 +194,8 @@ async function feishuImageDownloadError(error, signal) {
   return new ImagePromptError(
     'feishu-image-permission-required',
     'Feishu image download requires the im:message:readonly tenant scope',
-    FEISHU_IMAGE_PERMISSION_MESSAGE,
+    'image.error.feishuPermissionRequired',
+    {},
     { cause: error },
   );
 }
@@ -224,7 +223,8 @@ function feishuImageSource(event, client, key) {
         throw new ImagePromptError(
           'image-too-large',
           `Feishu image declares ${size} bytes; the limit is ${maxBytes}`,
-          '图片超过 5 MB，请压缩后重试。',
+          'image.error.tooLarge',
+          { limit: byteLimitLabel(maxBytes) },
         );
       }
       return readBoundedStream(resource?.getReadableStream?.(), { signal, maxBytes });

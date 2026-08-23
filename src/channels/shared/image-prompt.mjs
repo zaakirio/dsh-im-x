@@ -1,29 +1,47 @@
+import { defaultTranslator } from '../../i18n/index.mjs';
+
 const DEFAULT_MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const DEFAULT_MAX_IMAGES = 20;
 const DEFAULT_MAX_TOTAL_IMAGE_BYTES = 20 * 1024 * 1024;
 
-export const DEFAULT_IMAGE_PROMPT = '请分析这张图片。';
+/** The prompt sent when a message carries images but no text of its own. */
+export function defaultImagePrompt(t = defaultTranslator) {
+  return t('image.defaultPrompt');
+}
 
+/**
+ * Carries a catalogue key rather than rendered copy: these are thrown deep in
+ * download and decode paths that have no conversation locale, so the message
+ * is rendered by whichever channel reports it.
+ */
 export class ImagePromptError extends Error {
-  constructor(code, message, userMessage, options = {}) {
+  constructor(code, message, userMessageKey, userMessageParams = {}, options = {}) {
     super(message, options);
     this.name = 'ImagePromptError';
     this.code = code;
-    this.userMessage = userMessage;
+    this.userMessageKey = userMessageKey;
+    this.userMessageParams = userMessageParams;
   }
 }
 
-const HOST_ATTACHMENT_USER_MESSAGES = Object.freeze({
-  MODEL_DOES_NOT_SUPPORT_IMAGES:
-    '当前模型不支持图片，请用 /models 查看可用模型，再用 /model <序号> 切换后重发。',
-  IMAGE_TOO_LARGE: '图片超过宿主允许的大小，请压缩后重试。',
-  IMAGE_TOO_MANY_PIXELS: '图片分辨率过高，请压缩后重试。',
-  INVALID_IMAGE: '图片内容无效或格式不受支持，请重新发送。',
-  INVALID_IMAGE_BASE64: '未能读取图片内容，请重新发送。',
-  IMAGE_TYPE_MISMATCH: '图片格式与实际内容不一致，请重新发送。',
-  TOO_MANY_IMAGES: '一次发送的图片数量超过宿主限制，请减少后重试。',
-  IMAGES_TOO_LARGE: '图片总大小超过宿主限制，请减少图片或压缩后重试。',
+/** Host-reported attachment failures, mapped to catalogue keys. */
+const HOST_ATTACHMENT_MESSAGE_KEYS = Object.freeze({
+  MODEL_DOES_NOT_SUPPORT_IMAGES: 'image.host.modelDoesNotSupportImages',
+  IMAGE_TOO_LARGE: 'image.host.imageTooLarge',
+  IMAGE_TOO_MANY_PIXELS: 'image.host.imageTooManyPixels',
+  INVALID_IMAGE: 'image.host.invalidImage',
+  INVALID_IMAGE_BASE64: 'image.host.invalidImageBase64',
+  IMAGE_TYPE_MISMATCH: 'image.host.imageTypeMismatch',
+  TOO_MANY_IMAGES: 'image.host.tooManyImages',
+  IMAGES_TOO_LARGE: 'image.host.imagesTooLarge',
 });
+
+/** Renders a byte limit the way the size errors quote it, e.g. "5 MB". */
+export function byteLimitLabel(bytes) {
+  const mb = bytes / (1024 * 1024);
+  const rounded = Number.isInteger(mb) ? String(mb) : mb.toFixed(1);
+  return `${rounded} MB`;
+}
 
 function requestSignal(signal, timeoutMs) {
   const timeout = AbortSignal.timeout(timeoutMs);
@@ -67,7 +85,7 @@ export async function fetchImageBuffer(url, {
     throw new ImagePromptError(
       'image-redirect-blocked',
       `Image download redirect was blocked (HTTP ${response.status})`,
-      '图片下载地址发生了重定向，暂时无法读取。',
+      'image.error.redirectBlocked',
     );
   }
   if (!response?.ok) {
@@ -75,7 +93,8 @@ export async function fetchImageBuffer(url, {
     throw new ImagePromptError(
       'image-http-error',
       `Image download failed with HTTP ${response?.status ?? 'unknown'}`,
-      `图片下载失败（HTTP ${response?.status ?? 'unknown'}），请重新发送后再试。`,
+      'image.error.httpError',
+      { status: response?.status ?? 'unknown' },
     );
   }
   const declaredLength = Number(response.headers?.get?.('content-length'));
@@ -84,7 +103,8 @@ export async function fetchImageBuffer(url, {
     throw new ImagePromptError(
       'image-too-large',
       `Image response declares ${declaredLength} bytes; the limit is ${maxBytes}`,
-      '图片超过 5 MB，请压缩后重试。',
+      'image.error.tooLarge',
+      { limit: byteLimitLabel(maxBytes) },
     );
   }
 
@@ -99,7 +119,8 @@ export async function fetchImageBuffer(url, {
         throw new ImagePromptError(
           'image-too-large',
           `Image response exceeded ${maxBytes} bytes`,
-          '图片超过 5 MB，请压缩后重试。',
+          'image.error.tooLarge',
+          { limit: byteLimitLabel(maxBytes) },
         );
       }
       chunks.push(data);
@@ -112,7 +133,8 @@ export async function fetchImageBuffer(url, {
     throw new ImagePromptError(
       'image-too-large',
       `Image response contains ${data.length} bytes; the limit is ${maxBytes}`,
-      '图片超过 5 MB，请压缩后重试。',
+      'image.error.tooLarge',
+      { limit: byteLimitLabel(maxBytes) },
     );
   }
   return data;
@@ -186,13 +208,15 @@ export async function promptContentForMessage(message, {
   maxImageBytes = DEFAULT_MAX_IMAGE_BYTES,
   maxImages = DEFAULT_MAX_IMAGES,
   maxTotalImageBytes = DEFAULT_MAX_TOTAL_IMAGE_BYTES,
+  t = defaultTranslator,
 } = {}) {
   const sources = imageSources(message);
   if (sources.length > maxImages) {
     throw new ImagePromptError(
       'too-many-images',
       `Image message contains ${sources.length} images; the limit is ${maxImages}`,
-      `一次最多只能处理 ${maxImages} 张图片。`,
+      'image.error.tooMany',
+      { max: maxImages },
     );
   }
 
@@ -200,7 +224,7 @@ export async function promptContentForMessage(message, {
   const content = [];
   let totalImageBytes = 0;
   if (text) content.push({ type: 'text', text });
-  else if (sources.length > 0) content.push({ type: 'text', text: DEFAULT_IMAGE_PROMPT });
+  else if (sources.length > 0) content.push({ type: 'text', text: defaultImagePrompt(t) });
 
   for (const [index, source] of sources.entries()) {
     signal?.throwIfAborted();
@@ -208,14 +232,15 @@ export async function promptContentForMessage(message, {
       throw new ImagePromptError(
         'image-too-large',
         `Image ${index + 1} declares ${source.size} bytes; the limit is ${maxImageBytes}`,
-        '图片超过 5 MB，请压缩后重试。',
+        'image.error.tooLarge',
+        { limit: byteLimitLabel(maxImageBytes) },
       );
     }
     if (Number.isFinite(source?.size) && totalImageBytes + source.size > maxTotalImageBytes) {
       throw new ImagePromptError(
         'images-too-large',
         `Images declare more than ${maxTotalImageBytes} bytes in total`,
-        '一次发送的图片总大小过大，请减少图片数量或压缩后重试。',
+        'image.error.totalTooLarge',
       );
     }
 
@@ -230,7 +255,8 @@ export async function promptContentForMessage(message, {
       throw new ImagePromptError(
         'image-download-failed',
         `Unable to download image ${index + 1}: ${error?.message ?? String(error)}`,
-        '图片下载失败，请重新发送后再试。',
+        'image.error.downloadFailed',
+        {},
         { cause: error },
       );
     }
@@ -239,21 +265,22 @@ export async function promptContentForMessage(message, {
       throw new ImagePromptError(
         'invalid-image-data',
         `Image ${index + 1} returned no data`,
-        '未能读取图片内容，请重新发送。',
+        'image.error.unreadable',
       );
     }
     if (loaded.data.length > maxImageBytes) {
       throw new ImagePromptError(
         'image-too-large',
         `Image ${index + 1} contains ${loaded.data.length} bytes; the limit is ${maxImageBytes}`,
-        '图片超过 5 MB，请压缩后重试。',
+        'image.error.tooLarge',
+        { limit: byteLimitLabel(maxImageBytes) },
       );
     }
     if (totalImageBytes + loaded.data.length > maxTotalImageBytes) {
       throw new ImagePromptError(
         'images-too-large',
         `Images contain more than ${maxTotalImageBytes} bytes in total`,
-        '一次发送的图片总大小过大，请减少图片数量或压缩后重试。',
+        'image.error.totalTooLarge',
       );
     }
     totalImageBytes += loaded.data.length;
@@ -262,7 +289,7 @@ export async function promptContentForMessage(message, {
       throw new ImagePromptError(
         'unsupported-image-type',
         `Image ${index + 1} is not JPEG, PNG, GIF, or WebP`,
-        '暂不支持该图片格式，请发送 JPEG、PNG、WebP 或 GIF 图片。',
+        'image.error.unsupportedType',
       );
     }
     content.push({
@@ -276,24 +303,24 @@ export async function promptContentForMessage(message, {
 }
 
 /** Return only allowlisted, user-safe image failure details. */
-export function imagePromptDiagnostic(error) {
+export function imagePromptDiagnostic(error, t = defaultTranslator) {
   if (error instanceof ImagePromptError) {
     return {
       code: 'image-prompt-error',
       reason: error.code,
-      userMessage: error.userMessage,
+      userMessage: t(error.userMessageKey, error.userMessageParams),
     };
   }
   if (error?.code !== 'attachment-error' || typeof error?.details?.reason !== 'string') {
     return null;
   }
   const reason = error.details.reason;
-  const userMessage = Object.hasOwn(HOST_ATTACHMENT_USER_MESSAGES, reason)
-    ? HOST_ATTACHMENT_USER_MESSAGES[reason]
+  const key = Object.hasOwn(HOST_ATTACHMENT_MESSAGE_KEYS, reason)
+    ? HOST_ATTACHMENT_MESSAGE_KEYS[reason]
     : null;
-  return userMessage ? { code: 'attachment-error', reason, userMessage } : null;
+  return key ? { code: 'attachment-error', reason, userMessage: t(key) } : null;
 }
 
-export function imagePromptUserMessage(error) {
-  return imagePromptDiagnostic(error)?.userMessage ?? null;
+export function imagePromptUserMessage(error, t = defaultTranslator) {
+  return imagePromptDiagnostic(error, t)?.userMessage ?? null;
 }
