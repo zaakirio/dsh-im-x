@@ -437,4 +437,25 @@ export const EN = Object.freeze({
   'telegram.webhookConfigured': 'This Telegram bot already has a webhook configured. Remove the webhook in that service first, then try again.',
   'telegram.defaultBotName': 'Telegram bot',
   'telegram.connectionLabel': ' Bot API long polling',
+  // --- Bot status shown on the settings page -----------------------------
+  'status.credentialsMissing': 'The {channel} bot credentials are missing. Remove it and connect again.',
+  'status.connectionNotReady': 'The {channel} connection is not ready. The plugin keeps retrying.',
+  'status.connectedNotReady': 'The {channel} bot is connected, but its message connection is not ready yet.',
+  'status.stillNotReady': 'The {channel} connection is still not ready. Try again shortly.',
+  'status.checkBothTokens': 'The {channel} connection is still not ready. Check both tokens.',
+  'status.notConnected': 'The {channel} bot is not connected',
+  'status.healthy': '{channel}{connection} is running normally',
+  'status.error': 'The {channel} connection is not ready; the plugin keeps retrying',
+  'status.offline': 'The {channel} connection is offline',
+  'status.socketModeNotReady': 'The {channel} Socket Mode connection is not ready. The plugin keeps retrying.',
+  'status.socketModeConnectedNotReady': 'The {channel} bot is connected, but Socket Mode is not ready yet.',
+  // The bot card label the connection-test message quotes.
+  'bot.cardLabel': '{name} ({id})',
+  // --- Slack credential validation ---------------------------------------
+  'slack.botTokenPrefix': 'A Slack bot token must start with xoxb-.',
+  'slack.appTokenPrefix': 'A Slack app token must start with xapp-.',
+  'slack.incompleteIdentity': 'The Slack bot token did not return a complete bot identity.',
+  'slack.socketModeUnavailable': 'The Slack app token cannot open a Socket Mode connection. Confirm Socket Mode is enabled and connections:write is granted.',
+  'slack.defaultBotName': 'Slack bot',
+  'slack.connectionLabel': ' Socket Mode connection',
 });

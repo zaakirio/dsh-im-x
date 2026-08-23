@@ -1,6 +1,7 @@
 import { splitMessageText } from '../shared/editable-message-stream.mjs';
 import { SlackApi } from './slack-api.mjs';
 import { createSlackBridgeStatus, SlackHarnessBridge } from './slack-bridge.mjs';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
 const RECONNECT_DELAYS_MS = Object.freeze([1_000, 3_000, 5_000, 10_000, 30_000]);
 const SLACK_MESSAGE_LIMIT = 38_000;
@@ -87,10 +88,6 @@ export function normalizeSlackEvent(payload, botUserId, { loadFile = async () =>
   };
 }
 
-function isToolProgress(text) {
-  return typeof text === 'string' && /^正在使用.+…$/.test(text.trim());
-}
-
 async function appendInChunks(api, target, ts, text, signal) {
   if (!text) return;
   for (let offset = 0; offset < text.length; offset += SLACK_STREAM_CHUNK_LIMIT) {
@@ -155,8 +152,10 @@ async function createSlackMessageStream({ api, target, signal, logger }) {
     get providerMessageIds() {
       return [...providerMessageIds];
     },
-    update(text) {
-      if (closed || broken || typeof text !== 'string' || !text.trim() || isToolProgress(text)) return;
+    update(text, { type } = {}) {
+      // Slack streams only append, so transient tool progress is skipped
+      // rather than written into the final message.
+      if (closed || broken || typeof text !== 'string' || !text.trim() || type === 'tool') return;
       pending = text;
       schedule();
     },
@@ -169,7 +168,7 @@ async function createSlackMessageStream({ api, target, signal, logger }) {
       await inFlight?.catch(() => undefined);
 
       const chunks = splitMessageText(text, SLACK_MESSAGE_LIMIT);
-      const first = chunks[0] ?? '处理完成。';
+      const first = chunks[0] ?? defaultTranslator('stream.processingDone');
       if (!broken && first.startsWith(appended)) {
         await appendInChunks(api, target, ts, first.slice(appended.length), signal);
         await api.stopStream({ channelId: target.channelId, ts, signal });

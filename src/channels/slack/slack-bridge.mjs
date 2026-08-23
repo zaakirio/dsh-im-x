@@ -1,9 +1,10 @@
 import { TextHarnessBridge, createTextBridgeStatus } from '../shared/text-harness-bridge.mjs';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
 export const SLACK_DESCRIPTOR = Object.freeze({
   key: 'slack',
   label: 'Slack',
-  connectionLabel: ' Socket Mode 长连接',
+  connectionLabel: defaultTranslator('slack.connectionLabel'),
 });
 
 export class SlackHarnessBridge extends TextHarnessBridge {

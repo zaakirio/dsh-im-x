@@ -2,6 +2,9 @@ import { connectionTestMessage } from '../shared/connection-test.mjs';
 import { deriveSlackBotIdentity, maskSlackBotId } from './config-store.mjs';
 import { inspectSlackCredentials } from './slack-api.mjs';
 import { SLACK_DESCRIPTOR } from './slack-bridge.mjs';
+import { createTranslator } from '../../i18n/index.mjs';
+
+const CHANNEL_LABEL = 'Slack';
 
 function cleanString(value) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -18,6 +21,7 @@ export class SlackController {
   #createRuntime;
   #deleteState;
   #logger;
+  #t;
   #runtimes = new Map();
   #errors = new Map();
   #transitions = new Map();
@@ -31,6 +35,7 @@ export class SlackController {
     createRuntime,
     deleteState = async () => {},
     logger = console,
+    locale,
   }) {
     if (!credentials || typeof credentials.resolve !== 'function'
       || typeof credentials.set !== 'function' || typeof credentials.unset !== 'function') {
@@ -49,6 +54,7 @@ export class SlackController {
     this.#createRuntime = createRuntime;
     this.#deleteState = deleteState;
     this.#logger = logger;
+    this.#t = createTranslator(locale);
   }
 
   async initialize() {
@@ -60,7 +66,7 @@ export class SlackController {
         if (!resolved) {
           this.#errors.set(config.botId, safeError(
             'missing-token',
-            'Slack机器人凭据缺失，请移除后重新接入。',
+            this.#t('status.credentialsMissing', { channel: CHANNEL_LABEL }),
           ));
           return;
         }
@@ -70,7 +76,7 @@ export class SlackController {
         } catch (error) {
           this.#errors.set(config.botId, safeError(
             'connection-failed',
-            'Slack Socket Mode 连接未就绪，插件会自动重试。',
+            this.#t('status.socketModeNotReady', { channel: CHANNEL_LABEL }),
           ));
           this.#logger.warn?.(
             `[dsh-im:slack] bot ${config.botId} failed to initialize:`,
@@ -135,7 +141,7 @@ export class SlackController {
       } catch (error) {
         this.#errors.set(identity.botId, safeError(
           'connection-failed',
-          'Slack机器人已接入，Socket Mode 连接暂未就绪。',
+          this.#t('status.socketModeConnectedNotReady', { channel: CHANNEL_LABEL }),
         ));
         this.#logger.warn?.(
           `[dsh-im:slack] bot ${identity.botId} credential connection failed:`,
@@ -159,7 +165,7 @@ export class SlackController {
       } catch (error) {
         this.#errors.set(botId, safeError(
           'connection-failed',
-          'Slack Socket Mode 连接仍未就绪，请检查两个 Token。',
+          this.#t('status.checkBothTokens', { channel: CHANNEL_LABEL }),
         ));
         throw error;
       } finally {
@@ -175,13 +181,13 @@ export class SlackController {
     return this.#withBotTransition(botId, async () => {
       const runtime = this.#runtimes.get(botId);
       if (!runtime?.status?.ready || typeof runtime.sendConnectionTest !== 'function') {
-        const error = new Error('Slack机器人尚未连接');
+        const error = new Error(this.#t('status.notConnected', { channel: CHANNEL_LABEL }));
         error.code = 'test-target-unavailable';
         throw error;
       }
       await runtime.sendConnectionTest(connectionTestMessage(
         `${config.name}（${maskSlackBotId(config.platformId)}）`,
-        'Slack机器人',
+        this.#t('bridge.botLabel', { channel: CHANNEL_LABEL }),
       ));
       return { sent: true };
     });
@@ -243,9 +249,12 @@ export class SlackController {
         },
         health: {
           status: connected ? 'healthy' : state === 'error' ? 'error' : 'offline',
-          summary: connected ? `Slack${SLACK_DESCRIPTOR.connectionLabel}运行正常`
-            : state === 'error' ? 'Slack连接未就绪，插件会自动重试'
-              : 'Slack连接当前离线',
+          summary: connected
+            ? this.#t('status.healthy', {
+              channel: CHANNEL_LABEL,
+              connection: SLACK_DESCRIPTOR.connectionLabel,
+            })
+            : this.#t(state === 'error' ? 'status.error' : 'status.offline', { channel: CHANNEL_LABEL }),
           lastCheckedAt: runtimeStatus?.lastCheckedAt ?? null,
           lastConnectedAt: runtimeStatus?.lastConnectedAt ?? null,
         },

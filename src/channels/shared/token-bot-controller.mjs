@@ -1,4 +1,5 @@
 import { connectionTestMessage } from './connection-test.mjs';
+import { createTranslator } from '../../i18n/index.mjs';
 
 function cleanString(value) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -18,6 +19,7 @@ export class TokenBotController {
   #createRuntime;
   #deleteState;
   #logger;
+  #t;
   #runtimes = new Map();
   #errors = new Map();
   #transitions = new Map();
@@ -34,6 +36,7 @@ export class TokenBotController {
     createRuntime,
     deleteState = async () => {},
     logger = console,
+    locale,
   }) {
     if (!descriptor?.key || !descriptor?.label || !descriptor?.connectionLabel) {
       throw new TypeError('TokenBotController requires a channel descriptor');
@@ -59,6 +62,7 @@ export class TokenBotController {
     this.#createRuntime = createRuntime;
     this.#deleteState = deleteState;
     this.#logger = logger;
+    this.#t = createTranslator(locale);
   }
 
   async initialize() {
@@ -70,7 +74,7 @@ export class TokenBotController {
         if (!token) {
           this.#errors.set(config.botId, safeError(
             'missing-token',
-            `${this.#descriptor.label}机器人凭据缺失，请移除后重新接入。`,
+            this.#t('status.credentialsMissing', { channel: this.#descriptor.label }),
           ));
           return;
         }
@@ -80,7 +84,7 @@ export class TokenBotController {
         } catch (error) {
           this.#errors.set(config.botId, safeError(
             'connection-failed',
-            `${this.#descriptor.label}连接未就绪，插件会自动重试。`,
+            this.#t('status.connectionNotReady', { channel: this.#descriptor.label }),
           ));
           this.#logger.warn?.(
             `[dsh-im:${this.#descriptor.key}] bot ${config.botId} failed to initialize:`,
@@ -129,7 +133,7 @@ export class TokenBotController {
       } catch (error) {
         this.#errors.set(identity.botId, safeError(
           'connection-failed',
-          `${this.#descriptor.label}机器人已接入，消息连接暂未就绪。`,
+          this.#t('status.connectedNotReady', { channel: this.#descriptor.label }),
         ));
         this.#logger.warn?.(
           `[dsh-im:${this.#descriptor.key}] bot ${identity.botId} credential connection failed:`,
@@ -153,7 +157,7 @@ export class TokenBotController {
       } catch (error) {
         this.#errors.set(botId, safeError(
           'connection-failed',
-          `${this.#descriptor.label}连接仍未就绪，请稍后重试。`,
+          this.#t('status.stillNotReady', { channel: this.#descriptor.label }),
         ));
         throw error;
       } finally {
@@ -181,7 +185,7 @@ export class TokenBotController {
       } catch (error) {
         this.#errors.set(botId, safeError(
           'connection-failed',
-          `${this.#descriptor.label}连接仍未就绪，请稍后重试。`,
+          this.#t('status.stillNotReady', { channel: this.#descriptor.label }),
         ));
         throw error;
       } finally {
@@ -197,14 +201,18 @@ export class TokenBotController {
     return this.#withBotTransition(botId, async () => {
       const runtime = this.#runtimes.get(botId);
       if (!runtime?.status?.ready || typeof runtime.sendConnectionTest !== 'function') {
-        const error = new Error(`${this.#descriptor.label}机器人尚未连接`);
+        const error = new Error(this.#t('status.notConnected', { channel: this.#descriptor.label }));
         error.code = 'test-target-unavailable';
         throw error;
       }
-      const cardLabel = `${config.name}（${this.#maskPlatformId(config.platformId)}）`;
+      const cardLabel = this.#t('bot.cardLabel', {
+        name: config.name,
+        id: this.#maskPlatformId(config.platformId),
+      });
       await runtime.sendConnectionTest(connectionTestMessage(
         cardLabel,
-        `${this.#descriptor.label}机器人`,
+        this.#t('bridge.botLabel', { channel: this.#descriptor.label }),
+        this.#t,
       ));
       return { sent: true };
     });
@@ -260,9 +268,14 @@ export class TokenBotController {
         },
         health: {
           status: connected ? 'healthy' : state === 'error' ? 'error' : 'offline',
-          summary: connected ? `${this.#descriptor.label}${this.#descriptor.connectionLabel}运行正常`
-            : state === 'error' ? `${this.#descriptor.label}连接未就绪，插件会自动重试`
-              : `${this.#descriptor.label}连接当前离线`,
+          summary: connected
+            ? this.#t('status.healthy', {
+              channel: this.#descriptor.label,
+              connection: this.#descriptor.connectionLabel,
+            })
+            : this.#t(state === 'error' ? 'status.error' : 'status.offline', {
+              channel: this.#descriptor.label,
+            }),
           lastCheckedAt: runtimeStatus?.lastCheckedAt ?? null,
           lastConnectedAt: runtimeStatus?.lastConnectedAt ?? null,
         },

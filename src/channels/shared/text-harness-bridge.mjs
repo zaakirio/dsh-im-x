@@ -534,7 +534,10 @@ export class TextHarnessBridge {
           onUpdate: stream ? async (update) => {
             const progress = update.type === 'text' ? update.text
               : update.type === 'tool' ? t('bridge.usingTool', { name: update.name }) : update.text;
-            if (progress) await stream.update(progress);
+            // The kind travels with the text: a stream that cannot retract an
+            // append needs to skip transient progress, and it must not decide
+            // that by pattern-matching translated copy.
+            if (progress) await stream.update(progress, { type: update.type });
           } : undefined,
           onInteraction: (interaction) => this.#handleInteraction(interaction, {
             key: conversationKey,

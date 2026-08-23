@@ -1,4 +1,5 @@
 import { fetchImageBuffer, ImagePromptError } from '../shared/image-prompt.mjs';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
 const DEFAULT_BASE_URL = 'https://slack.com/api/';
 const SLACK_FILE_HOST = 'files.slack.com';
@@ -482,19 +483,19 @@ export class SlackApi {
 
 export async function inspectSlackCredentials({ botToken, appToken }, options = {}) {
   if (!validSlackBotToken(botToken)) {
-    const error = new TypeError('Slack Bot Token 必须以 xoxb- 开头。');
+    const error = new TypeError(defaultTranslator('slack.botTokenPrefix'));
     error.code = 'slack-invalid-bot-token';
     throw error;
   }
   if (!validSlackAppToken(appToken)) {
-    const error = new TypeError('Slack App Token 必须以 xapp- 开头。');
+    const error = new TypeError(defaultTranslator('slack.appTokenPrefix'));
     error.code = 'slack-invalid-app-token';
     throw error;
   }
   const api = new SlackApi({ botToken, appToken, ...options });
   const [identity, connection] = await Promise.all([api.authTest(), api.openConnection()]);
   if (!identity?.team_id || !identity?.user_id || !identity?.bot_id) {
-    throw new Error('Slack Bot Token 没有返回完整的机器人身份。');
+    throw new Error(defaultTranslator('slack.incompleteIdentity'));
   }
   let socketUrl;
   try {
@@ -503,7 +504,7 @@ export async function inspectSlackCredentials({ botToken, appToken }, options = 
     socketUrl = null;
   }
   if (!socketUrl || socketUrl.protocol !== 'wss:') {
-    const error = new Error('Slack App Token 无法创建 Socket Mode 连接，请确认已启用 Socket Mode 和 connections:write。');
+    const error = new Error(defaultTranslator('slack.socketModeUnavailable'));
     error.code = 'slack-socket-mode';
     throw error;
   }
