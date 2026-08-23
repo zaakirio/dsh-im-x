@@ -39,6 +39,7 @@ import {
   TOKEN_BOT_ENDPOINTS,
   createTokenBotRpcHandler,
 } from '../plugin-src/host/channels/shared/rpc.mjs';
+import { defaultTranslator as tr } from '../src/i18n/index.mjs';
 
 async function fixture(t) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'dsh-im-workspace-')));
@@ -845,7 +846,7 @@ test('/workspace command preserves spaces and returns actionable validation mess
   const harness = { async switchWorkspace(path) { switched.push(path); return path; } };
 
   assert.equal(await runWorkspaceCommand('hello', harness), null);
-  assert.match((await runWorkspaceCommand('/workspace', harness)).message, /用法/);
+  assert.equal((await runWorkspaceCommand('/workspace', harness)).message, tr('workspace.usage'));
   assert.match(
     (await runWorkspaceCommand(`/workspace ${alternateWorkspace}`, harness)).message,
     new RegExp(alternateWorkspace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
@@ -854,14 +855,16 @@ test('/workspace command preserves spaces and returns actionable validation mess
 
   const invalidHarness = {
     async switchWorkspace() {
-      const error = new Error('工作区路径不存在。');
+      const error = new Error('Workspace path does not exist');
       error.code = 'workspace-not-found';
       throw error;
     },
   };
   const invalid = await runWorkspaceCommand('/workspace /missing/workspace', invalidHarness);
-  assert.match(invalid.message, /路径不存在/);
-  assert.match(invalid.message, /用法：\/workspace 工作区绝对路径/);
+  assert.ok(invalid.message.includes(tr('workspace.notFound')));
+  assert.ok(invalid.message.includes(tr('workspace.usage')));
+  // The store raises this in English; the reply must come from the catalogue.
+  assert.doesNotMatch(invalid.message, /Workspace path does not exist/);
 
   const removedHarness = {
     async switchWorkspace() {
@@ -870,9 +873,9 @@ test('/workspace command preserves spaces and returns actionable validation mess
       throw error;
     },
   };
-  assert.match(
+  assert.equal(
     (await runWorkspaceCommand(`/workspace ${alternateWorkspace}`, removedHarness)).message,
-    /正在移除或已重新接入/,
+    tr('workspace.switchRebound'),
   );
 });
 
@@ -898,25 +901,25 @@ test('/workspacelist returns existing absolute paths with the current workspace 
 
   const result = await runWorkspaceCommand('/WORKSPACELIST', harness);
   assert.equal(result.handled, true);
-  assert.match(result.message, /工作区（3）/);
-  assert.match(result.message, new RegExp(`1\\. ${defaultWorkspace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}（当前）`));
+  assert.ok(result.message.includes(tr('workspace.existingHeader', { count: 3 })));
+  assert.ok(result.message.includes(`1. ${defaultWorkspace}${tr('workspace.currentMarker')}`));
   assert.ok(result.message.indexOf(defaultWorkspace) < result.message.indexOf(alternateWorkspace));
   assert.ok(result.message.indexOf(alternateWorkspace) < result.message.indexOf(thirdWorkspace));
   assert.doesNotMatch(result.message, /missing|relative\/path/);
-  assert.match(result.message, /切换用法：\/workspace 工作区绝对路径/);
-  assert.match(result.message, /查看会话：\/sessionlist 工作区序号或绝对路径/);
+  assert.ok(result.message.includes(tr('workspace.switchHint')));
+  assert.ok(result.message.includes(tr('workspace.sessionsHint')));
   assert.equal(result.messages.join(''), result.message);
   assert.equal(listCalls, 1);
 
-  assert.match((await runWorkspaceCommand('/workspacelist extra', harness)).message, /用法/);
+  assert.equal((await runWorkspaceCommand('/workspacelist extra', harness)).message, tr('workspace.usageList'));
   assert.equal(listCalls, 1);
-  assert.match((await runWorkspaceCommand('/workspacelist', {})).message, /暂不支持/);
-  assert.match((await runWorkspaceCommand('/workspacelist', {
+  assert.equal((await runWorkspaceCommand('/workspacelist', {})).message, tr('workspace.listUnsupported'));
+  assert.equal((await runWorkspaceCommand('/workspacelist', {
     async listWorkspaces() { throw new Error('private host detail'); },
-  })).message, /暂时无法获取/);
-  assert.match((await runWorkspaceCommand('/workspacelist', {
+  })).message, tr('workspace.listFailed'));
+  assert.equal((await runWorkspaceCommand('/workspacelist', {
     async listWorkspaces() { return []; },
-  })).message, /没有仍然存在/);
+  })).message, tr('workspace.noneRegistered'));
 });
 
 test('/workspacelist splits a long registry without dropping paths', async (t) => {
@@ -949,7 +952,7 @@ test('/workspacelist hides unsafe Unicode paths and rechecks the bot scope', asy
     currentWorkspace() { return defaultWorkspace; },
     async listWorkspaces() { return unsafePaths; },
   });
-  assert.match(filtered.message, /工作区（1）/);
+  assert.ok(filtered.message.includes(tr('workspace.existingHeader', { count: 1 })));
   for (const workspace of unsafePaths) assert.ok(!filtered.message.includes(workspace));
 
   const stale = await runWorkspaceCommand('/workspacelist', {
@@ -961,7 +964,7 @@ test('/workspacelist hides unsafe Unicode paths and rechecks the bot scope', asy
       throw error;
     },
   });
-  assert.match(stale.message, /正在移除或已重新接入/);
+  assert.equal(stale.message, tr('workspace.botRebound'));
 });
 
 test('/sessionlist supports the current workspace, list numbers, and absolute paths', async (t) => {
@@ -1018,23 +1021,23 @@ test('/sessionlist supports the current workspace, list numbers, and absolute pa
   };
 
   const current = await runWorkspaceCommand('/SESSIONLIST', harness);
-  assert.match(current.message, new RegExp(`工作区：${defaultWorkspace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
-  assert.match(current.message, /会话（3）/);
+  assert.ok(current.message.includes(tr('session.workspaceLine', { workspace: defaultWorkspace })));
+  assert.ok(current.message.includes(tr('session.countHeader', { count: 3 })));
   assert.match(current.message, /1\. 安全标题 伪造 4\. injected\n   ID: session-current/);
   assert.doesNotMatch(current.message, /\u202e|\n4\. injected/);
-  assert.match(current.message, /2\. 暂无标题（已归档）\n   ID: session-archived/);
-  assert.match(current.message, /3\. 标题暂不可用\n   ID: session-missing-summary/);
-  assert.match(current.message, /绑定用法：\/session Session ID 或当前工作区序号（\/session N）/);
+  assert.ok(current.message.includes(`2. ${tr('session.untitled')}${tr('session.archivedMarker')}\n   ID: session-archived`));
+  assert.ok(current.message.includes(`3. ${tr('session.titleUnavailable')}\n   ID: session-missing-summary`));
+  assert.ok(current.message.includes(tr('session.bindHintCurrent')));
   assert.equal(current.messages.join(''), current.message);
 
   const numbered = await runWorkspaceCommand('/sessionlist 2', harness);
-  assert.match(numbered.message, new RegExp(`工作区：${alternateWorkspace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+  assert.ok(numbered.message.includes(tr('session.workspaceLine', { workspace: alternateWorkspace })));
   assert.match(numbered.message, /Alternate session/);
-  assert.match(numbered.message, /绑定用法：\/session Session ID\n提示：\/session N 只按机器人当前工作区的序号绑定/);
-  assert.doesNotMatch(numbered.message, /Session ID 或当前工作区序号/);
+  assert.ok(numbered.message.includes(tr('session.bindHintOther')));
+  assert.ok(!numbered.message.includes(tr('session.bindHintCurrent')));
 
   const absolute = await runWorkspaceCommand(`/sessionlist ${thirdWorkspace}`, harness);
-  assert.match(absolute.message, /该工作区暂无会话/);
+  assert.ok(absolute.message.includes(tr('session.noneInWorkspace')));
   assert.deepEqual(listedWorkspaces, [defaultWorkspace, alternateWorkspace, thirdWorkspace]);
   assert.equal(workspaceListCalls, 1, 'only numeric selection needs the workspace registry order');
 });
@@ -1050,25 +1053,26 @@ test('/sessionlist returns actionable and safe errors', async (t) => {
   };
 
   const invalidUsage = (await runWorkspaceCommand('/sessionlist relative/path', supported)).message;
-  assert.match(invalidUsage, /工作区必须是绝对路径/);
-  assert.match(invalidUsage, /\/sessionlist  列出当前工作区会话/);
-  assert.match(invalidUsage, /\/sessionlist 工作区序号/);
-  assert.match(invalidUsage, /\/sessionlist 工作区绝对路径/);
-  assert.match((await runWorkspaceCommand('/sessionlist 0', supported)).message, /序号不存在/);
+  assert.ok(invalidUsage.includes(tr('workspace.mustBeAbsolute')));
+  assert.ok(invalidUsage.includes(tr('session.usageList')));
+  assert.equal(
+    (await runWorkspaceCommand('/sessionlist 0', supported)).message,
+    tr('workspace.indexMissing'),
+  );
   assert.match((await runWorkspaceCommand('/sessionlist 99', supported)).message, /\/workspacelist/);
   assert.match(
     (await runWorkspaceCommand(`/sessionlist ${join(root, 'missing')}`, supported)).message,
-    /工作区路径不存在/,
+    new RegExp(tr('workspace.notFound')),
   );
   assert.match(
     (await runWorkspaceCommand(`/sessionlist ${file}`, supported)).message,
-    /工作区路径必须指向一个目录/,
+    new RegExp(tr('workspace.notDirectory')),
   );
-  assert.match((await runWorkspaceCommand('/sessionlist', {})).message, /暂不支持/);
+  assert.equal((await runWorkspaceCommand('/sessionlist', {})).message, tr('session.listUnsupported'));
   assert.match((await runWorkspaceCommand('/sessionlist', {
     currentWorkspace() { return defaultWorkspace; },
     async listWorkspaceSessions() { throw new Error('private Harness detail'); },
-  })).message, /暂时无法获取/);
+  })).message, tr('session.listFailed'));
 
   const stale = new Error('old bot lifecycle');
   stale.code = 'workspace-bot-not-found';
@@ -1076,7 +1080,7 @@ test('/sessionlist returns actionable and safe errors', async (t) => {
     currentWorkspace() { return defaultWorkspace; },
     async listWorkspaceSessions() { throw stale; },
   });
-  assert.match(staleResult.message, /正在移除或已重新接入/);
+  assert.equal(staleResult.message, tr('session.listRebound'));
   assert.doesNotMatch(staleResult.message, /old bot lifecycle|private Harness detail/);
 });
 
@@ -1105,12 +1109,12 @@ test('/workspacelist and /sessionlist canonicalize a symbolic-link workspace', a
   };
 
   const workspaces = await runWorkspaceCommand('/workspacelist', harness);
-  assert.match(workspaces.message, /工作区（1）/);
-  assert.match(workspaces.message, new RegExp(`1\\. ${canonicalWorkspace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}（当前）`));
+  assert.ok(workspaces.message.includes(tr('workspace.existingHeader', { count: 1 })));
+  assert.ok(workspaces.message.includes(`1. ${canonicalWorkspace}${tr('workspace.currentMarker')}`));
 
   const current = await runWorkspaceCommand('/sessionlist', harness);
   const absolute = await runWorkspaceCommand(`/sessionlist ${linkedWorkspace}`, harness);
-  assert.match(current.message, new RegExp(`工作区：${canonicalWorkspace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+  assert.ok(current.message.includes(tr('session.workspaceLine', { workspace: canonicalWorkspace })));
   assert.match(current.message, /session-through-link/);
   assert.match(absolute.message, /session-through-link/);
   assert.deepEqual(requested, [canonicalWorkspace, canonicalWorkspace]);
@@ -1196,8 +1200,9 @@ test('all nine channel bridge families advertise and fan out workspace command r
   ];
   for (const file of bridgeFiles) {
     const source = await readFile(new URL(file, import.meta.url), 'utf8');
-    assert.match(source, /\/workspacelist  列出工作区绝对路径/);
-    assert.match(source, /\/sessionlist \[工作区序号或绝对路径\]  列出会话 ID 和标题/);
+    // Help copy now comes from the shared command registry, so each bridge
+    // must render it from there rather than carrying its own list.
+    assert.match(source, /helpText\(/);
     assert.match(source, /workspaceCommand\.messages \?\? \[workspaceCommand\.message\]/);
   }
 });
@@ -1314,7 +1319,7 @@ test('workspace RPC validates payloads and returns the updated public status', a
     botId: 'bot_one', workspace: join(root, 'missing'),
   });
   assert.equal(missing.error.code, 'workspace-not-found');
-  assert.match(missing.error.message, /不存在/);
+  assert.ok(missing.error.message.includes(tr('workspace.indexMissing')));
 });
 
 test('BotWorkspaceStore persists per-bot agent presets without changing workspaces', async (t) => {

@@ -45,28 +45,7 @@ const CARD_INITIAL_TEXT = '已连接 DeepSeek Harness，正在思考…';
 const CARD_ERROR_TEXT = '消息处理失败，请稍后重试。';
 const INTERACTION_RESOLVED_TEXT = '这个问题已在其他客户端处理，无需再次回答。';
 
-const HELP_TEXT = [
-  '钉钉机器人已连接 DeepSeek Harness。',
-  '',
-  '直接发送文字或图片即可继续当前会话。',
-  '/new  开启一个全新会话',
-  '/compact  压缩当前会话的较早上下文',
-  '/workspace 工作区绝对路径  切换工作区',
-  '/workspacelist  列出工作区绝对路径',
-  '/sessionlist [工作区序号或绝对路径]  列出会话 ID 和标题',
-  '/session Session ID 或当前工作区序号  将当前聊天绑定到指定会话',
-  '/models  按序号列出所有可用模型',
-  '/model [序号或完整模型ID]  查看或切换当前会话模型',
-  '示例：先发 /models，再发 /model 2',
-  '/presetlist  按序号列出可用 Agent Preset',
-  '/preset [序号或完整ID]  查看或设置当前机器人 Agent Preset',
-  '纯数字 ID：/preset id:<ID>',
-  '/preset --default  跟随 Host 默认',
-  '/stop  停止当前任务',
-  '/steer 补充指令  纠偏当前任务',
-  '/status  检查连接状态',
-  '/help  显示本帮助',
-].join('\n');
+const CHANNEL_LABEL = 'DingTalk';
 
 function nonEmptyString(value) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -595,7 +574,7 @@ export class DingtalkHarnessBridge {
 
       const command = text.toLowerCase();
       if (isPlainText && !hasImages && command === '/help') {
-        await this.#send(sessionWebhook, HELP_TEXT);
+        await this.#send(sessionWebhook, helpText(t, { channelLabel: CHANNEL_LABEL }));
         return;
       }
       if (isPlainText && !hasImages && command === '/status') {

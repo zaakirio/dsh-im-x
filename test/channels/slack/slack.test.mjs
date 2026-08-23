@@ -24,7 +24,7 @@ import {
   SLACK_ENDPOINTS,
   createSlackRpcHandler,
 } from '../../../plugin-src/host/channels/slack/rpc.mjs';
-import { defaultTranslator as t } from '../../../src/i18n/index.mjs';
+import { defaultTranslator as tr } from '../../../src/i18n/index.mjs';
 
 const BOT_TOKEN = `xoxb-${'0'.repeat(24)}-not-a-real-token`;
 const APP_TOKEN = `xapp-${'0'.repeat(24)}-not-a-real-token`;

@@ -7,6 +7,7 @@ import {
   harnessApprovalText,
   validHarnessApproval,
 } from '../../../src/channels/shared/harness-approval.mjs';
+import { defaultTranslator as tr } from '../../../src/i18n/index.mjs';
 
 function deferred() {
   let resolve;
@@ -49,7 +50,7 @@ const approval = {
   approvalId: 'approval-secret-id',
   toolName: 'bash',
   callId: 'call-secret-id',
-  reason: '测试 IM 审批链路',
+  reason: 'IM approval path test',
 };
 
 const toolCall = {
@@ -108,17 +109,15 @@ test('formats a simple approval prompt without exposing an id or requiring a cod
   const text = harnessApprovalText(approval, { toolCall });
 
   assert.match(text, /bash/);
-  assert.match(text, /测试 IM 审批链路/);
-  assert.match(text, /批准/);
-  assert.match(text, /拒绝/);
-  assert.match(text, /同意/);
-  assert.match(text, /不同意/);
+  assert.match(text, /IM approval path test/);
+  assert.ok(text.includes(tr('approval.prompt')));
   assert.match(text, /yes/i);
   assert.match(text, /no/i);
   assert.match(text, /printf 'approval-test/);
   assert.doesNotMatch(text, /approval-secret-id|call-secret-id/);
-  assert.doesNotMatch(text, /\/approve|\/reject|审批码/);
-  assert.doesNotMatch(text, /1\s*[.\u3001]仅本次|2\s*[.\u3001]拒绝/);
+  // The prompt must never imply a slash command or a numbered approval code.
+  assert.doesNotMatch(text, /\/approve|\/reject/);
+  assert.doesNotMatch(text, /1\s*[.)]\s*(once|allow)/i);
   assert.equal(harnessApprovalText(approval, {
     toolCall: { ...toolCall, callId: 'another-call' },
   }), null);
@@ -138,9 +137,8 @@ test('formats a simple approval prompt without exposing an id or requiring a cod
 
 test('tells a group user to address the bot when replying to an approval', () => {
   const text = harnessApprovalText(approval, { toolCall, requiresMention: true });
-  assert.match(text, /@.*机器人/);
-  assert.match(text, /批准/);
-  assert.match(text, /拒绝/);
+  assert.ok(text.includes(tr('approval.mentionHint')));
+  assert.ok(text.includes(tr('approval.prompt')));
 });
 
 test('never submits the next FIFO approval before its operation is presented', async () => {
@@ -171,7 +169,7 @@ test('never submits the next FIFO approval before its operation is presented', a
     text: '批准',
     send: async (text) => {
       sent.push({ toolName: 'reply-one', text });
-      if (text.startsWith('已批准')) {
+      if (text.startsWith(tr('approval.outcome.allowedOnce'))) {
         confirmationStarted.resolve();
         await firstConfirmation.promise;
       }
@@ -198,7 +196,7 @@ test('never submits the next FIFO approval before its operation is presented', a
   assert.equal(sent.some(({ toolName, text }) => (
     toolName === 'second-tool' && text.includes('second-tool --run')
   )), true);
-  assert.equal(earlyTexts[0].includes('请精准回复'), true);
+  assert.equal(earlyTexts[0].includes(tr('approval.prompt')), true);
 
   await queue.claimReply({
     key: 'direct:actor-a',
@@ -237,7 +235,7 @@ test('a failed presentation cannot be followed by a blind approval', async () =>
   }).process();
   assert.equal(responses.length, 0);
   assert.equal(sent.some((text) => text.includes('bash --run')), true);
-  assert.equal(sent.some((text) => text.includes('请精准回复')), true);
+  assert.equal(sent.some((text) => text.includes(tr('approval.prompt'))), true);
 
   await queue.claimReply({
     key: 'direct:actor-a',
@@ -267,8 +265,8 @@ test('an unrenderable approval never claims it was rejected after not-pending', 
     send: async (text) => sent.push(text),
   });
 
-  assert.deepEqual(sent, ['该审批已处理，无需再次回复。']);
-  assert.equal(sent.some((text) => text.includes('已安全拒绝')), false);
+  assert.deepEqual(sent, [tr('approval.resolved')]);
+  assert.equal(sent.some((text) => text.includes(tr('approval.cannotDisplay'))), false);
 });
 
 test('resolved waits for an in-flight presentation before showing the next approval', async () => {
@@ -319,9 +317,9 @@ test('resolved waits for an in-flight presentation before showing the next appro
   await Promise.all([firstRequest, resolved, earlyNextDecision]);
 
   assert.match(sent[0], /first-tool --run/);
-  assert.equal(sent[1], '已拒绝此次操作。');
+  assert.equal(sent[1], tr('approval.outcome.rejected'));
   assert.match(sent[2], /second-tool --run/);
-  assert.match(sent[3], /请精准回复/);
+  assert.ok(sent[3].includes(tr('approval.prompt')));
   assert.equal(secondResponses.length, 0);
 
   await queue.claimReply({
@@ -370,8 +368,8 @@ test('a next-presentation failure never rewrites an accepted decision as submit 
 
   assert.equal(responses.length, 1);
   assert.equal(responses[0].value.approvalId, 'accepted-first');
-  assert.equal(sent.includes('已批准，仅对本次操作有效。'), true);
-  assert.equal(sent.some((text) => text.includes('审批提交失败')), false);
+  assert.equal(sent.includes(tr('approval.outcome.allowedOnce')), true);
+  assert.equal(sent.some((text) => text.includes(tr('approval.submitFailed'))), false);
   assert.equal(reconnects, 1);
   assert.equal(errors.length, 1);
 });
@@ -410,8 +408,8 @@ test('resolved during submit gives one final outcome even when the HTTP response
   releaseResponse.resolve();
   await deciding;
 
-  assert.equal(sent.filter((text) => text === '已批准，仅对本次操作有效。').length, 1);
-  assert.equal(sent.some((text) => text.includes('审批提交失败')), false);
+  assert.equal(sent.filter((text) => text === tr('approval.outcome.allowedOnce')).length, 1);
+  assert.equal(sent.some((text) => text.includes(tr('approval.submitFailed'))), false);
 });
 
 test('resolving a blocked next approval preserves the route barrier for later items', async () => {
@@ -444,7 +442,7 @@ test('resolving a blocked next approval preserves the route barrier for later it
     text: '批准',
     send: async (text) => {
       sent.push(text);
-      if (text.startsWith('已批准')) {
+      if (text.startsWith(tr('approval.outcome.allowedOnce'))) {
         confirmationStarted.resolve();
         await releaseConfirmation.promise;
       }
@@ -538,8 +536,8 @@ test('approval decisions stay bound to the initiating actor, route, and group me
   }).process();
   assert.equal(responses.length, 1);
   assert.equal(responses[0].value.outcome, 'allowed-once');
-  assert.equal(sent.filter((text) => text.includes('只有发起当前任务')).length, 2);
-  assert.equal(sent.some((text) => text.includes('请精准回复')), true);
+  assert.equal(sent.filter((text) => text.includes(tr('approval.onlyInitiator'))).length, 2);
+  assert.equal(sent.some((text) => text.includes(tr('approval.prompt'))), true);
 });
 
 test('a deferred approval reply stays silent when the approval resolves with its question unfinished', async () => {
@@ -573,8 +571,8 @@ test('a deferred approval reply stays silent when the approval resolves with its
   questionCompletion.resolve();
   await reply;
 
-  assert.equal(sent.some((text) => text.includes('请先完成当前问题')), false);
-  assert.equal(sent.at(-1), '已拒绝此次操作。');
+  assert.equal(sent.some((text) => text.includes(tr('approval.afterQuestionPrompt'))), false);
+  assert.equal(sent.at(-1), tr('approval.outcome.rejected'));
 });
 
 test('requested replay updates the responder without duplicating the approval prompt', async () => {
@@ -667,7 +665,7 @@ test('two decisions claimed for the current item cannot approve the next FIFO it
 
   assert.deepEqual(responses.map(({ value }) => value.approvalId), ['double-first']);
   assert.equal(sent.some((text) => text.includes('second-tool --run')), true);
-  assert.equal(sent.at(-1), '该审批已处理，无需再次回复。');
+  assert.equal(sent.at(-1), tr('approval.resolved'));
   await queue.claimReply({ ...context, text: '批准' }).process();
   assert.deepEqual(responses.map(({ value }) => value.approvalId), [
     'double-first',
@@ -706,16 +704,16 @@ test('a failed approval response can retry and not-pending becomes a tombstone',
 
   await queue.claimReply({ ...context, text: '批准' }).process();
   assert.equal(firstAttempts, 1);
-  assert.equal(sent.some((text) => text.includes('审批提交失败')), true);
+  assert.equal(sent.some((text) => text.includes(tr('approval.submitFailed'))), true);
   await queue.claimReply({ ...context, text: '批准' }).process();
   assert.equal(firstAttempts, 2);
   assert.equal(accepted.length, 1);
   assert.equal(sent.some((text) => text.includes('expired-tool --run')), true);
 
   await queue.claimReply({ ...context, text: '拒绝' }).process();
-  assert.equal(sent.at(-1), '该审批已处理，无需再次回复。');
+  assert.equal(sent.at(-1), tr('approval.resolved'));
   await queue.claimReply({ ...context, text: 'no' }).process();
-  assert.equal(sent.at(-1), '该审批已处理，无需再次回复。');
+  assert.equal(sent.at(-1), tr('approval.resolved'));
 });
 
 test('a failed message-recording preflight cannot block later approval replies', async () => {
@@ -775,7 +773,7 @@ test('closing a route rejects every queued approval without presenting hidden it
   ]);
   assert.equal(sent.some((text) => text.includes('first-tool --run')), true);
   assert.equal(sent.some((text) => text.includes('second-tool --run')), false);
-  assert.equal(sent.includes('已拒绝此次操作。'), true);
+  assert.equal(sent.includes(tr('approval.outcome.rejected')), true);
 });
 
 test('closing while a decision is submitting races it with a fail-closed rejection', async () => {
@@ -809,8 +807,8 @@ test('closing while a decision is submitting races it with a fail-closed rejecti
   await deciding;
 
   assert.deepEqual(outcomes, ['allowed-once', 'rejected']);
-  assert.equal(sent.filter((text) => text === '已拒绝此次操作。').length, 1);
-  assert.equal(sent.some((text) => text.includes('审批提交失败')), false);
+  assert.equal(sent.filter((text) => text === tr('approval.outcome.rejected')).length, 1);
+  assert.equal(sent.some((text) => text.includes(tr('approval.submitFailed'))), false);
 });
 
 test('closing during presentation follows a stale prompt with a rejected outcome', async () => {
@@ -839,7 +837,7 @@ test('closing during presentation follows a stale prompt with a rejected outcome
   await requested;
 
   assert.match(sent[0], /bash --run/);
-  assert.equal(sent[1], '已拒绝此次操作。');
+  assert.equal(sent[1], tr('approval.outcome.rejected'));
 });
 
 test('closing a displayed not-pending approval leaves a resolved notice', async () => {
@@ -861,6 +859,6 @@ test('closing a displayed not-pending approval leaves a resolved notice', async 
   await queue.closeRoute('direct:actor-a');
 
   assert.match(sent[0], /bash --run/);
-  assert.equal(sent[1], '该审批已处理，无需再次回复。');
-  assert.equal(sent.some((text) => text.includes('已拒绝')), false);
+  assert.equal(sent[1], tr('approval.resolved'));
+  assert.equal(sent.some((text) => text.includes(tr('approval.outcome.rejected'))), false);
 });

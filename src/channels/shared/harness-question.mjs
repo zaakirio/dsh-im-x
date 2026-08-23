@@ -1,3 +1,5 @@
+import { defaultTranslator } from '../../i18n/index.mjs';
+
 function nonEmptyString(value) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
@@ -14,12 +16,16 @@ export function validHarnessQuestion(question) {
       ))));
 }
 
-export function harnessQuestionText(question, index, total, { requiresMention = false } = {}) {
+export function harnessQuestionText(question, index, total, {
+  requiresMention = false,
+  t = defaultTranslator,
+} = {}) {
   const lines = [];
-  const progress = total > 1 ? `（${index + 1}/${total}）` : '';
-  lines.push(`DeepSeek Harness 需要你补充信息${progress}：`);
+  lines.push(total > 1
+    ? t('question.headerWithProgress', { index: index + 1, total })
+    : t('question.header'));
   if (nonEmptyString(question.header)) lines.push('', question.header.trim());
-  lines.push('', nonEmptyString(question.question) ?? '请输入你的回答。');
+  lines.push('', nonEmptyString(question.question) ?? t('question.fallback'));
   if (nonEmptyString(question.detail)) lines.push('', question.detail.trim());
 
   const options = Array.isArray(question.options) ? question.options : [];
@@ -30,13 +36,13 @@ export function harnessQuestionText(question, index, total, { requiresMention = 
       const description = nonEmptyString(option?.description);
       lines.push(`${optionIndex + 1}. ${label}${description ? ` — ${description}` : ''}`);
     });
-    lines.push('', question.multiSelect === true
-      ? '请回复选项序号或文字；多选用逗号分隔，也可补充其他内容。'
-      : '请回复一个选项序号或文字，也可直接输入其他答案。');
+    lines.push('', t(question.multiSelect === true
+      ? 'question.replyMultiSelect'
+      : 'question.replySingleSelect'));
   } else {
-    lines.push('', '请直接回复你的答案。');
+    lines.push('', t('question.replyFree'));
   }
-  if (requiresMention) lines.push('', '群聊中请 @机器人 后发送答案。');
+  if (requiresMention) lines.push('', t('question.mentionHint'));
   return lines.join('\n');
 }
 
@@ -51,7 +57,7 @@ function optionLabel(token, options) {
   return typeof exact?.label === 'string' ? exact.label : null;
 }
 
-export function harnessAnswerForQuestion(question, text) {
+export function harnessAnswerForQuestion(question, text, { t = defaultTranslator } = {}) {
   const options = Array.isArray(question.options) ? question.options : [];
   if (options.length === 0) {
     return { id: question.id, selected: [], custom: text };
@@ -80,6 +86,6 @@ export function harnessAnswerForQuestion(question, text) {
   return {
     id: question.id,
     selected,
-    ...(custom.length > 0 ? { custom: custom.join('、') } : {}),
+    ...(custom.length > 0 ? { custom: custom.join(t('question.customJoin')) } : {}),
   };
 }

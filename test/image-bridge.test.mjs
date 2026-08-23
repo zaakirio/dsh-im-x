@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { TextHarnessBridge } from '../src/channels/shared/text-harness-bridge.mjs';
-import { defaultTranslator as t } from '../src/i18n/index.mjs';
+import { defaultTranslator as tr } from '../src/i18n/index.mjs';
 
 const PNG_1X1 = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
@@ -94,7 +94,7 @@ test('image validation failures receive a specific safe reply', async () => {
   });
 
   assert.deepEqual(prompts, []);
-  assert.deepEqual(sent, [t('image.error.unsupportedType')]);
+  assert.deepEqual(sent, [tr('image.error.unsupportedType')]);
 });
 
 test('an image caption cannot answer a pending Harness question', async () => {

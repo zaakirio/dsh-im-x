@@ -11,7 +11,7 @@ import {
   promptContentForMessage,
 } from '../src/channels/shared/image-prompt.mjs';
 import { HarnessClient } from '../src/channels/shared/harness-client.mjs';
-import { defaultTranslator as t } from '../src/i18n/index.mjs';
+import { defaultTranslator as tr } from '../src/i18n/index.mjs';
 
 const PNG_1X1 = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
@@ -111,7 +111,7 @@ test('Harness attachment failures map only allowlisted reasons to safe channel m
   assert.deepEqual(imagePromptDiagnostic(modelError), {
     code: 'attachment-error',
     reason: 'MODEL_DOES_NOT_SUPPORT_IMAGES',
-    userMessage: t('image.host.modelDoesNotSupportImages'),
+    userMessage: tr('image.host.modelDoesNotSupportImages'),
   });
   assert.doesNotMatch(imagePromptUserMessage(modelError), /private|secret/);
 

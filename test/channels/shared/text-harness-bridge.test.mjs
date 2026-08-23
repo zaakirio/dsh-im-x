@@ -16,7 +16,7 @@ import { TextHarnessBridge } from '../../../src/channels/shared/text-harness-bri
 import { SlackHarnessBridge } from '../../../src/channels/slack/slack-bridge.mjs';
 import { TelegramHarnessBridge } from '../../../src/channels/telegram/telegram-bridge.mjs';
 import { WhatsappHarnessBridge } from '../../../src/channels/whatsapp/whatsapp-bridge.mjs';
-import { defaultTranslator as t } from '../../../src/i18n/index.mjs';
+import { defaultTranslator as tr } from '../../../src/i18n/index.mjs';
 
 function deferred() {
   let resolve;
@@ -211,7 +211,7 @@ test('all four shared text channels execute /compact outside the model prompt pa
     await bridge.accept(message(`compact-${name}`, '/compact'));
 
     assert.deepEqual(executed, [{ sessionId: `session-${name}`, line: '/compact' }]);
-    assert.deepEqual(sent, ['已压缩 12 条历史记录（约 3456 个 token）。']);
+    assert.deepEqual(sent, [tr('compact.result.compacted', { items: 12, tokens: '3456' })]);
   }
 });
 
@@ -274,7 +274,7 @@ test('all four shared text channels list models and presets locally and advertis
     assert.equal(fixture.sessions.size, 0, `${name} preset session binding`);
 
     await bridge.accept(message(`preset-current-${name}`, '/preset'));
-    assert.match(sent.at(-1), /跟随 Host 默认/, name);
+    assert.ok(sent.at(-1).includes(tr('preset.followsHostDefault')), name);
     assert.equal(asks, 0, `${name} preset current ask`);
     assert.equal(creates, 0, `${name} preset current create`);
 
@@ -288,7 +288,7 @@ test('all four shared text channels list models and presets locally and advertis
     await bridge.accept(message(`preset-default-${name}`, '/preset --default'));
     assert.deepEqual(presetUpdates, ['preset-002', null], `${name} scoped preset reset`);
     assert.equal(sent.length, defaultReplyStart + 1, `${name} sends the complete default reply`);
-    assert.match(sent.at(-1), /跟随 Host 默认/, name);
+    assert.ok(sent.at(-1).includes(tr('preset.followsHostDefault')), name);
     assert.equal(asks, 0, `${name} mutation ask`);
     assert.equal(creates, 0, `${name} mutation create`);
     assert.equal(fixture.sessions.size, 0, `${name} mutation session binding`);
@@ -339,7 +339,7 @@ test('/stop uses the shared command fast lane without waiting for the running pr
     '/stop waited for the ordinary conversation queue',
   );
   assert.equal(promptSettled, false);
-  assert.equal(sent.includes(t('control.stopRequested')), true);
+  assert.equal(sent.includes(tr('control.stopRequested')), true);
   assert.equal(controls.stop.owner, controls.prompt.owner);
   assert.equal(controls.stop.key, controls.prompt.key);
 
@@ -375,7 +375,7 @@ test('a stopped shared-channel turn closes an opened stream instead of leaving a
 
   await bridge.accept(message('stopped-stream', '执行长任务'));
 
-  assert.deepEqual(finished, ['已停止。']);
+  assert.deepEqual(finished, [tr('bridge.stopped')]);
   assert.equal(cancelled, 0);
   assert.deepEqual(sent, []);
 });
@@ -458,7 +458,7 @@ test('a file-only shared text reply shows one neutral completion message before 
 
   await bridge.accept(message('artifact-file-only', '只生成并发送文件'));
 
-  assert.deepEqual(order, ['text:任务已完成。', 'file:only.txt']);
+  assert.deepEqual(order, [`text:${tr('bridge.taskComplete')}`, 'file:only.txt']);
 });
 
 test('shared text delivery still attempts registered files when its final text cannot be sent', async (t) => {
@@ -539,9 +539,9 @@ test('shared text artifact provider failures are isolated from text and later fi
 
   assert.deepEqual(attempted, ['provider.txt', 'oversized.txt', 'success.txt']);
   assert.equal(sent[0], '三个文件已生成。');
-  assert.match(sent[1], /provider\.txt.*暂时未能发送/);
+  assert.equal(sent[1], tr('artifact.error.generic', { name: 'provider.txt' }));
   assert.doesNotMatch(sent[1], /private provider diagnostic/);
-  assert.match(sent[2], /oversized\.txt.*超过当前渠道大小上限/);
+  assert.equal(sent[2], tr('artifact.error.tooLarge', { name: 'oversized.txt' }));
   assert.equal(bridge.status.artifactsSent, 1);
   assert.equal(bridge.status.artifactSendErrors, 2);
   assert.deepEqual(receipt.providerMessageIds, [
@@ -592,7 +592,7 @@ test('shared text bridge tells users to check the chat before retrying an uncert
   const receipt = await bridge.accept(message('artifact-uncertain', '生成文件'));
 
   assert.equal(textAttempts, 2, 'must not append a contradictory generic retry notice');
-  assert.match(sent[0], /发送结果未能确认.*先检查聊天内是否已收到.*不要立即重试/);
+  assert.equal(sent[0], tr('artifact.error.uncertain', { name: 'uncertain.txt' }));
   assert.doesNotMatch(sent[0], /private timeout detail/);
   assert.deepEqual(receipt.providerMessageIds, ['unknown-notice']);
   assert.deepEqual(receipt.artifacts, [{
@@ -1233,7 +1233,7 @@ test('a group question only accepts an addressed reply from the initiating actor
 
   const first = bridge.accept(message('group-start', '甲发起交互', { ...group }));
   await eventually(() => sent.some(({ text }) => text.includes('只能由甲回答')));
-  assert.match(sent[0].text, /群聊中请 @机器人/);
+  assert.ok(sent[0].text.includes(tr('question.mentionHint')));
 
   await bridge.accept(message('group-unaddressed', '没有 @ 的回答', {
     ...group,
@@ -1310,7 +1310,7 @@ test('deduplicates replays and safely closes recovered questions and approvals',
   await bridge.accept(message('replay', '测试交互重放'));
   assert.equal(sent.filter(({ text }) => text.includes('只应显示一次')).length, 1);
   assert.equal(sent.some(({ text }) => text.includes('旧会话中的敏感问题内容')), false);
-  assert.equal(sent.some(({ text }) => text.includes('遗留的待回答问题')), true);
+  assert.equal(sent.some(({ text }) => text.includes(tr('bridge.recoveredInteractionCancelled'))), true);
   assert.deepEqual(parallelResponse?.error, {
     code: 'cancelled',
     message: 'Test is already handling another user interaction.',
@@ -1362,7 +1362,7 @@ test('keeps a failed interaction response pending so the actor can retry', async
   const processing = bridge.accept(message('retry-start', '启动可重试交互'));
   await eventually(() => sent.some(({ text }) => text.includes('请回答')));
   await bridge.accept(message('retry-first', '第一次答案'));
-  assert.equal(sent.some(({ text }) => text.includes('回答提交失败')), true);
+  assert.equal(sent.some(({ text }) => text.includes(tr('bridge.answerSubmitRetry'))), true);
   await bridge.accept(message('retry-second', '重试后的答案'));
   await processing;
 
@@ -1410,7 +1410,7 @@ test('notifies the actor when an in-flight response resolves elsewhere before re
   await processing;
 
   assert.deepEqual(asked, ['启动提交竞态']);
-  assert.equal(sent.some(({ text }) => text.includes('已在其他客户端处理')), true);
+  assert.equal(sent.some(({ text }) => text.includes(tr('bridge.interactionResolved'))), true);
 });
 
 test('discards a claimed answer when the interaction resolves during message recording', async () => {
@@ -1467,7 +1467,7 @@ test('discards a claimed answer when the interaction resolves during message rec
 
   assert.deepEqual(asked, ['启动外部解决竞态', '后来的普通问题']);
   assert.equal(asked.includes('原本的问题答案'), false);
-  assert.equal(sent.some(({ text }) => text.includes('已在其他客户端处理')), true);
+  assert.equal(sent.some(({ text }) => text.includes(tr('bridge.interactionResolved'))), true);
 });
 
 test('accepts a first answer received while its question presentation is still in flight', async () => {
@@ -1583,7 +1583,7 @@ test('discards an answer already received when a later question resolves during 
 
   assert.deepEqual(asked, ['启动第二问竞态']);
   assert.equal(asked.includes('第二问已收到的答案'), false);
-  assert.equal(sent.some(({ text }) => text.includes('已在其他客户端处理')), true);
+  assert.equal(sent.some(({ text }) => text.includes(tr('bridge.interactionResolved'))), true);
 });
 
 test('passes the runtime signal to Harness and safely cancels a pending question on abort', async () => {

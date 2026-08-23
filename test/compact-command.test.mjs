@@ -8,6 +8,7 @@ import {
   HarnessRpcError,
 } from '../src/channels/shared/harness-client.mjs';
 import { createHarnessCommandExecutor } from '../plugin-src/host/harness-command-executor.mjs';
+import { defaultTranslator as tr } from '../src/i18n/index.mjs';
 
 const PRODUCTION_FILES = [
   'plugin-src/host/channels/feishu/production.mjs',
@@ -26,17 +27,17 @@ function state(sessionId = 'session-one') {
 
 test('compact command validates syntax and requires an existing conversation Session', async () => {
   assert.equal(await runCompactCommand('hello', {}, state(), 'direct:one'), null);
-  assert.match(
+  assert.equal(
     (await runCompactCommand('/compact now', {}, state(), 'direct:one')).message,
-    /不带参数/,
+    tr('compact.usage'),
   );
-  assert.match(
+  assert.equal(
     (await runCompactCommand('/COMPACT', {}, state(null), 'direct:one')).message,
-    /还没有可压缩的会话/,
+    tr('compact.noSessionYet'),
   );
-  assert.match(
+  assert.equal(
     (await runCompactCommand('/compact', {}, state(), 'direct:one')).message,
-    /暂不支持/,
+    tr('compact.unsupported'),
   );
 });
 
@@ -60,7 +61,7 @@ test('compact command renders Harness outcomes and never changes the command lin
     { signal },
   );
 
-  assert.equal(result.message, '上下文压缩已取消。');
+  assert.equal(result.message, tr('compact.result.cancelled'));
   assert.deepEqual(calls, [{
     sessionId: 'session-one',
     line: '/compact',
@@ -69,26 +70,26 @@ test('compact command renders Harness outcomes and never changes the command lin
 });
 
 test('compact command contains unavailable, busy, stale, and invalid command failures', async () => {
-  for (const [failure, pattern] of [
-    [{ code: 'session-not-found' }, /会话已不存在/],
-    [{ code: 'agent-busy' }, /正在生成回复/],
-    [{ code: 'workspace-session-stale' }, /状态已发生变化/],
-    [{ code: 'commands-unavailable' }, /暂不支持/],
-    [new Error('private internal detail'), /压缩失败/],
+  for (const [failure, key] of [
+    [{ code: 'session-not-found' }, 'compact.error.sessionNotFound'],
+    [{ code: 'agent-busy' }, 'compact.error.agentBusy'],
+    [{ code: 'workspace-session-stale' }, 'compact.error.stale'],
+    [{ code: 'commands-unavailable' }, 'compact.error.unsupportedHarness'],
+    [new Error('private internal detail'), 'compact.error.generic'],
   ]) {
     const result = await runCompactCommand('/compact', {
       executeCommand: async () => { throw failure; },
     }, state(), 'direct:one');
-    assert.match(result.message, pattern);
+    assert.equal(result.message, tr(key));
     assert.doesNotMatch(result.message, /private internal detail/);
   }
 
-  assert.match((await runCompactCommand('/compact', {
+  assert.equal((await runCompactCommand('/compact', {
     executeCommand: async () => undefined,
-  }, state(), 'direct:one')).message, /未注册/);
-  assert.match((await runCompactCommand('/compact', {
+  }, state(), 'direct:one')).message, tr('compact.commandNotRegistered'));
+  assert.equal((await runCompactCommand('/compact', {
     executeCommand: async () => ({ commandId: 'bad', result: { kind: 'other' } }),
-  }, state(), 'direct:one')).message, /压缩失败/);
+  }, state(), 'direct:one')).message, tr('compact.error.generic'));
 });
 
 test('HarnessClient delegates command execution and normalizes Typert lookup failures', async () => {

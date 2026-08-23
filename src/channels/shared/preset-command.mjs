@@ -5,18 +5,11 @@ import {
 import { withSessionBindingLock } from './session-binding-lock.mjs';
 import { splitWorkspaceCommandMessage } from './workspace-command.mjs';
 import { WORKSPACE_SESSION_STALE } from './workspace-session.mjs';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
 const PRESET_COMMAND = /^\/preset(?=$|\s)/iu;
 const PRESET_LIST_COMMAND = /^\/presetlist(?=$|\s)/iu;
-const PRESET_LIST_USAGE = '用法：/presetlist（不带参数）';
-const PRESET_USAGE = [
-  '用法：',
-  '/preset  查看当前设置',
-  '/preset <序号>  按最近一次 /presetlist 的序号选择',
-  '/preset <ID>  按 Agent Preset ID 选择',
-  '/preset id:<纯数字 ID>  选择纯数字 ID',
-  '/preset --default  跟随 Host 默认',
-].join('\n');
+
 const UNSAFE_DISPLAY_TEXT_GLOBAL = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]+/gu;
 const LIST_SNAPSHOTS = new WeakMap();
 export const PRESET_LIST_SNAPSHOT_TTL_MS = 15 * 60_000;
@@ -57,85 +50,84 @@ function normalizeSettings(value) {
   };
 }
 
-function presetItemText(item) {
+function presetItemText(item, t) {
   const label = safeDisplayText(item.label) || item.id;
-  return `${label}（${item.id}）`;
+  return t('preset.itemText', { label, id: item.id });
 }
 
 function itemFor(catalog, id) {
   return catalog.items.find((item) => item.id === id) ?? null;
 }
 
-function defaultDescription(catalog) {
-  if (!catalog.defaultId) return '未设置或当前不可用';
+function defaultDescription(catalog, t) {
+  if (!catalog.defaultId) return t('preset.noDefault');
   const item = itemFor(catalog, catalog.defaultId);
   return item
-    ? presetItemText(item)
-    : `${catalog.defaultId}（当前不可用）`;
+    ? presetItemText(item, t)
+    : t('preset.defaultUnavailable', { id: catalog.defaultId });
 }
 
-function currentDescription(settings) {
+function currentDescription(settings, t) {
   const { agentPreset, agentPresetCatalog: catalog } = settings;
   if (agentPreset === null) {
     const item = itemFor(catalog, catalog.defaultId);
     return item
-      ? `跟随 Host 默认：${presetItemText(item)}`
-      : '跟随 Host 默认（Host 默认当前不可用）';
+      ? t('preset.followsHostDefaultWith', { preset: presetItemText(item, t) })
+      : t('preset.followsHostDefaultUnavailable');
   }
   const item = itemFor(catalog, agentPreset);
   return item
-    ? presetItemText(item)
-    : `${agentPreset}（已不可用）`;
+    ? presetItemText(item, t)
+    : t('preset.noLongerAvailable', { id: agentPreset });
 }
 
-function formatCurrent(settings) {
+function formatCurrent(settings, t) {
   return [
-    '当前机器人用于新会话的 Agent Preset：',
-    currentDescription(settings),
+    t('preset.currentHeader'),
+    currentDescription(settings, t),
     '',
-    '已有会话不会受此设置影响。',
-    '查看可用项：/presetlist',
-    '恢复跟随 Host 默认：/preset --default',
+    t('preset.existingUnaffected'),
+    t('preset.listHint'),
+    t('preset.resetHint'),
   ].join('\n');
 }
 
-function formatList(settings) {
+function formatList(settings, t) {
   const { agentPreset, agentPresetCatalog: catalog } = settings;
   const lines = [
-    '当前机器人用于新会话的 Agent Preset：',
-    currentDescription(settings),
+    t('preset.currentHeader'),
+    currentDescription(settings, t),
     '',
-    `Host 默认：${defaultDescription(catalog)}`,
+    t('preset.hostDefault', { value: defaultDescription(catalog, t) }),
     '',
-    `可用 Agent Preset（${catalog.items.length}）：`,
+    t('preset.availableCount', { count: catalog.items.length }),
   ];
   if (catalog.items.length === 0) {
-    lines.push('当前没有可用 Agent Preset。');
+    lines.push(t('preset.noneAvailable'));
   } else {
     catalog.items.forEach((item, index) => {
       const markers = [];
-      if (item.id === catalog.defaultId) markers.push('Host 默认');
-      if (item.id === agentPreset) markers.push('当前选择');
-      if (agentPreset === null && item.id === catalog.defaultId) markers.push('当前生效');
-      const annotation = markers.length > 0 ? `（${markers.join('，')}）` : '';
-      lines.push(`${index + 1}. ${presetItemText(item)}${annotation}`);
+      if (item.id === catalog.defaultId) markers.push(t('preset.markerHostDefault'));
+      if (item.id === agentPreset) markers.push(t('preset.markerSelected'));
+      if (agentPreset === null && item.id === catalog.defaultId) {
+        markers.push(t('preset.markerActive'));
+      }
+      const annotation = markers.length > 0
+        ? t('preset.markers', { markers: markers.join(t('preset.markerJoin')) })
+        : '';
+      lines.push(`${index + 1}. ${presetItemText(item, t)}${annotation}`);
     });
   }
-  lines.push(
-    '',
-    '选择：/preset <序号或 ID>',
-    '纯数字 ID：/preset id:<ID>',
-    '恢复跟随 Host 默认：/preset --default',
-  );
+  lines.push('', t('preset.selectHint'), t('preset.numericIdHint'), t('preset.resetHint'));
   return lines.join('\n');
 }
 
-function formatUpdated(settings) {
+function formatUpdated(settings, t) {
   return [
-    '当前机器人用于新会话的 Agent Preset 已设置为：',
-    currentDescription(settings),
+    t('preset.updated'),
+    currentDescription(settings, t),
     '',
-    '已有会话不变。若当前聊天已有会话，请先发送 /new，再发送普通消息，才会使用新设置创建会话。',
+    t('preset.updatedNote'),
   ].join('\n');
 }
 
@@ -185,45 +177,45 @@ function loadSnapshot(state, key) {
   return snapshot.ids;
 }
 
-function presetFromSnapshot(state, key, requested) {
+function presetFromSnapshot(state, key, requested, t) {
   if (!/^\d+$/u.test(requested)) return { numeric: false, id: null };
   const index = Number(requested);
   if (!Number.isSafeInteger(index) || index < 1) {
-    return { numeric: true, error: 'Agent Preset 序号无效，请先执行 /presetlist。' };
+    return { numeric: true, error: t('preset.error.invalidIndex') };
   }
   const snapshot = loadSnapshot(state, key);
   if (!snapshot) {
-    return { numeric: true, error: '请先执行 /presetlist，再按列表序号选择 Agent Preset。' };
+    return { numeric: true, error: t('preset.error.listFirst') };
   }
   const id = snapshot[index - 1];
   return id
     ? { numeric: true, id }
-    : { numeric: true, error: 'Agent Preset 序号不存在，请重新执行 /presetlist。' };
+    : { numeric: true, error: t('preset.error.indexMissing') };
 }
 
 function errorCode(error) {
   return error?.code ?? error?.failure?.code;
 }
 
-function presetErrorMessage(error, action) {
+function invalidPresetIdMessage(t) {
+  return `${t('preset.error.invalidId')}\n${t('preset.usage')}`;
+}
+
+function presetErrorMessage(error, action, t) {
   const code = errorCode(error);
-  if (code === 'agent-preset-invalid') {
-    return `Agent Preset ID 格式无效。\n${PRESET_USAGE}`;
-  }
-  if (code === 'agent-preset-unavailable') {
-    return 'Agent Preset 不存在或当前不可用，请重新执行 /presetlist。';
-  }
+  if (code === 'agent-preset-invalid') return invalidPresetIdMessage(t);
+  if (code === 'agent-preset-unavailable') return t('preset.error.unavailable');
   if (code === WORKSPACE_SESSION_STALE || code === 'workspace-bot-not-found') {
-    return '工作区或机器人状态已发生变化，请重试。';
+    return t('preset.error.stale');
   }
   if (code === 'cancelled' || error?.name === 'AbortError') {
-    if (action === 'list') return '获取 Agent Preset 列表已取消。';
-    if (action === 'current') return '获取 Agent Preset 设置已取消。';
-    return 'Agent Preset 修改已取消。';
+    if (action === 'list') return t('preset.error.listCancelled');
+    if (action === 'current') return t('preset.error.currentCancelled');
+    return t('preset.error.updateCancelled');
   }
-  if (action === 'list') return '暂时无法获取 Agent Preset 列表，请稍后重试。';
-  if (action === 'current') return '暂时无法获取 Agent Preset 设置，请稍后重试。';
-  return 'Agent Preset 修改失败，请稍后重试。';
+  if (action === 'list') return t('preset.error.listFailed');
+  if (action === 'current') return t('preset.error.currentFailed');
+  return t('preset.error.updateFailed');
 }
 
 async function settings(harness, options) {
@@ -248,31 +240,32 @@ export function isPresetCommand(text) {
 
 export async function runPresetCommand(text, harness, state, key, options = {}) {
   if (!isPresetCommand(text)) return null;
+  const t = options.t ?? defaultTranslator;
   const command = text.trim();
   if (options.hasImages) {
-    return commandResult('Agent Preset 命令仅支持纯文字，请移除图片后重试。');
+    return commandResult(t('preset.textOnly'));
   }
   const requestOptions = rpcOptions(options.signal);
 
   if (PRESET_LIST_COMMAND.test(command)) {
-    if (!/^\/presetlist[ \t]*$/iu.test(command)) return commandResult(PRESET_LIST_USAGE);
+    if (!/^\/presetlist[ \t]*$/iu.test(command)) return commandResult(t('preset.usageList'));
     try {
       const current = await settings(harness, requestOptions);
       saveSnapshot(state, key, current.agentPresetCatalog.items);
-      return commandResult(formatList(current));
+      return commandResult(formatList(current, t));
     } catch (error) {
-      return commandResult(presetErrorMessage(error, 'list'));
+      return commandResult(presetErrorMessage(error, 'list', t));
     }
   }
 
   const match = /^\/preset(?:[ \t]+([^\s]+))?[ \t]*$/iu.exec(command);
-  if (!match) return commandResult(PRESET_USAGE);
+  if (!match) return commandResult(t('preset.usage'));
   const requested = match[1];
   if (!requested) {
     try {
-      return commandResult(formatCurrent(await settings(harness, requestOptions)));
+      return commandResult(formatCurrent(await settings(harness, requestOptions), t));
     } catch (error) {
-      return commandResult(presetErrorMessage(error, 'current'));
+      return commandResult(presetErrorMessage(error, 'current', t));
     }
   }
 
@@ -284,22 +277,22 @@ export async function runPresetCommand(text, harness, state, key, options = {}) 
     if (explicitNumericId) {
       selected = explicitNumericId[1];
     } else {
-      const fromSnapshot = presetFromSnapshot(state, key, requested);
+      const fromSnapshot = presetFromSnapshot(state, key, requested, t);
       if (fromSnapshot.numeric) {
         if (fromSnapshot.error) return commandResult(fromSnapshot.error);
         selected = fromSnapshot.id;
       } else {
         selected = normalizeAgentPresetId(requested);
-        if (!selected) return commandResult(`Agent Preset ID 格式无效。\n${PRESET_USAGE}`);
+        if (!selected) return commandResult(invalidPresetIdMessage(t));
       }
     }
   }
 
   try {
     return await withSessionBindingLock(state, key, async () => (
-      commandResult(formatUpdated(await update(harness, selected, requestOptions)))
+      commandResult(formatUpdated(await update(harness, selected, requestOptions), t))
     ));
   } catch (error) {
-    return commandResult(presetErrorMessage(error, 'update'));
+    return commandResult(presetErrorMessage(error, 'update', t));
   }
 }

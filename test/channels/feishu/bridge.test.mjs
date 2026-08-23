@@ -545,7 +545,7 @@ test('bridge tells users to grant im:message:readonly when Feishu rejects image 
   await bridge.waitForIdle();
 
   assert.equal(sent.length, 1);
-  assert.equal(sent[0], t('image.error.feishuPermissionRequired'));
+  assert.equal(sent[0], tr('image.error.feishuPermissionRequired'));
   assert.match(sent[0], /im:message:readonly/);
   assert.doesNotMatch(sent[0], /99991672|HTTP 400|secret-shaped|private\/path/);
 });
@@ -2921,7 +2921,7 @@ test('repair monitor reports expiry without claiming that the callback was fixed
 // ── Watches: read-only tracking, persistence, compensation, dedup ─────────
 
 import { StateStore } from '../../../src/channels/feishu/state-store.mjs';
-import { defaultTranslator as t } from '../../../src/i18n/index.mjs';
+import { defaultTranslator as tr } from '../../../src/i18n/index.mjs';
 
 function watchHarness({ sessionsByWorkspace = { 'C:/work': [] }, current = 'C:/work', history = [] } = {}) {
   const listeners = [];

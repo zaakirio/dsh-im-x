@@ -17,7 +17,7 @@ export function validateAgentPresetId(value) {
   if (value == null || value === '') return null;
   const id = normalizeAgentPresetId(value);
   if (!id) {
-    const error = new Error('Agent Preset 无效。');
+    const error = new Error('Invalid agent preset id');
     error.code = 'agent-preset-invalid';
     throw error;
   }

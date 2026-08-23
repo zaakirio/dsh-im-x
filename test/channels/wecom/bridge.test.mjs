@@ -15,7 +15,7 @@ import {
   OutboundArtifactRegistry,
   createOutboundArtifactTool,
 } from '../../../src/channels/shared/semantic/artifact.mjs';
-import { defaultTranslator as t } from '../../../src/i18n/index.mjs';
+import { defaultTranslator as tr } from '../../../src/i18n/index.mjs';
 
 const PNG_1X1 = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
@@ -497,7 +497,7 @@ test('Enterprise WeChat bounds prefetched image memory while a conversation is q
   assert.equal(downloads.length, 4);
   assert.equal(prompts.length, 5);
   assert.equal(transport.streamed.some(({ content }) => (
-    content === t('image.error.queueFull')
+    content === tr('image.error.queueFull')
   )), true);
 });
 

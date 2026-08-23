@@ -38,9 +38,15 @@ import {
   mergeDeliveryReceipts,
   providerMessageIdsFor,
 } from './semantic/delivery.mjs';
+import { helpText } from './bot-commands.mjs';
+import {
+  bridgeTranslatorFactory,
+  conversationTranslator,
+  isLanguageCommand,
+  runLanguageCommand,
+} from './conversation-locale.mjs';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
-const INTERACTION_RESOLVED_TEXT = '这个问题已在其他客户端处理，无需再次回答。';
-const FILE_ONLY_COMPLETION_TEXT = '任务已完成。';
 
 function cleanText(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -53,40 +59,37 @@ function canClaimInteractionReply(message, pending, senderId) {
     && Boolean(cleanText(message.content));
 }
 
-function artifactFailureText(fileName, error, descriptor) {
-  const name = String(fileName ?? '结果文件')
+/** Per-channel wording for a missing file-sending permission. */
+const ARTIFACT_PERMISSION_KEYS = Object.freeze({
+  slack: 'artifact.error.permissionSlack',
+  discord: 'artifact.error.permissionDiscord',
+  telegram: 'artifact.error.permissionTelegram',
+});
+
+const ARTIFACT_ERROR_KEYS = Object.freeze({
+  'artifact-delivery-uncertain': 'artifact.error.uncertain',
+  'artifact-too-large': 'artifact.error.tooLarge',
+  'artifact-empty': 'artifact.error.empty',
+  'artifact-invalid': 'artifact.error.unavailable',
+  'artifact-changed': 'artifact.error.unavailable',
+  'artifact-unavailable': 'artifact.error.unavailable',
+  'artifact-rate-limited': 'artifact.error.rateLimited',
+  'artifact-provider-rejected': 'artifact.error.rejected',
+});
+
+function artifactFailureText(fileName, error, descriptor, t = defaultTranslator) {
+  const fallback = t('artifact.fallbackName');
+  const name = String(fileName ?? fallback)
     .replace(/[\r\n]+/g, ' ')
     .trim()
-    .slice(0, 255) || '结果文件';
-  switch (error?.code) {
-    case 'artifact-delivery-uncertain':
-      return `结果文件「${name}」的发送结果未能确认，请先检查聊天内是否已收到，不要立即重试。`;
-    case 'artifact-permission-required':
-      if (descriptor?.key === 'slack') {
-        return `结果文件「${name}」已生成，但 Slack 应用缺少 files:write 权限。请更新 Manifest、重新安装应用并重新连接机器人后重试。`;
-      }
-      if (descriptor?.key === 'discord') {
-        return `结果文件「${name}」已生成，但机器人缺少 Discord 的 Send Messages、Attach Files 或 Read Message History 权限。`;
-      }
-      if (descriptor?.key === 'telegram') {
-        return `结果文件「${name}」已生成，但 Telegram 不允许机器人在当前聊天发送文档，请检查聊天权限。`;
-      }
-      return `结果文件「${name}」已生成，但当前机器人没有文件发送权限，请检查渠道权限。`;
-    case 'artifact-too-large':
-      return `结果文件「${name}」超过当前渠道大小上限，未发送。`;
-    case 'artifact-empty':
-      return `结果文件「${name}」为空，未发送。`;
-    case 'artifact-invalid':
-    case 'artifact-changed':
-    case 'artifact-unavailable':
-      return `结果文件「${name}」暂时无法读取或准备发送，请确认文件仍可访问后重试。`;
-    case 'artifact-rate-limited':
-      return `结果文件「${name}」暂时被当前渠道限流，未能发送，请稍后重试。`;
-    case 'artifact-provider-rejected':
-      return `结果文件「${name}」已生成，但当前渠道拒绝了该文件或文件消息。`;
-    default:
-      return `结果文件「${name}」已生成，但当前渠道暂时未能发送，请稍后重试。`;
+    .slice(0, 255) || fallback;
+  if (error?.code === 'artifact-permission-required') {
+    return t(
+      ARTIFACT_PERMISSION_KEYS[descriptor?.key] ?? 'artifact.error.permission',
+      { name },
+    );
   }
+  return t(ARTIFACT_ERROR_KEYS[error?.code] ?? 'artifact.error.generic', { name });
 }
 
 export function createTextBridgeStatus() {
@@ -110,6 +113,8 @@ export class TextHarnessBridge {
   #logger;
   #replyTimeoutMs;
   #signal;
+  #locale;
+  #translators;
   #queues = new Map();
   #pendingInteractions = new Map();
   #interactionKeys = new Map();
@@ -127,6 +132,7 @@ export class TextHarnessBridge {
     logger = console,
     replyTimeoutMs = 600_000,
     signal,
+    locale,
   }) {
     if (!descriptor?.key || !descriptor?.label) throw new TypeError('A channel descriptor is required');
     if (!bot || typeof bot.sendText !== 'function') throw new TypeError('A bot client is required');
@@ -139,6 +145,7 @@ export class TextHarnessBridge {
     this.#logger = logger;
     this.#replyTimeoutMs = replyTimeoutMs;
     this.#signal = signal;
+    this.#locale = locale;
     this.#approvals = new HarnessApprovalQueue({
       label: descriptor.key,
       logger,
@@ -147,6 +154,24 @@ export class TextHarnessBridge {
 
   get status() {
     return structuredClone(this.#status);
+  }
+
+  /**
+   * The translator for one conversation: a /lang override first, then the
+   * bot's configured locale, then the locale the channel reported for the
+   * sender.
+   */
+  #translatorFor(key, message) {
+    this.#translators ??= bridgeTranslatorFactory({
+      state: this.#state,
+      locale: this.#locale,
+    });
+    return this.#translators(key, message);
+  }
+
+  /** The translator for bot-level messages that belong to no conversation. */
+  #botTranslator() {
+    return conversationTranslator({ configured: this.#locale });
   }
 
   accept(message) {
@@ -291,6 +316,7 @@ export class TextHarnessBridge {
     this.#status.messagesReceived += 1;
     this.#status.lastMessageAt = new Date().toISOString();
     const target = message.replyTarget;
+    const t = this.#translatorFor(key, message);
     try {
       const result = await runner(
         cleanText(message.content),
@@ -303,6 +329,7 @@ export class TextHarnessBridge {
           pendingInteraction: this.#pendingInteractions.has(key)
             || this.#approvals.hasPending(key),
           control: { owner: this, key },
+          t,
         },
       );
       if (result?.stopped) {
@@ -319,7 +346,7 @@ export class TextHarnessBridge {
       if (error?.code === 'turn-stopped' || this.#signal?.aborted) return;
       this.#status.lastError = error?.message ?? String(error);
       this.#logger.error?.(`[dsh-im:${this.#descriptor.key}] failed to process a command:`, error);
-      await this.#bot.sendText(target, '消息处理失败，请稍后重试。').catch(() => undefined);
+      await this.#bot.sendText(target, t('bridge.messageFailed')).catch(() => undefined);
     }
   }
 
@@ -327,12 +354,12 @@ export class TextHarnessBridge {
     return sendRememberedConnectionTest({
       state: this.#state,
       text,
-      channelLabel: `${this.#descriptor.label}机器人`,
+      channelLabel: this.#botTranslator()('bridge.botLabel', { channel: this.#descriptor.label }),
       send: (target, message) => this.#bot.sendText(target, message),
     });
   }
 
-  async #deliverArtifacts(target, replyTo, artifacts = [], baseReceipt) {
+  async #deliverArtifacts(target, replyTo, artifacts = [], baseReceipt, t = defaultTranslator) {
     const receipts = baseReceipt ? [baseReceipt] : [];
     let userVisible = Boolean(baseReceipt);
     for (const artifact of artifacts) {
@@ -367,7 +394,7 @@ export class TextHarnessBridge {
         try {
           const notice = await this.#bot.sendText(
             target,
-            artifactFailureText(artifact?.fileName, error, this.#descriptor),
+            artifactFailureText(artifact?.fileName, error, this.#descriptor, t),
           );
           providerMessageIds = providerMessageIdsFor(notice);
           noticeSent = true;
@@ -414,6 +441,7 @@ export class TextHarnessBridge {
 
     const target = message.replyTarget;
     const text = cleanText(message.content);
+    const t = this.#translatorFor(conversationKey, message);
     let stream = null;
     try {
       this.#signal?.throwIfAborted();
@@ -424,42 +452,30 @@ export class TextHarnessBridge {
       }
       const hasImages = hasInboundImages(message);
       if (!text && !hasImages) {
-        await this.#bot.sendText(target, '目前支持文字和图片消息。');
+        await this.#bot.sendText(target, t('bridge.textAndImagesOnly'));
         return;
       }
       const command = text.toLowerCase();
       if (!hasImages && command === '/help') {
-        await this.#bot.sendText(target, [
-          `${this.#descriptor.label}机器人已连接 DeepSeek Harness。`,
-          '',
-          '直接发送文字或图片即可继续当前会话。',
-          '/new  开启一个全新会话',
-          '/compact  压缩当前会话的较早上下文',
-          '/workspace 工作区绝对路径  切换工作区',
-          '/workspacelist  列出工作区绝对路径',
-          '/sessionlist [工作区序号或绝对路径]  列出会话 ID 和标题',
-          '/session Session ID 或当前工作区序号  将当前聊天绑定到指定会话',
-          '/models  按序号列出所有可用模型',
-          '/model [序号或完整模型ID]  查看或切换当前会话模型',
-          '示例：先发 /models，再发 /model 2',
-          '/presetlist  按序号列出可用 Agent Preset',
-          '/preset [序号或完整ID]  查看或设置当前机器人 Agent Preset',
-          '纯数字 ID：/preset id:<ID>',
-          '/preset --default  跟随 Host 默认',
-          '/stop  停止当前任务',
-          '/steer 补充指令  纠偏当前任务',
-          '/status  检查连接状态',
-          '/help  显示本帮助',
-        ].join('\n'));
+        await this.#bot.sendText(target, helpText(t, { channelLabel: this.#descriptor.label }));
         return;
       }
       if (!hasImages && command === '/status') {
         await this.#harness.ensureRunning({ signal: this.#signal });
-        await this.#bot.sendText(target, `${this.#descriptor.label}机器人与 DeepSeek Harness 连接正常。`);
+        await this.#bot.sendText(target, t('bridge.statusOk', { channel: this.#descriptor.label }));
+        return;
+      }
+      if (!hasImages && isLanguageCommand(text)) {
+        const language = await runLanguageCommand(text, this.#state, conversationKey, {
+          t,
+          configured: this.#locale,
+          hint: message?.locale,
+        });
+        await this.#bot.sendText(target, language.message);
         return;
       }
       const workspaceCommand = !hasImages
-        ? await runWorkspaceCommand(text, this.#harness, conversationKey)
+        ? await runWorkspaceCommand(text, this.#harness, conversationKey, { t })
         : null;
       if (workspaceCommand) {
         for (const reply of workspaceCommand.messages ?? [workspaceCommand.message]) {
@@ -469,7 +485,7 @@ export class TextHarnessBridge {
       }
       if (!hasImages && command === '/new') {
         await this.#state.clearSession(conversationKey);
-        await this.#bot.sendText(target, '已开启新会话。请发送你的问题。');
+        await this.#bot.sendText(target, t('bridge.newSession'));
         return;
       }
       const compactCommand = !hasImages
@@ -478,7 +494,7 @@ export class TextHarnessBridge {
             this.#harness,
             this.#state,
             conversationKey,
-            { signal: this.#signal },
+            { signal: this.#signal, t },
           )
         : null;
       if (compactCommand) {
@@ -501,7 +517,7 @@ export class TextHarnessBridge {
         }
       }
       const content = hasImages
-        ? await promptContentForMessage(message, { signal: this.#signal })
+        ? await promptContentForMessage(message, { signal: this.#signal, t })
         : undefined;
       const { answer, artifacts = [] } = await askInWorkspaceSession({
         harness: this.#harness,
@@ -517,7 +533,7 @@ export class TextHarnessBridge {
           control: { owner: this, key: conversationKey },
           onUpdate: stream ? async (update) => {
             const progress = update.type === 'text' ? update.text
-              : update.type === 'tool' ? `正在使用${update.name}…` : update.text;
+              : update.type === 'tool' ? t('bridge.usingTool', { name: update.name }) : update.text;
             if (progress) await stream.update(progress);
           } : undefined,
           onInteraction: (interaction) => this.#handleInteraction(interaction, {
@@ -525,12 +541,13 @@ export class TextHarnessBridge {
             actor: senderId,
             target,
             requiresMention: message.kind === 'group',
+            t,
           }),
           onInteractionResolved: (resolution) => this.#handleInteractionResolved(resolution),
         },
       });
       const visibleAnswer = !cleanText(answer) && artifacts.length > 0
-        ? FILE_ONLY_COMPLETION_TEXT
+        ? t('bridge.taskComplete')
         : answer;
       let textDeliveryError = null;
       let textReceipt = null;
@@ -568,7 +585,7 @@ export class TextHarnessBridge {
       }
       // A failed final text must not discard an already registered result file.
       // Settle the independent attachment path before surfacing the text error.
-      const delivery = await this.#deliverArtifacts(target, messageId, artifacts, textReceipt);
+      const delivery = await this.#deliverArtifacts(target, messageId, artifacts, textReceipt, t);
       if (textDeliveryError && !delivery.userVisible) throw textDeliveryError;
       this.#status.messagesReplied += 1;
       this.#status.lastReplyAt = new Date().toISOString();
@@ -578,7 +595,7 @@ export class TextHarnessBridge {
       if (error?.code === 'turn-stopped') {
         if (stream) {
           try {
-            await stream.finish('已停止。');
+            await stream.finish(t('bridge.stopped'));
           } catch {
             stream.cancel?.();
           }
@@ -588,7 +605,7 @@ export class TextHarnessBridge {
       stream?.cancel?.();
       if (this.#signal?.aborted) return;
       this.#status.lastError = error?.message ?? String(error);
-      const imageErrorMessage = imagePromptUserMessage(error);
+      const imageErrorMessage = imagePromptUserMessage(error, t);
       if (imageErrorMessage) {
         try {
           await this.#bot.sendText(target, imageErrorMessage);
@@ -602,7 +619,7 @@ export class TextHarnessBridge {
       }
       this.#logger.error?.(`[dsh-im:${this.#descriptor.key}] failed to process a message:`, error);
       try {
-        await this.#bot.sendText(target, '消息处理失败，请稍后重试。');
+        await this.#bot.sendText(target, t('bridge.messageFailed'));
       } catch (sendError) {
         this.#logger.error?.(
           `[dsh-im:${this.#descriptor.key}] failed to send the safe error reply:`,
@@ -623,7 +640,7 @@ export class TextHarnessBridge {
     const claimed = expected.claimedReplyMessageId === messageId;
     if (!current || current !== expected || current.submitting) {
       if (claimed && (!current || current !== expected)) {
-        return this.#discardResolvedInteractionReply(message, messageId);
+        return this.#discardResolvedInteractionReply(message, messageId, { key });
       }
       return this.#enqueueMessage(message, messageId, senderId, key, {
         releaseMessageId: false,
@@ -642,9 +659,10 @@ export class TextHarnessBridge {
 
     const target = message.replyTarget;
     const text = cleanText(message.content);
+    const t = this.#translatorFor(key, message);
     if (!text || hasInboundImages(message)) {
       try {
-        await this.#bot.sendText(target, '请用文字回答当前问题。');
+        await this.#bot.sendText(target, t('bridge.answerWithText'));
       } catch (error) {
         this.#logger.error?.(
           `[dsh-im:${this.#descriptor.key}] failed to reject a non-text interaction reply:`,
@@ -659,6 +677,7 @@ export class TextHarnessBridge {
       if (claimed && (!pending || pending !== expected)) {
         return this.#discardResolvedInteractionReply(message, messageId, {
           alreadyRecorded: true,
+          key,
         });
       }
       return this.#enqueueMessage(message, messageId, senderId, key, {
@@ -672,7 +691,7 @@ export class TextHarnessBridge {
       try {
         await this.#presentInteraction(pending);
       } catch (error) {
-        this.#status.lastError = `${this.#descriptor.label}交互问题发送失败。`;
+        this.#status.lastError = t('bridge.error.interactionSendFailed', { channel: this.#descriptor.label });
         this.#logger.error?.(
           `[dsh-im:${this.#descriptor.key}] failed to retry an interaction question:`,
           error,
@@ -700,7 +719,7 @@ export class TextHarnessBridge {
 
     const question = pending.questions[pending.index];
     if (!question) return;
-    pending.answers.push(harnessAnswerForQuestion(question, text));
+    pending.answers.push(harnessAnswerForQuestion(question, text, { t }));
     pending.index += 1;
     if (pending.index < pending.questions.length) {
       if (pending.claimedReplyMessageId === messageId) {
@@ -710,7 +729,7 @@ export class TextHarnessBridge {
       try {
         await this.#presentInteraction(pending);
       } catch (error) {
-        this.#status.lastError = `${this.#descriptor.label}交互问题发送失败。`;
+        this.#status.lastError = t('bridge.error.interactionSendFailed', { channel: this.#descriptor.label });
         this.#logger.error?.(
           `[dsh-im:${this.#descriptor.key}] failed to send the next interaction question:`,
           error,
@@ -736,7 +755,7 @@ export class TextHarnessBridge {
         this.#clearPendingInteraction(key, pending.interactionId);
         if (this.#signal?.aborted) return;
         try {
-          await this.#bot.sendText(target, INTERACTION_RESOLVED_TEXT);
+          await this.#bot.sendText(target, t('bridge.interactionResolved'));
         } catch (sendError) {
           this.#logger.error?.(
             `[dsh-im:${this.#descriptor.key}] failed to send an expired interaction notice:`,
@@ -749,13 +768,13 @@ export class TextHarnessBridge {
       pending.submitting = false;
       pending.answers.pop();
       pending.index -= 1;
-      this.#status.lastError = '回答提交失败。';
+      this.#status.lastError = t('bridge.error.answerSubmitFailed');
       this.#logger.error?.(
         `[dsh-im:${this.#descriptor.key}] failed to answer a Harness interaction:`,
         error,
       );
       try {
-        await this.#bot.sendText(target, '回答提交失败，请重新发送当前问题的答案。');
+        await this.#bot.sendText(target, t('bridge.answerSubmitRetry'));
       } catch (sendError) {
         this.#logger.error?.(
           `[dsh-im:${this.#descriptor.key}] failed to send an interaction retry notice:`,
@@ -770,6 +789,7 @@ export class TextHarnessBridge {
     actor,
     target,
     requiresMention,
+    t = defaultTranslator,
   }) {
     if (interaction?.kind === 'approval') {
       return this.#approvals.handleRequested(interaction, {
@@ -777,6 +797,7 @@ export class TextHarnessBridge {
         actor,
         requiresMention,
         send: (text) => this.#bot.sendText(target, text),
+        t,
       });
     }
     if (interaction?.kind !== 'question') return;
@@ -800,10 +821,7 @@ export class TextHarnessBridge {
         `${this.#descriptor.label} safely cancelled an interaction left by an earlier client.`,
       );
       try {
-        await this.#bot.sendText(
-          target,
-          '检测到这个 Session 中遗留的待回答问题，已安全取消并继续处理你刚才的消息。',
-        );
+        await this.#bot.sendText(target, t('bridge.recoveredInteractionCancelled'));
       } catch (error) {
         this.#logger.error?.(
           `[dsh-im:${this.#descriptor.key}] failed to send an interaction recovery notice:`,
@@ -895,6 +913,7 @@ export class TextHarnessBridge {
 
   async #discardResolvedInteractionReply(message, messageId, {
     alreadyRecorded = false,
+    key,
   } = {}) {
     if (!alreadyRecorded) {
       if (this.#state.hasSeen(messageId)) return;
@@ -903,7 +922,8 @@ export class TextHarnessBridge {
       this.#status.lastMessageAt = new Date().toISOString();
     }
     try {
-      await this.#bot.sendText(message.replyTarget, INTERACTION_RESOLVED_TEXT);
+      const t = this.#translatorFor(key, message);
+      await this.#bot.sendText(message.replyTarget, t('bridge.interactionResolved'));
     } catch (error) {
       this.#logger.error?.(
         `[dsh-im:${this.#descriptor.key}] failed to send an expired interaction notice:`,

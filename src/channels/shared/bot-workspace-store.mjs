@@ -73,7 +73,7 @@ function normalizeDocument(value) {
 
 export async function validateWorkspacePath(value) {
   if (typeof value !== 'string' || !value.trim() || !isAbsolute(value.trim())) {
-    const error = new Error('工作区必须是绝对路径。');
+    const error = new Error('Workspace must be an absolute path');
     error.code = 'workspace-not-absolute';
     throw error;
   }
@@ -82,12 +82,12 @@ export async function validateWorkspacePath(value) {
   try {
     info = await stat(workspace);
   } catch (cause) {
-    const error = new Error('工作区路径不存在。', { cause });
+    const error = new Error('Workspace path does not exist', { cause });
     error.code = 'workspace-not-found';
     throw error;
   }
   if (!info.isDirectory()) {
-    const error = new Error('工作区路径必须指向一个目录。');
+    const error = new Error('Workspace path must point to a directory');
     error.code = 'workspace-not-directory';
     throw error;
   }
@@ -207,7 +207,7 @@ export class BotWorkspaceStore {
     const id = botIdOf(botId);
     if (!this.has(id)
       || (incarnation !== undefined && incarnation !== this.incarnationFor(id))) {
-      const error = new Error('找不到要修改的机器人。');
+      const error = new Error('The bot being modified no longer exists');
       error.code = 'workspace-bot-not-found';
       throw error;
     }
@@ -215,7 +215,7 @@ export class BotWorkspaceStore {
     return this.#enqueue(id, async () => {
       if (!this.has(id)
         || (incarnation !== undefined && incarnation !== this.incarnationFor(id))) {
-        const error = new Error('找不到要修改的机器人。');
+        const error = new Error('The bot being modified no longer exists');
         error.code = 'workspace-bot-not-found';
         throw error;
       }
@@ -243,7 +243,7 @@ export class BotWorkspaceStore {
     const id = botIdOf(botId);
     if (!this.has(id)
       || (incarnation !== undefined && incarnation !== this.incarnationFor(id))) {
-      const error = new Error('找不到要修改的机器人。');
+      const error = new Error('The bot being modified no longer exists');
       error.code = 'workspace-bot-not-found';
       throw error;
     }
@@ -251,7 +251,7 @@ export class BotWorkspaceStore {
     return this.#enqueue(id, async () => {
       if (!this.has(id)
         || (incarnation !== undefined && incarnation !== this.incarnationFor(id))) {
-        const error = new Error('找不到要修改的机器人。');
+        const error = new Error('The bot being modified no longer exists');
         error.code = 'workspace-bot-not-found';
         throw error;
       }
@@ -288,7 +288,7 @@ export class BotWorkspaceStore {
     }
     if (!this.has(id)
       || (incarnation !== undefined && incarnation !== this.incarnationFor(id))) {
-      const error = new Error('找不到要修改的机器人。');
+      const error = new Error('The bot being modified no longer exists');
       error.code = 'workspace-bot-not-found';
       throw error;
     }
@@ -296,7 +296,7 @@ export class BotWorkspaceStore {
     return this.#enqueue(id, async () => {
       if (!this.has(id)
         || (incarnation !== undefined && incarnation !== this.incarnationFor(id))) {
-        const error = new Error('找不到要修改的机器人。');
+        const error = new Error('The bot being modified no longer exists');
         error.code = 'workspace-bot-not-found';
         throw error;
       }
@@ -536,14 +536,14 @@ function resolveAgentPresetCatalog(catalog) {
 }
 
 function unavailableAgentPreset() {
-  const error = new Error('Agent Preset 不存在或不可用。');
+  const error = new Error('Agent preset does not exist or is unavailable');
   error.code = 'agent-preset-unavailable';
   return error;
 }
 
 function assertCurrentBotScope(isCurrentScope) {
   if (isCurrentScope()) return;
-  const error = new Error('找不到要修改的机器人。');
+  const error = new Error('The bot being modified no longer exists');
   error.code = 'workspace-bot-not-found';
   throw error;
 }
@@ -664,7 +664,7 @@ export function createBotWorkspaceScope(
       if (property === 'currentWorkspace') {
         return () => {
           if (!isCurrentScope()) {
-            const error = new Error('找不到要修改的机器人。');
+            const error = new Error('The bot being modified no longer exists');
             error.code = 'workspace-bot-not-found';
             throw error;
           }
@@ -674,7 +674,7 @@ export function createBotWorkspaceScope(
       if (property === 'assertWorkspaceScope') {
         return () => {
           if (!isCurrentScope()) {
-            const error = new Error('找不到要修改的机器人。');
+            const error = new Error('The bot being modified no longer exists');
             error.code = 'workspace-bot-not-found';
             throw error;
           }
@@ -686,13 +686,13 @@ export function createBotWorkspaceScope(
         && typeof target[property] === 'function') {
         return async (...args) => {
           if (!isCurrentScope()) {
-            const error = new Error('找不到要修改的机器人。');
+            const error = new Error('The bot being modified no longer exists');
             error.code = 'workspace-bot-not-found';
             throw error;
           }
           const result = await target[property](...args);
           if (!isCurrentScope()) {
-            const error = new Error('找不到要修改的机器人。');
+            const error = new Error('The bot being modified no longer exists');
             error.code = 'workspace-bot-not-found';
             throw error;
           }
@@ -702,7 +702,7 @@ export function createBotWorkspaceScope(
       if (property === 'switchWorkspace') {
         return (workspace) => {
           if (!isCurrentScope()) {
-            const error = new Error('找不到要修改的机器人。');
+            const error = new Error('The bot being modified no longer exists');
             error.code = 'workspace-bot-not-found';
             return Promise.reject(error);
           }
@@ -719,7 +719,7 @@ export function createBotWorkspaceScope(
             throw new TypeError('conversationKey and sessionId are required');
           }
           if (!isCurrentScope()) {
-            const error = new Error('找不到要修改的机器人。');
+            const error = new Error('The bot being modified no longer exists');
             error.code = 'workspace-bot-not-found';
             throw error;
           }
@@ -729,7 +729,7 @@ export function createBotWorkspaceScope(
           const expectedGeneration = workspaces.generationFor(botId);
           const adopted = await target.adoptWorkspaceSession(sessionId);
           if (!isCurrentScope()) {
-            const error = new Error('找不到要修改的机器人。');
+            const error = new Error('The bot being modified no longer exists');
             error.code = 'workspace-bot-not-found';
             throw error;
           }
@@ -751,7 +751,7 @@ export function createBotWorkspaceScope(
             expectedGeneration,
           });
           if (!isCurrentScope()) {
-            const error = new Error('找不到要修改的机器人。');
+            const error = new Error('The bot being modified no longer exists');
             error.code = 'workspace-bot-not-found';
             throw error;
           }
@@ -772,7 +772,7 @@ export function createBotWorkspaceScope(
         return async (options = {}) => {
           await workspaces.whenBotIdle(botId);
           if (!isCurrentScope()) {
-            const error = new Error('找不到要修改的机器人。');
+            const error = new Error('The bot being modified no longer exists');
             error.code = 'workspace-bot-not-found';
             throw error;
           }
@@ -958,7 +958,7 @@ export function createWorkspaceAwareController(controller, { workspaces, stateFo
     return withBotTransition(botId, async () => {
       const snapshot = await controller.status();
       if (!snapshot?.bots?.some((bot) => bot?.botId === botId)) {
-        const error = new Error('找不到要修改的机器人。');
+        const error = new Error('The bot being modified no longer exists');
         error.code = 'workspace-bot-not-found';
         throw error;
       }
@@ -976,7 +976,7 @@ export function createWorkspaceAwareController(controller, { workspaces, stateFo
     return withBotTransition(botId, async () => {
       const snapshot = await controller.status();
       if (!snapshot?.bots?.some((bot) => bot?.botId === botId)) {
-        const error = new Error('找不到要修改的机器人。');
+        const error = new Error('The bot being modified no longer exists');
         error.code = 'workspace-bot-not-found';
         throw error;
       }

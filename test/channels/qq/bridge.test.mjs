@@ -11,7 +11,7 @@ import {
   OutboundArtifactRegistry,
   createOutboundArtifactTool,
 } from '../../../src/channels/shared/semantic/artifact.mjs';
-import { defaultTranslator as t } from '../../../src/i18n/index.mjs';
+import { defaultTranslator as tr } from '../../../src/i18n/index.mjs';
 
 function deferred() {
   let resolve;
@@ -136,7 +136,7 @@ test('QQ sends image-only attachments to Harness and accepts the SDK file MIME f
   assert.equal(prompts.length, 1);
   assert.equal(prompts[0].sessionId, 'session-image');
   assert.deepEqual(prompts[0].content.map(({ type }) => type), ['text', 'image']);
-  assert.equal(prompts[0].content[0].text, t('image.defaultPrompt'));
+  assert.equal(prompts[0].content[0].text, tr('image.defaultPrompt'));
   assert.equal(prompts[0].content[1].mediaType, 'image/png');
   assert.equal(prompts[0].content[1].name, 'diagram.PNG');
   assert.equal(Buffer.from(prompts[0].content[1].data, 'base64').equals(PNG_BYTES), true);
@@ -210,7 +210,7 @@ test('QQ rejects non-platform image URLs without fetching and returns a retryabl
   }));
 
   assert.equal(downloads, 0);
-  assert.deepEqual(sent, [t('image.error.downloadFailed')]);
+  assert.deepEqual(sent, [tr('image.error.downloadFailed')]);
   assert.equal(fixture.seen.has('qq-image-untrusted'), true);
 });
 
@@ -265,7 +265,7 @@ test('QQ does not use an image caption as a pending Harness answer', async () =>
   }));
   assert.equal(downloads, 0);
   assert.equal(submitted, undefined);
-  assert.equal(sent.at(-1), '请用文字回答当前问题。');
+  assert.equal(sent.at(-1), tr('bridge.answerWithText'));
 
   await bridge.accept(message({ messageId: 'qq-question-text-answer', content: '生产环境' }));
   await first;
@@ -295,7 +295,7 @@ test('QQ executes /compact for the bound Session without prompting the model', a
   await bridge.accept(message({ messageId: 'compact-qq', content: '/compact' }));
 
   assert.deepEqual(executed, [{ sessionId: 'session-compact', line: '/compact' }]);
-  assert.deepEqual(sent, ['已压缩 3 条历史记录（约 900 个 token）。']);
+  assert.deepEqual(sent, [tr('compact.result.compacted', { items: 3, tokens: '900' })]);
   assert.equal(fixture.seen.has('compact-qq'), true);
 });
 
@@ -353,7 +353,7 @@ test('QQ lists models and presets without prompting and advertises fast commands
   assert.equal(fixture.sessions.size, 0);
 
   await bridge.accept(message({ messageId: 'preset-current-qq', content: '/preset' }));
-  assert.match(sent.at(-1), /跟随 Host 默认/);
+  assert.ok(sent.at(-1).includes(tr('preset.followsHostDefault')));
   assert.equal(asks, 0);
   assert.equal(creates, 0);
 
@@ -367,7 +367,7 @@ test('QQ lists models and presets without prompting and advertises fast commands
   await bridge.accept(message({ messageId: 'preset-default-qq', content: '/preset --default' }));
   assert.deepEqual(presetUpdates, ['preset-002', null]);
   assert.equal(sent.length, defaultReplyStart + 1);
-  assert.match(sent.at(-1), /跟随 Host 默认/);
+  assert.ok(sent.at(-1).includes(tr('preset.followsHostDefault')));
   assert.equal(asks, 0);
   assert.equal(creates, 0);
   assert.equal(fixture.sessions.size, 0);
@@ -490,9 +490,9 @@ test('QQ closes an opened progress stream and announces when the Harness turn is
 
   await bridge.accept(message({ messageId: 'qq-stopped-stream' }));
 
-  assert.deepEqual(frames, ['正在使用bash…']);
+  assert.deepEqual(frames, [tr('bridge.usingTool', { name: 'bash' })]);
   assert.equal(cancellations, 1);
-  assert.deepEqual(sent, ['已停止。']);
+  assert.deepEqual(sent, [tr('bridge.stopped')]);
   assert.equal(loggedErrors, 0);
   assert.equal(fixture.seen.has('qq-stopped-stream'), true);
 });
@@ -649,7 +649,7 @@ test('QQ group questions require the initiating actor to mention the bot and pre
   }));
   await eventually(() => sent.some(({ text }) => text.includes('选择回答语言')));
   assert.equal(sent.find(({ text }) => text.includes('选择回答语言')).text
-    .includes('群聊中请 @机器人 后发送答案。'), true);
+    .includes(tr('question.mentionHint')), true);
 
   let submittedResult;
   submitted.promise.then((result) => { submittedResult = result; });
@@ -851,7 +851,7 @@ test('QQ presents concurrent approvals in FIFO order without a code and consumes
   await eventually(() => sent.some(({ text }) => text.includes('允许执行第一步')));
   assert.equal(sent.some(({ text }) => text.includes('允许执行第二步')), false);
   assert.match(sent.find(({ text }) => text.includes('允许执行第一步')).text, /bash/);
-  assert.match(sent.find(({ text }) => text.includes('允许执行第一步')).text, /批准.*拒绝/s);
+  assert.ok(sent.find(({ text }) => text.includes('允许执行第一步')).text.includes(tr('approval.prompt')));
   assert.doesNotMatch(sent.find(({ text }) => text.includes('允许执行第一步')).text, /qq-approval-one/);
 
   await bridge.accept(message({
@@ -996,7 +996,9 @@ test('QQ deduplicates question replays, cancels orphan questions, and keeps appr
       outcome: 'rejected',
     },
   });
-  assert.equal(sent.some(({ text }) => text.includes('approval')), false);
+  // The approval must stay unpresented, and its id must never leak.
+  assert.equal(sent.some(({ text }) => text.includes('qq-approval')), false);
+  assert.equal(sent.some(({ text }) => text.includes(tr('approval.header'))), false);
   assert.deepEqual(orphanResponse, {
     ok: false,
     error: {
@@ -1006,7 +1008,7 @@ test('QQ deduplicates question replays, cancels orphan questions, and keeps appr
     },
   });
   assert.equal(sent.some(({ text }) => text.includes('旧会话中的敏感问题内容')), false);
-  assert.equal(sent.some(({ text }) => text.includes('遗留的待回答问题')), true);
+  assert.equal(sent.some(({ text }) => text.includes(tr('bridge.recoveredInteractionCancelled'))), true);
   assert.equal(sent.at(-1).text, '交互恢复完成');
 });
 
@@ -1075,7 +1077,7 @@ test('QQ keeps a queued prompt separate while a failed interaction answer is ret
   })).finally(() => { nextSettled = true; });
   releaseFirstSubmit.resolve();
   await firstAnswer;
-  await eventually(() => sent.some(({ text }) => text.includes('回答提交失败')));
+  await eventually(() => sent.some(({ text }) => text.includes(tr('bridge.answerSubmitRetry'))));
   assert.equal(nextSettled, false);
   assert.deepEqual(asked, ['启动可重试交互']);
 
@@ -1166,7 +1168,7 @@ test('QQ discards an already-claimed answer when the interaction resolves elsewh
   await Promise.all([answer, first, later]);
   assert.deepEqual(asked, ['启动外部解决竞态', '后来的普通问题']);
   assert.equal(asked.includes('原本的问题答案'), false);
-  assert.equal(sent.some(({ text }) => text.includes('已在其他客户端处理')), true);
+  assert.equal(sent.some(({ text }) => text.includes(tr('bridge.interactionResolved'))), true);
 });
 
 test('QQ keeps an answer that arrives after the first question is delivered but before its send ACK', async () => {
@@ -1318,7 +1320,7 @@ test('QQ tombstones a q2 answer accepted before its send ACK when the interactio
 
   assert.deepEqual(asked, ['启动 q2 resolved 窗口']);
   assert.equal(fixture.seen.has('q2-resolved-second'), true);
-  assert.equal(sent.some(({ text }) => text.includes('已在其他客户端处理')), true);
+  assert.equal(sent.some(({ text }) => text.includes(tr('bridge.interactionResolved'))), true);
 });
 
 test('QQ reports resolved when an in-flight response becomes not-pending', async () => {
@@ -1385,7 +1387,7 @@ test('QQ reports resolved when an in-flight response becomes not-pending', async
 
   assert.equal(sent.some(({ text, target }) => (
     target.msgId === 'respond-resolved-answer'
-      && text.includes('已在其他客户端处理')
+      && text.includes(tr('bridge.interactionResolved'))
   )), true);
 });
 
@@ -1524,7 +1526,7 @@ test('QQ sends registered files after text with the native SDK and continues aft
   assert.equal(typeof files[0].options.onProgress, 'function');
   assert.equal(files[1].source.buffer.toString(), '<h1>second</h1>');
   assert.equal(files[1].options.fileName, 'second.html');
-  assert.match(sentTexts[1].text, /first\.txt.*上传额度/);
+  assert.equal(sentTexts[1].text, tr('artifact.qq.quotaExhausted', { name: 'first.txt' }));
   assert.doesNotMatch(sentTexts[1].text, /private quota detail/);
   assert.equal(status.artifactsSent, 1);
   assert.equal(status.artifactSendErrors, 1);
@@ -1597,7 +1599,7 @@ test('QQ returns the authoritative receipt and sends one safe notice when text a
 
   assert.equal(attemptedTexts.length, 2, 'must not append a generic error after the safe notice');
   assert.equal(visibleTexts.length, 1);
-  assert.match(visibleTexts[0], /暂时无法读取或准备发送.*仍可访问/);
+  assert.ok(visibleTexts[0].includes(tr('artifact.error.unavailable', { name: 'mismatch.txt' })));
   assert.deepEqual(receipt, {
     schemaVersion: 1,
     deliveryId: 'qq-all-fail',
@@ -1642,7 +1644,7 @@ test('QQ keeps the generic error when neither the answer nor the file failure no
   await bridge.accept(message({ messageId: 'qq-no-visible-failure' }));
 
   assert.equal(attemptedTexts.length, 3);
-  assert.equal(attemptedTexts.at(-1), '消息处理失败，请稍后重试。');
+  assert.equal(attemptedTexts.at(-1), tr('bridge.messageFailed'));
 });
 
 test('QQ reports an unacknowledged native file send as uncertain instead of inviting a blind retry', async (t) => {
@@ -1668,7 +1670,7 @@ test('QQ reports an unacknowledged native file send as uncertain instead of invi
 
   await bridge.accept(message({ messageId: 'qq-uncertain-file' }));
 
-  assert.match(texts[1], /发送结果未能确认.*先检查聊天内是否已收到.*不要立即重试/);
+  assert.equal(texts[1], tr('artifact.error.uncertain', { name: 'uncertain.txt' }));
 });
 
 test('QQ runtime cancellation interrupts an in-flight file send and skips later files and notices', async (t) => {
@@ -1710,8 +1712,8 @@ test('QQ runtime cancellation interrupts an in-flight file send and skips later 
   ]);
 
   assert.deepEqual(files, ['first.txt']);
-  assert.equal(texts.some((text) => text.includes('发送结果未能确认')), false);
-  assert.equal(texts.some((text) => text === '消息处理失败，请稍后重试。'), false);
+  assert.equal(texts.some((text) => text.includes(tr('artifact.error.uncertain', { name: 'x' }).slice(0, 30))), false);
+  assert.equal(texts.some((text) => text === tr('bridge.messageFailed')), false);
 });
 
 test('QQ uses a neutral final text for a file-only Turn', async (t) => {
@@ -1739,7 +1741,7 @@ test('QQ uses a neutral final text for a file-only Turn', async (t) => {
 
   await bridge.accept(message({ messageId: 'qq-file-only' }));
 
-  assert.deepEqual(texts, ['结果文件已生成。']);
+  assert.deepEqual(texts, [tr('artifact.generated')]);
   assert.deepEqual(files, [{ bytes: Buffer.from('only bytes'), fileName: 'only.txt' }]);
 });
 

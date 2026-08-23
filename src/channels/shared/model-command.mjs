@@ -1,11 +1,11 @@
 import { splitWorkspaceCommandMessage } from './workspace-command.mjs';
 import { WORKSPACE_SESSION_STALE } from './workspace-session.mjs';
 import { withSessionBindingLock } from './session-binding-lock.mjs';
+import { defaultTranslator } from '../../i18n/index.mjs';
 
 const MODEL_COMMAND = /^\/model(?=$|\s)/i;
 const MODELS_COMMAND = /^\/models(?=$|\s)/i;
-const MODEL_USAGE = '用法：/model <序号> 或 /model <provider>/<model>';
-const MODELS_USAGE = '用法：/models（不带参数）';
+
 const SESSION_BINDING_CHANGED = 'session-binding-changed';
 const UNSAFE_DISPLAY_TEXT_GLOBAL = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]+/gu;
 
@@ -107,55 +107,55 @@ function modelNumberRequest(requested) {
   return { index: Number.isSafeInteger(index) && index > 0 ? index : null };
 }
 
-function invalidModelNumberMessage(requested) {
+function invalidModelNumberMessage(requested, t) {
   return [
-    `模型序号无效：${safeDisplayText(requested)}`,
+    t('model.invalidIndex', { requested: safeDisplayText(requested) }),
     '',
-    '请发送 /models 查看并输入有效的正整数序号。',
+    t('model.invalidIndexHint'),
   ].join('\n');
 }
 
-function formatCatalog(catalog) {
+function formatCatalog(catalog, t) {
   const currentId = catalog.current
     ? modelId(catalog.current.provider, catalog.current.model)
     : null;
-  const lines = ['可用模型：'];
+  const lines = [t('model.available')];
   let index = 0;
-  if (catalog.groups.length === 0) lines.push('', '当前没有可用模型。');
+  if (catalog.groups.length === 0) lines.push('', t('model.noneAvailable'));
   for (const group of catalog.groups) {
     lines.push('', safeDisplayText(group.name) || safeDisplayText(group.id));
     for (const model of group.models) {
       index += 1;
       const id = modelId(group.id, model.id);
-      lines.push(`${index}. ${safeDisplayText(id)}${id === currentId ? '（当前）' : ''}`);
+      lines.push(`${index}. ${safeDisplayText(id)}${id === currentId ? t('model.currentMarker') : ''}`);
     }
   }
   if (catalog.failures.length > 0) {
-    lines.push('', '以下模型提供方暂时不可用：');
+    lines.push('', t('model.unavailableProviders'));
     for (const failure of catalog.failures) {
       lines.push(`- ${safeDisplayText(failure.name) || safeDisplayText(failure.id)}`);
     }
   }
-  if (index > 0) lines.push('', '切换模型：/model <序号>');
+  if (index > 0) lines.push('', t('model.switchHint'));
   return lines.join('\n');
 }
 
-function currentModelMessage(current) {
+function currentModelMessage(current, t) {
   return [
-    '当前模型：',
+    t('model.currentHeader'),
     modelId(current.provider, current.model),
     '',
-    '查看全部模型：/models',
-    '切换模型：/model <序号>',
+    t('model.listHint'),
+    t('model.switchHint'),
   ].join('\n');
 }
 
-function noSessionMessage() {
+function noSessionMessage(t) {
   return [
-    '当前聊天还没有会话。',
+    t('model.noSessionYet'),
     '',
-    '查看模型：/models',
-    '选择模型：/model <序号>',
+    t('model.viewHint'),
+    t('model.chooseHint'),
   ].join('\n');
 }
 
@@ -163,29 +163,19 @@ function errorCode(error) {
   return error?.code ?? error?.failure?.code;
 }
 
-function modelErrorMessage(error, action) {
+function modelErrorMessage(error, action, t) {
   const code = errorCode(error);
-  if (code === 'agent-busy') {
-    return '当前任务正在运行，请等待完成或先发送 /stop。';
-  }
-  if (code === 'session-not-found') {
-    return '当前聊天绑定的会话已不存在，请重试。';
-  }
-  if (code === 'model-unavailable') {
-    return '无法切换到该模型。模型当前不可用，或不支持当前会话中的图片。';
-  }
+  if (code === 'agent-busy') return t('model.error.turnRunning');
+  if (code === 'session-not-found') return t('model.error.sessionMissing');
+  if (code === 'model-unavailable') return t('model.error.unavailable');
   if (code === WORKSPACE_SESSION_STALE || code === 'workspace-bot-not-found') {
-    return '工作区或机器人状态已发生变化，请重试。';
+    return t('model.error.stale');
   }
-  if (code === SESSION_BINDING_CHANGED) {
-    return '当前聊天绑定的会话已发生变化，请重试。';
-  }
+  if (code === SESSION_BINDING_CHANGED) return t('model.error.sessionChanged');
   if (code === 'cancelled' || error?.name === 'AbortError') {
-    return action === 'list' ? '获取模型列表已取消。' : '模型切换已取消。';
+    return t(action === 'list' ? 'model.error.listCancelled' : 'model.error.switchCancelled');
   }
-  return action === 'list'
-    ? '暂时无法获取模型列表，请稍后重试。'
-    : '模型切换失败，请稍后重试。';
+  return t(action === 'list' ? 'model.error.listFailed' : 'model.error.switchFailed');
 }
 
 async function boundSession(harness, state, key, options) {
@@ -241,59 +231,56 @@ export function isModelCommand(text) {
 
 export async function runModelCommand(text, harness, state, key, options = {}) {
   if (!isModelCommand(text)) return null;
+  const t = options.t ?? defaultTranslator;
   const command = text.trim();
   if (options.hasImages) {
-    return commandResult('模型命令仅支持纯文字，请移除图片后重试。');
+    return commandResult(t('model.textOnly'));
   }
   const requestOptions = rpcOptions(options.signal);
 
   if (isModelsCommand(command)) {
-    if (!/^\/models[ \t]*$/iu.test(command)) return commandResult(MODELS_USAGE);
+    if (!/^\/models[ \t]*$/iu.test(command)) return commandResult(t('model.usageList'));
     try {
       const bound = await boundSession(harness, state, key, requestOptions);
       const catalog = bound
         ? await sessionCatalog(bound.session, requestOptions)
         : await listCatalog(harness, requestOptions);
-      return commandResult(formatCatalog(catalog));
+      return commandResult(formatCatalog(catalog, t));
     } catch (error) {
-      return commandResult(modelErrorMessage(error, 'list'));
+      return commandResult(modelErrorMessage(error, 'list', t));
     }
   }
 
   const match = /^\/model(?:[ \t]+([^\s]+))?[ \t]*$/iu.exec(command);
-  if (!match) return commandResult(MODEL_USAGE);
+  if (!match) return commandResult(t('model.usage'));
   const requested = match[1];
   if (!requested) {
     try {
       const bound = await boundSession(harness, state, key, requestOptions);
-      if (!bound) return commandResult(noSessionMessage());
+      if (!bound) return commandResult(noSessionMessage(t));
       const catalog = await sessionCatalog(bound.session, requestOptions);
-      return commandResult(currentModelMessage(catalog.current));
+      return commandResult(currentModelMessage(catalog.current, t));
     } catch (error) {
-      return commandResult(modelErrorMessage(error, 'select'));
+      return commandResult(modelErrorMessage(error, 'select', t));
     }
   }
   const numberRequest = modelNumberRequest(requested);
   if (numberRequest?.index === null) {
-    return commandResult(invalidModelNumberMessage(requested));
+    return commandResult(invalidModelNumberMessage(requested, t));
   }
   if (!numberRequest
     && (!requested.includes('/') || requested.startsWith('/') || requested.endsWith('/'))) {
-    return commandResult(MODEL_USAGE);
+    return commandResult(t('model.usage'));
   }
   if (options.pendingInteraction) {
-    return commandResult([
-      '当前任务正在等待你的回答或审批。',
-      '',
-      '请先处理当前请求，或者发送 /stop 停止任务。',
-    ].join('\n'));
+    return commandResult(t('model.awaitingInteraction'));
   }
 
   try {
     return await withSessionBindingLock(state, key, async () => {
       const bound = await boundSession(harness, state, key, requestOptions);
       if (bound && await sessionIsBusy(bound.session, options.control, requestOptions)) {
-        return commandResult('当前任务正在运行，请等待完成或先发送 /stop。');
+        return commandResult(t('model.error.turnRunning'));
       }
 
       const catalog = bound
@@ -303,11 +290,11 @@ export async function runModelCommand(text, harness, state, key, options = {}) {
         ? modelAt(catalog, numberRequest.index)
         : matchingModel(catalog, requested);
       if (!selection) {
-        if (numberRequest) return commandResult(invalidModelNumberMessage(requested));
+        if (numberRequest) return commandResult(invalidModelNumberMessage(requested, t));
         return commandResult([
-          `没有找到模型：${safeDisplayText(requested)}`,
+          t('model.notFound', { requested: safeDisplayText(requested) }),
           '',
-          '请发送 /models 查看可用模型。',
+          t('model.notFoundHint'),
         ].join('\n'));
       }
 
@@ -344,9 +331,9 @@ export async function runModelCommand(text, harness, state, key, options = {}) {
           throw stale;
         }
       }
-      return commandResult(`模型已切换为：\n${modelId(selection.provider, selection.model)}\n\n后续消息将使用该模型。`);
+      return commandResult(t('model.switched', { model: modelId(selection.provider, selection.model) }));
     });
   } catch (error) {
-    return commandResult(modelErrorMessage(error, 'select'));
+    return commandResult(modelErrorMessage(error, 'select', t));
   }
 }

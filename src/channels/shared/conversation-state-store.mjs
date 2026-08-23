@@ -1,7 +1,15 @@
 import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
-const EMPTY_STATE = Object.freeze({ version: 1, sessions: {}, seenMessageIds: [], cursor: null });
+import { isAvailableLocale } from '../../i18n/index.mjs';
+
+const EMPTY_STATE = Object.freeze({
+  version: 1,
+  sessions: {},
+  locales: {},
+  seenMessageIds: [],
+  cursor: null,
+});
 
 function normalizeState(value) {
   if (!value || typeof value !== 'object') return structuredClone(EMPTY_STATE);
@@ -13,9 +21,18 @@ function normalizeState(value) {
       }
     }
   }
+  const locales = {};
+  if (value.locales && typeof value.locales === 'object' && !Array.isArray(value.locales)) {
+    for (const [key, locale] of Object.entries(value.locales)) {
+      // Drop overrides naming a locale this build no longer ships, so a
+      // removed catalogue cannot pin a conversation to a missing language.
+      if (typeof key === 'string' && key && isAvailableLocale(locale)) locales[key] = locale;
+    }
+  }
   return {
     version: 1,
     sessions,
+    locales,
     seenMessageIds: Array.isArray(value.seenMessageIds)
       ? value.seenMessageIds.filter((id) => typeof id === 'string' && id).slice(-1_000)
       : [],
@@ -59,6 +76,23 @@ export class ConversationStateStore {
 
   async clearSessions() {
     this.#state.sessions = {};
+    await this.#persist();
+  }
+
+  /** The per-conversation locale override set with /lang, if any. */
+  localeFor(key) {
+    return this.#state.locales[key] ?? null;
+  }
+
+  async setLocale(key, locale) {
+    if (!isAvailableLocale(locale)) throw new TypeError('Unsupported conversation locale');
+    this.#state.locales[key] = locale;
+    await this.#persist();
+  }
+
+  async clearLocale(key) {
+    if (this.#state.locales[key] === undefined) return;
+    delete this.#state.locales[key];
     await this.#persist();
   }
 

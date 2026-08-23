@@ -9,7 +9,7 @@ import {
   isBotSender,
   splitText,
 } from '../../../src/channels/feishu/message-utils.mjs';
-import { defaultTranslator as t } from '../../../src/i18n/index.mjs';
+import { defaultTranslator as tr } from '../../../src/i18n/index.mjs';
 
 const PNG_1X1 = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
@@ -154,7 +154,7 @@ test('Feishu image loading maps the missing message scope to an actionable error
   await assert.rejects(message.images[0].load({ maxBytes: 1024 }), (error) => {
     assert.equal(error.code, 'feishu-image-permission-required');
     assert.equal(error.userMessageKey, 'image.error.feishuPermissionRequired');
-    assert.match(t(error.userMessageKey), /im:message:readonly/);
+    assert.match(tr(error.userMessageKey), /im:message:readonly/);
     assert.equal(error.cause, providerError);
     return true;
   });

@@ -15,7 +15,7 @@ import {
   createOutboundArtifactTool,
   releaseOutboundArtifact,
 } from '../../../src/channels/shared/semantic/artifact.mjs';
-import { defaultTranslator as t } from '../../../src/i18n/index.mjs';
+import { defaultTranslator as tr } from '../../../src/i18n/index.mjs';
 
 function deferred() {
   let resolve;
@@ -351,7 +351,7 @@ test('DingTalk resolves picture downloadCode lazily and sends image-only content
   assert.equal(downloads[0].maxBytes, 5 * 1024 * 1024);
   assert.equal(prompts[0].sessionId, 'session-image');
   assert.deepEqual(prompts[0].content.map(({ type }) => type), ['text', 'image']);
-  assert.equal(prompts[0].content[0].text, t('image.defaultPrompt'));
+  assert.equal(prompts[0].content[0].text, tr('image.defaultPrompt'));
   assert.equal(prompts[0].content[1].mediaType, 'image/png');
   assert.equal(Buffer.from(prompts[0].content[1].data, 'base64').equals(PNG_BYTES), true);
   assert.equal(sent.at(-1).text, '钉钉图片已识别');
@@ -452,7 +452,7 @@ test('DingTalk returns a specific retry message when picture download fails', as
     robotCode: 'robot-from-callback',
   }));
 
-  assert.equal(sent.at(-1).text, t('image.error.downloadFailed'));
+  assert.equal(sent.at(-1).text, tr('image.error.downloadFailed'));
 });
 
 test('DingTalk distinguishes download-address failures from temporary-file failures', async () => {
